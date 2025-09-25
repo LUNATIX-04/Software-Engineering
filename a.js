@@ -1,1 +1,1 @@
-AAAAAAAA
+console.log("AAAAAAAAAAAA")
