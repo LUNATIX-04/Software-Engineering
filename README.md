@@ -1,6 +1,3 @@
-เกียวกับ schema ของ mySQL magic shop สามารถไปได้ที่ MySQL/MAGICSHOP_SCHEMA.sql 
-
-
 อัพเดทพวก
 - ทำหน้า Homepage, Projects (Frontend) ยังมี bug เล็กๆน้อยอยู่
 - ทำหน้า Edit, Create ของ Project แต่ว่า bug ยังเยอะ กับ clean code ยังไม่เสร็จ
