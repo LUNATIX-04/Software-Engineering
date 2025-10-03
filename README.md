@@ -39,6 +39,7 @@ npm install dayjs
 npm install -D jest jest-environment-jsdom @testing-library/react @testing-library/dom @testing-library/jest-dom ts-node @types/jest
 npm audit fix --force
 npm init jest@latest
+
 กด yes yes jsdom yes b8 yes
 
 # E2E Testing
