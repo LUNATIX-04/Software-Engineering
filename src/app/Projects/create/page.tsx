@@ -7,6 +7,7 @@ export default function CreateProjectPage() {
     <ProjectForm
       heading="Create Project"
       submitLabel="Next"
+      departmentChipVariant="compact" //fullWidth
       onSubmit={() => {
         /* TODO: connect to backend */
       }}

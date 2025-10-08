@@ -21,7 +21,7 @@ export default function ProjectsPage() {
   }, [searchQuery])
 
   return (
-    <div className="max-w-[min(90rem,90vw)] w-full mx-auto px-[clamp(1.5rem,2vw,4rem)] py-[clamp(2rem,5vh,4rem)]">
+    <div className="max-w-[min(90rem,90vw)] w-full mx-auto px-[clamp(1.5rem,2vw,4rem)] pb-[clamp(2rem,5vh,4rem)]">
       <div className="flex justify-end mb-8">
         <div className="relative w-full max-w-md">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-primary/60" />

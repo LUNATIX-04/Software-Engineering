@@ -10,14 +10,12 @@ type AlertDialogRootProps = React.ComponentProps<typeof AlertDialogPrimitive.Roo
 
 type AlertDialogProps = Omit<AlertDialogRootProps, "modal"> & {
   disableModal?: boolean
-  modal?: AlertDialogRootProps["modal"]
 }
 
 const AlertDialogDisableModalContext = React.createContext(false)
 
 function AlertDialog({
   disableModal = false,
-  modal: modalProp,
   children,
   ...rest
 }: AlertDialogProps) {
@@ -26,7 +24,6 @@ function AlertDialog({
       <AlertDialogPrimitive.Root
         data-slot="alert-dialog"
         {...rest}
-        modal={disableModal ? false : modalProp}
       >
         {children}
       </AlertDialogPrimitive.Root>
@@ -56,15 +53,12 @@ function AlertDialogOverlay({
 }: React.ComponentProps<typeof AlertDialogPrimitive.Overlay>) {
   const disableModal = React.useContext(AlertDialogDisableModalContext)
 
-  if (disableModal) {
-    return null
-  }
-
   return (
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50 backdrop-blur-sm",
+        disableModal && "pointer-events-none bg-black/40",
         className
       )}
       {...props}

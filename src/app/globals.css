@@ -28,6 +28,7 @@
 
   --primary: #907ad6;               /* สีหลัก */
   --primary-foreground: #f4effa;    /* ตัวอักษรบนปุ่ม primary */
+  --primary-soft: #c6b6f2;          /* สีหลักที่จางลงสำหรับ UI รอง */
 
   --secondary: #dabfff;             /* สีรอง */
   --secondary-foreground: #2c2a4a;
@@ -150,6 +151,38 @@
   }
   body {
     @apply bg-background text-foreground;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-soft) var(--button-background);
+  }
+
+  *::-webkit-scrollbar {
+    width: 0.85rem;
+    height: 0.85rem;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--button-background);
+    
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--primary-soft);
+    border-radius: 9999px;
+    border: 2px solid var(--button-background);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+  }
+
+  textarea {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-soft);
+    background-clip: padding-box;
+  }
+
+  textarea::-webkit-resizer {
+    background: var(--primary-soft)
   }
 }
 

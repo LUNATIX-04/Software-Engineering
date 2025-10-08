@@ -36,7 +36,9 @@ npx prisma init
 npm install next-auth
 
 # Cloud Storage (Supabase)
-npm install @supabase/supabase-js
+npm install @supabase/ssr @supabase/supabase-js
+npm install @react-native-async-storage/async-storage
+
 
 # Time & Date
 npm install dayjs
