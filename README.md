@@ -1,6 +1,3 @@
-เกียวกับ schema ของ mySQL magic shop สามารถไปได้ที่ MySQL/MAGICSHOP_SCHEMA.sql 
-
-
 อัพเดทพวก
 - ทำหน้า Homepage, Projects (Frontend) ยังมี bug เล็กๆน้อยอยู่
 - ทำหน้า Edit, Create ของ Project แต่ว่า bug ยังเยอะ กับ clean code ยังไม่เสร็จ
@@ -12,9 +9,13 @@ npm install -D postcss autoprefixer
 
 # UI Components
 npm install @radix-ui/react-slot @radix-ui/react-dialog @radix-ui/react-dropdown-menu 
+
 npm install class-variance-authority tailwind-merge
+
 npm install lucide-react
+
 npx shadcn@lastest init
+
 npx shadcn@lastest add button input textarea select form dialog dropdown-menu popover calendar alert-dialog card calendar
 
 
@@ -26,7 +27,9 @@ npm install elysia @elysiajs/cors @elysiajs/static socket.io socket.io-client
 
 # Prisma ORM + PostgreSQL
 npm install @prisma/client
+
 npm install prisma --save-dev
+
 npx prisma init
 
 # Authentication
@@ -40,16 +43,21 @@ npm install dayjs
 
 # Unit / Integration Test
 npm install -D jest jest-environment-jsdom @testing-library/react @testing-library/dom @testing-library/jest-dom ts-node @types/jest
+
 npm audit fix --force
+
 npm init jest@latest
+
 กด yes yes jsdom yes b8 yes
 
 # E2E Testing
 npm install playwright --save-dev
+
 npx playwright install
 
 # Email Domain Check (???)
 npm install dns bcrypt
+
 npm audit fix --force
 
 ## วิธีติดตั้ง project
