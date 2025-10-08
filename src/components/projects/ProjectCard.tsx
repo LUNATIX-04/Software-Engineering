@@ -150,6 +150,7 @@ export function ProjectCard({
       </div>
 
       <DropdownMenu
+        modal={false}
         onOpenChange={(open) => {
           setMenuOpen(open)
           if (!open) {
@@ -187,7 +188,11 @@ export function ProjectCard({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={handleDeleteDialogChange}>
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={handleDeleteDialogChange}
+        disableModal
+      >
         <AlertDialogContent className="bg-background border-2 border-primary/30 rounded-[2rem] px-8 py-10 text-center shadow-xl">
           <AlertDialogTitle className="text-2xl font-semibold text-foreground">
             Are you sure? <br/> You want to delete this project? <br/><br/> " {title} "

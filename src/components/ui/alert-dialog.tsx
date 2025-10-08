@@ -6,10 +6,32 @@ import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
+type AlertDialogRootProps = React.ComponentProps<typeof AlertDialogPrimitive.Root>
+
+type AlertDialogProps = Omit<AlertDialogRootProps, "modal"> & {
+  disableModal?: boolean
+  modal?: AlertDialogRootProps["modal"]
+}
+
+const AlertDialogDisableModalContext = React.createContext(false)
+
 function AlertDialog({
-  ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
+  disableModal = false,
+  modal: modalProp,
+  children,
+  ...rest
+}: AlertDialogProps) {
+  return (
+    <AlertDialogDisableModalContext.Provider value={disableModal}>
+      <AlertDialogPrimitive.Root
+        data-slot="alert-dialog"
+        {...rest}
+        modal={disableModal ? false : modalProp}
+      >
+        {children}
+      </AlertDialogPrimitive.Root>
+    </AlertDialogDisableModalContext.Provider>
+  )
 }
 
 function AlertDialogTrigger({
@@ -32,6 +54,12 @@ function AlertDialogOverlay({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Overlay>) {
+  const disableModal = React.useContext(AlertDialogDisableModalContext)
+
+  if (disableModal) {
+    return null
+  }
+
   return (
     <AlertDialogPrimitive.Overlay
       data-slot="alert-dialog-overlay"
