@@ -4,8 +4,8 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: #f4effa;            /* สีพื้นหลัง */
-  --foreground: #2c2a4a;            /* สีตัวอักษรหลัก */
+  --background: #f4effa;          
+  --foreground: #2c2a4a;       
 
   --button-background-on-nav: #f4effa;
   --button-foreground-on-nav: #2c2a4a;
@@ -26,17 +26,17 @@
   --popover: #ffffff;
   --popover-foreground: #2c2a4a;
 
-  --primary: #907ad6;               /* สีหลัก */
-  --primary-foreground: #f4effa;    /* ตัวอักษรบนปุ่ม primary */
-  --primary-soft: #c6b6f2;          /* สีหลักที่จางลงสำหรับ UI รอง */
+  --primary: #907ad6;             
+  --primary-foreground: #f4effa;   
+  --primary-soft: #c6b6f2;         
 
-  --secondary: #dabfff;             /* สีรอง */
+  --secondary: #dabfff;          
   --secondary-foreground: #2c2a4a;
 
   --muted: #f4effa;
   --muted-foreground: #4f518c;
 
-  --accent: #97dffc;                /* สี accent เช่นปุ่ม info */
+  --accent: #97dffc;               
   --accent-foreground: #2c2a4a;
 
   --destructive: #ff4d4f;
@@ -175,15 +175,21 @@
     background: var(--primary);
   }
 
+
   textarea {
-    scrollbar-width: thin;
-    scrollbar-color: var(--primary-soft);
+    scrollbar-width: thick;
+    scrollbar-color: var(--primary-soft) var(--button-background);
     background-clip: padding-box;
   }
 
   textarea::-webkit-resizer {
     background: var(--primary-soft)
   }
+
+
+   
+
+
 }
 
 @layer components {

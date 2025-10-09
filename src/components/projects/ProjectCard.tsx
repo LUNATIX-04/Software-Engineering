@@ -32,7 +32,7 @@ export type ProjectCardProps = {
   imageSrc?: string
   borderRadius?: string
   onEditProject?: () => void
-  onDelete?: () => void
+  onDelete?: () => Promise<void> | void
 }
 
 export function ProjectCard({
@@ -47,6 +47,7 @@ export function ProjectCard({
   const [menuOpen, setMenuOpen] = useState(false)
   const [isHovering, setIsHovering] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const cardFrame = projectCardSizing.cardProject
 
   const cardStyle: CSSProperties = {
@@ -89,10 +90,23 @@ export function ProjectCard({
     setIsHovering(true)
   }
 
-  const handleConfirmDelete = () => {
-    setDeleteDialogOpen(false)
-    onDelete?.()
-    setIsHovering(false)
+  const handleConfirmDelete = async () => {
+    if (!onDelete) {
+      setDeleteDialogOpen(false)
+      setIsHovering(false)
+      return
+    }
+
+    try {
+      setDeleting(true)
+      await onDelete()
+      setDeleteDialogOpen(false)
+    } catch (error) {
+      console.error("Failed to delete project", error)
+    } finally {
+      setDeleting(false)
+      setIsHovering(false)
+    }
   }
 
   const handleNoConfirmDelete = () => {
@@ -101,6 +115,9 @@ export function ProjectCard({
   }
 
   const handleDeleteDialogChange = (open: boolean) => {
+    if (deleting) {
+      return
+    }
     setDeleteDialogOpen(open)
     if (open) {
       setMenuOpen(false)
@@ -199,14 +216,16 @@ export function ProjectCard({
           </AlertDialogTitle>
           <AlertDialogFooter className="mt-8 flex w-full flex-row justify-between sm:!justify-between gap-6">
             <AlertDialogCancel className="rounded-full bg-secondary border-none px-8 py-3 text-base font-semibold text-secondary-foreground shadow-none transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-            onClick={handleNoConfirmDelete}>
+            onClick={handleNoConfirmDelete}
+            disabled={deleting}>
               No
             </AlertDialogCancel>
             <AlertDialogAction
               className="rounded-full bg-primary px-8 py-3 text-base font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               onClick={handleConfirmDelete}
+              disabled={deleting}
             >
-              Yes
+              {deleting ? "Deleting…" : "Yes"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

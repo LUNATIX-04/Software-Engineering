@@ -6,10 +6,39 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  //output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model Profile {
+  id          String    @id @db.Uuid
+  email       String    @unique
+  fullName    String?   @map("full_name")
+  avatarUrl   String?   @map("avatar_url")
+  lastSignIn  DateTime? @map("last_sign_in")
+  createdAt   DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+
+  projects    Project[]
+
+  @@map("profiles")
+}
+
+model Project {
+  id          String    @id @default(uuid()) @db.Uuid
+  ownerId     String    @map("owner_id") @db.Uuid
+  title       String
+  description String?
+  departments String[]
+  imageUrl    String?   @map("image_url")
+  createdAt   DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @default(dbgenerated("timezone('utc'::text, now())")) @map("updated_at") @db.Timestamptz(6)
+
+  owner       Profile   @relation(fields: [ownerId], references: [id])
+
+  @@map("projects")
 }

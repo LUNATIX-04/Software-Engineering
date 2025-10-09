@@ -1,6 +1,6 @@
 "use client"
 
-import { ReactNode, useCallback, useEffect, useMemo, useState } from "react"
+import { ReactNode, SetStateAction, useCallback, useEffect, useMemo, useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import Image from "next/image"
 import { User as UserIcon } from "lucide-react"
@@ -16,6 +16,7 @@ import {
 
 import { cn } from "@/lib/utils"
 import { getSupabaseBrowserClient } from "@/utils/supabase/client"
+import { DropdownMenuLabel } from "@radix-ui/react-dropdown-menu"
 
 type AppShellProps = {
   children: ReactNode
@@ -34,7 +35,7 @@ export default function AppShell({ children }: AppShellProps) {
   useEffect(() => {
     let isMounted = true
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => {
       if (!isMounted) return
       setSession(data.session ?? null)
       setAuthLoading(false)
@@ -42,7 +43,7 @@ export default function AppShell({ children }: AppShellProps) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((_event: any, nextSession: SetStateAction<Session | null>) => {
       setSession(nextSession)
       setAuthLoading(false)
     })
@@ -178,8 +179,11 @@ export default function AppShell({ children }: AppShellProps) {
                     align="end"
                     className="bg-button-background-on-nav text-button-foreground-on-nav border-none rounded-2xl p-2"
                   >
-                    <DropdownMenuItem className="text-button-foreground-on-nav hover:bg-button-hover-background-on-nav rounded-xl py-3 px-4 cursor-pointer text-base">
+                    <DropdownMenuLabel className="text-button-foreground-on-nav rounded-xl py-3 px-4 cursor-text text-base">
                       {authenticatedUser.email ?? "My Account"}
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem className="text-button-foreground-on-nav hover:bg-button-hover-background-on-nav rounded-xl py-3 px-4 cursor-pointer text-base">
+                     Manage my Account
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       className="text-button-foreground-on-nav hover:bg-button-hover-background-on-nav rounded-xl py-3 px-4 cursor-pointer text-base"
