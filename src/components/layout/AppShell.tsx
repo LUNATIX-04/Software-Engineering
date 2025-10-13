@@ -22,6 +22,8 @@ type AppShellProps = {
   children: ReactNode
 }
 
+type SignOutRedirect = "homepage" | "google" | "none"
+
 export default function AppShell({ children }: AppShellProps) {
   const pathname = usePathname()
   const router = useRouter()
@@ -77,16 +79,32 @@ export default function AppShell({ children }: AppShellProps) {
     }
   }, [supabase])
 
-  const handleSignOut = useCallback(async () => {
+  const handleSignOut = useCallback(async (options?: { redirect?: SignOutRedirect }) => {
     setAuthLoading(true)
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error("Failed to sign out", error)
+      setAuthLoading(false)
+      return
+    }
+    setAccountMenuOpen(false)
+    const redirect = options?.redirect ?? "homepage"
+    if (redirect === "google") {
+      await handleGoogleSignIn()
+      return
     }
     setAuthLoading(false)
-    setAccountMenuOpen(false)
+    if (redirect === "homepage") {
+      router.push("/Homepage")
+    }
+  }, [handleGoogleSignIn, router, supabase])
+
+  const handleLogoClick = useCallback(() => {
+    if (isHomepage) {
+      return
+    }
     router.push("/Homepage")
-  }, [router, supabase])
+  }, [isHomepage, router])
 
   const authenticatedUser = session?.user ?? null
   const avatarUrl =
@@ -111,40 +129,87 @@ export default function AppShell({ children }: AppShellProps) {
     <UserIcon className="size-7 text-button-foreground-on-nav" />
   )
 
+  const renderAccountDropdown = (redirect: SignOutRedirect) => {
+    if (!authenticatedUser) {
+      return null
+    }
+
+    return (
+      <DropdownMenu modal={false} onOpenChange={setAccountMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="secondary"
+            size="icon"
+            className={cn(
+              "bg-button-background-on-nav hover:bg-button-hover-background-on-nav active:bg-button-hover-background-on-nav rounded-full size-9 p-0 transition-colors select-none",
+              accountMenuOpen && "ring-2 ring-button-foreground-on-nav/40"
+            )}
+            aria-pressed={accountMenuOpen}
+          >
+            {avatar}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          className="bg-button-background-on-nav text-button-foreground-on-nav border-none rounded-2xl p-2"
+        >
+          <DropdownMenuLabel className="text-button-foreground-on-nav rounded-xl py-3 px-4 cursor-text text-base">
+            {authenticatedUser.email ?? "My Account"}
+          </DropdownMenuLabel>
+          <DropdownMenuItem className="text-button-foreground-on-nav hover:bg-button-hover-background-on-nav rounded-xl py-3 px-4 cursor-pointer text-base">
+            Manage my Account
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="text-button-foreground-on-nav hover:bg-button-hover-background-on-nav rounded-xl py-3 px-4 cursor-pointer text-base"
+            onSelect={() => handleSignOut({ redirect })}
+          >
+            Log out
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  }
+
   const header = (() => {
     if (isHomepage) {
       return (
         <header className="fixed inset-x-0 top-0 z-50 bg-primary px-[clamp(1.5rem,1vw,3rem)] py-[clamp(0.6rem,1vh,1rem)] ">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-[clamp(1.5rem,7vw,7rem)]">
-              <h1 className="text-primary-foreground text-3xl font-bold leading-none select-none" draggable={false}>
-                ASAP
-              </h1>
-            </div>
-            {authenticatedUser ? (
-              <div className="flex items-center gap-3">
-                <span className="hidden text-button-foreground-on-nav text-base font-semibold sm:inline">
-                  {authenticatedUser.email}
+              <button
+                type="button"
+                onClick={handleLogoClick}
+                disabled={isHomepage}
+                className={cn(
+                  "rounded-full bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-button-foreground-on-nav/40",
+                  isHomepage ? "cursor-default" : "cursor-pointer"
+                )}
+                aria-label={isHomepage ? "ASAP" : "Go to homepage"}
+              >
+                <span
+                  className="text-primary-foreground text-3xl font-bold leading-none select-none"
+                  draggable={false}
+                  role="heading"
+                  aria-level={1}
+                >
+                  ASAP
                 </span>
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              {authenticatedUser ? (
+                renderAccountDropdown("google")
+              ) : (
                 <Button
                   variant="secondary"
                   className="bg-button-background-on-nav text-button-foreground-on-nav hover:bg-button-hover-background-on-nav rounded-full px-[clamp(2.5rem,5vw,4rem)] py-[clamp(0.5rem,1.6vh,0.85rem)] text-[clamp(1rem,2.1vw,1.15rem)] font-semibold"
-                  onClick={handleSignOut}
+                  onClick={handleGoogleSignIn}
                   disabled={authLoading}
                 >
-                  Log out
+                  {authLoading ? "Loading..." : "Login"}
                 </Button>
-              </div>
-            ) : (
-              <Button
-                variant="secondary"
-                className="bg-button-background-on-nav text-button-foreground-on-nav hover:bg-button-hover-background-on-nav rounded-full ml-40 px-[clamp(2.5rem,5vw,4rem)] py-[clamp(0.5rem,1.6vh,0.85rem)] text-[clamp(1rem,2.1vw,1.15rem)] font-semibold"
-                onClick={handleGoogleSignIn}
-                disabled={authLoading}
-              >
-                {authLoading ? "Loading..." : "Login"}
-              </Button>
-            )}
+              )}
+            </div>
           </div>
         </header>
       )
@@ -155,44 +220,29 @@ export default function AppShell({ children }: AppShellProps) {
         <header className="fixed inset-x-0 top-0 z-50 bg-primary px-[clamp(1.5rem,1vw,3rem)] py-[clamp(0.6rem,1vh,1rem)] ">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-[clamp(1.5rem,7vw,7rem)]">
-              <h1 className="text-primary-foreground text-3xl font-bold leading-none select-none" draggable={false}>
-                ASAP
-              </h1>
+              <button
+                type="button"
+                onClick={handleLogoClick}
+                disabled={isHomepage}
+                className={cn(
+                  "rounded-full bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-button-foreground-on-nav/40",
+                  isHomepage ? "cursor-default" : "cursor-pointer"
+                )}
+                aria-label={isHomepage ? "ASAP" : "Go to homepage"}
+              >
+                <span
+                  className="text-primary-foreground text-3xl font-bold leading-none select-none"
+                  draggable={false}
+                  role="heading"
+                  aria-level={1}
+                >
+                  ASAP
+                </span>
+              </button>
             </div>
             <div className="flex items-center gap-2">
               {authenticatedUser ? (
-                <DropdownMenu modal={false} onOpenChange={setAccountMenuOpen}>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      className={cn(
-                        "bg-button-background-on-nav hover:bg-button-hover-background-on-nav active:bg-button-hover-background-on-nav rounded-full size-9 p-0 transition-colors select-none",
-                        accountMenuOpen && "ring-2 ring-button-foreground-on-nav/40"
-                      )}
-                      aria-pressed={accountMenuOpen}
-                    >
-                      {avatar}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className="bg-button-background-on-nav text-button-foreground-on-nav border-none rounded-2xl p-2"
-                  >
-                    <DropdownMenuLabel className="text-button-foreground-on-nav rounded-xl py-3 px-4 cursor-text text-base">
-                      {authenticatedUser.email ?? "My Account"}
-                    </DropdownMenuLabel>
-                    <DropdownMenuItem className="text-button-foreground-on-nav hover:bg-button-hover-background-on-nav rounded-xl py-3 px-4 cursor-pointer text-base">
-                     Manage my Account
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-button-foreground-on-nav hover:bg-button-hover-background-on-nav rounded-xl py-3 px-4 cursor-pointer text-base"
-                      onSelect={handleSignOut}
-                    >
-                      Log out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                renderAccountDropdown("homepage")
               ) : (
                 <Button
                   variant="secondary"

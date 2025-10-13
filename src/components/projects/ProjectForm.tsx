@@ -328,6 +328,12 @@ export function ProjectForm({
   const [zoomInputValue, setZoomInputValue] = useState(DEFAULT_ZOOM.toFixed(2))
   const [internalSubmitting, setInternalSubmitting] = useState(false)
   const [isDraggingCrop, setIsDraggingCrop] = useState(false)
+  const [isCompactLayout, setIsCompactLayout] = useState<boolean>(() => {
+    if (typeof window === "undefined") {
+      return false
+    }
+    return window.matchMedia("(max-width: 1023px)").matches
+  })
 
   useEffect(() => {
     setTitle(normalizedInitial.title)
@@ -363,6 +369,34 @@ export function ProjectForm({
       setZoomInputValue(DEFAULT_ZOOM.toFixed(2))
     }
   }, [imagePreview])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+
+    const mediaQuery = window.matchMedia("(max-width: 1023px)")
+    const updateMatch = () => setIsCompactLayout(mediaQuery.matches)
+
+    updateMatch()
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", updateMatch)
+    } else {
+      // Fallback for older browsers
+      // eslint-disable-next-line deprecation/deprecation
+      mediaQuery.addListener(updateMatch)
+    }
+
+    return () => {
+      if (typeof mediaQuery.removeEventListener === "function") {
+        mediaQuery.removeEventListener("change", updateMatch)
+      } else {
+        // eslint-disable-next-line deprecation/deprecation
+        mediaQuery.removeListener(updateMatch)
+      }
+    }
+  }, [])
 
   const applyZoom = (value: number | ((current: number) => number)) => {
     setImageZoom((prevZoom) => {
@@ -761,6 +795,131 @@ export function ProjectForm({
     objectPosition: `${cropXPercent}% ${cropYPercent}%`,
     willChange: "transform",
   }
+
+  const renderPreviewContent = (options?: {
+    wrapperClassName?: string
+    attachScrollEffects?: boolean
+  }) => {
+    const { wrapperClassName, attachScrollEffects = true } = options ?? {}
+
+    const combinedClassName = ["flex flex-col gap-8", wrapperClassName]
+      .filter(Boolean)
+      .join(" ")
+
+    return (
+      <div className={combinedClassName}>
+        <div
+          ref={attachScrollEffects ? previewCardRef : undefined}
+          className="relative w-full max-w-sm overflow-hidden rounded-[2.5rem] border-2 border-primary/30 bg-white/80 shadow-[0_4px_2px_0.15px_rgba(0,1,0,0.15)]"
+        >
+          <div className="relative aspect-square w-full">
+            <div className="pointer-events-none absolute inset-20 rounded-[2rem] border-2 border-primary/15" aria-hidden />
+            <div
+              ref={previewImageContainerRef}
+              className={[
+                "absolute inset-20 overflow-hidden rounded-[1.75rem] bg-black/5 shadow-inner",
+                imagePreview ? (isDraggingCrop ? "cursor-grabbing" : "cursor-grab") : "",
+                imagePreview ? "select-none touch-none" : "",
+              ]
+                .filter(Boolean)
+                .join(" ")}
+              onPointerDown={handleCropPointerDown}
+              onPointerMove={handleCropPointerMove}
+              onPointerUp={endCropDragging}
+              onPointerCancel={endCropDragging}
+            >
+              {imagePreview ? (
+                <>
+                  <img
+                    src={imagePreview}
+                    alt="Selected preview"
+                    className="h-full w-full object-cover transition-transform duration-500 ease-out"
+                    style={previewImageStyle}
+                  />
+                  <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/40" aria-hidden />
+                </>
+              ) : (
+                <div
+                  className="flex h-full w-full flex-col items-center justify-center gap-4 text-primary transition-[transform,opacity] duration-500 ease-out"
+                  style={{
+                    transform: "translateY(calc(var(--preview-scroll-progress, 0) * 0px))",
+                    opacity: "calc(0.6 + var(--preview-scroll-opacity, 1) - 1)",
+                  }}
+                >
+                  <ImageIcon className="size-16" />
+                  <p className="text-base font-medium">Project image</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        {imagePreview ? (
+          <div className="flex items-center justify-center gap-4 px-4 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-white/70 px-3 py-1.5 shadow-sm backdrop-blur-sm">
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                className={zoomButtonClass}
+                disabled={isZoomOutDisabled}
+                aria-label="Zoom out"
+              >
+                <Minus className="size-4" aria-hidden />
+              </button>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={MIN_ZOOM.toFixed(2)}
+                  max={MAX_ZOOM.toFixed(2)}
+                  step="0.01"
+                  value={zoomInputValue}
+                  onChange={handleZoomInputChange}
+                  onBlur={handleZoomInputBlur}
+                  onKeyDown={handleZoomInputKeyDown}
+                  className={zoomInputClass}
+                  aria-label="Set zoom level"
+                  disabled={!imagePreview}
+                />
+                <span className="text-sm font-semibold text-foreground">x</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                className={zoomButtonClass}
+                disabled={isZoomInDisabled}
+                aria-label="Zoom in"
+              >
+                <Plus className="size-4" aria-hidden />
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {selectedImageName ? (
+          <p className="text-sm text-muted-foreground">{selectedImageName}</p>
+        ) : null}
+        {imagePreview ? (
+          <p className="text-xs text-muted-foreground">
+            Drag the image to choose which area appears in the square preview.
+          </p>
+        ) : null}
+
+        <Button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          className="rounded-full bg-button-background px-8 py-5 text-base font-semibold text-button-foreground transition-transform  hover:bg-button-hover-background"
+        >
+          Add Image
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="sr-only"
+          onChange={handleImageSelect}
+        />
+      </div>
+    )
+  }
  
   return (
     <div
@@ -771,221 +930,126 @@ export function ProjectForm({
         .filter(Boolean)
         .join(" ")}
     >
-      <div className="grid gap-25 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.8fr)] items-start">
+      <div className="flex flex-col">
         <form
           onSubmit={handleSubmit}                                         //0px 3px 5px 1px rgba(0, 0, 0, 0.25)
           className="rounded-[2.5rem] border-2 border-primary/30 bg-card-project px-10 pt-5 pb-12 shadow-[0_4px_2px_0.15px_rgba(0,1,0,0.15)]"
         >
-          <h1 className="text-3xl font-bold text-foreground">{heading}</h1>
+          <div className="lg:flex lg:items-start lg:gap-16">
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-foreground">{heading}</h1>
 
-          <div className="mt-5 space-y-4">
-            <label className="block space-y-3">
-              {/*<span className="text-lg font-semibold text-foreground">Project Title</span>*/}
-              <Input
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="Project Title"
-                className="h-12 w-1/2 rounded-[2rem] border-2 border-primary/40 bg-white/80 px-6 text-lg font-semibold text-foreground placeholder:text-primary/60"
-              />
-            </label>
- 
-            <label className="block space-y-3">
-              {/*<span className="text-lg font-semibold text-foreground">Add detail</span>*/}
-              <div className="group/textarea overflow-hidden rounded-[1rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.25)]">
-                <Textarea
-                  value={detail}
-                  onChange={(event) => setDetail(event.target.value)}
-                  placeholder="Add detail"
-                  className="min-h-[10rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-6 py-2 text-base text-foreground placeholder:text-primary/60 shadow-none focus-visible:outline-none focus-visible:ring-0"
-                />
-              </div>
-            </label>
+              <div className="mt-5 space-y-4">
+                <label className="block space-y-3">
+                  {/*<span className="text-lg font-semibold text-foreground">Project Title</span>*/}
+                  <Input
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    placeholder="Project Title"
+                    className="h-12 w-1/2 rounded-[2rem] border-2 border-primary/40 bg-white/80 px-6 text-lg font-semibold text-foreground placeholder:text-primary/60"
+                  />
+                </label>
 
-            <div className="space-y-4">
-              <span className="text-lg font-semibold text-foreground">Department</span>
-              <div className="flex flex-wrap gap-3 mt-3">
-                {departments.map((dept, index) => {
-                  const isDragOver = dragOverIndex === index
-                  const isDragging = draggingIndex === index
-                  const chipClassName = [
-                    departmentChipClass,
-                    isDragOver
-                      ? "border-primary bg-primary/10"
-                      : "",
-                    isDragging ? "cursor-grabbing opacity-80" : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")
+                {isCompactLayout ? (
+                  <div className="flex w-full justify-end">
+                    {renderPreviewContent({ wrapperClassName: "items-center" })}
+                  </div>
+                ) : null}
 
-                  return (
-                    <span
-                      key={dept}
-                      className={chipClassName}
-                      draggable
-                      aria-grabbed={isDragging}
-                      onDragStart={(event) => handleDepartmentDragStart(event, index)}
-                      onDragOver={(event) => handleDepartmentDragOver(event, index)}
-                      onDrop={(event) => handleDepartmentDrop(event, index)}
-                      onDragEnd={handleDepartmentDragEnd}
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <GripVertical className="size-4 text-primary/60" aria-hidden />
-                        <span>{dept}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveDepartment(dept)}
-                        className={`${chipActionButtonClass} ml-auto`}
-                        aria-label={`Remove ${dept}`}
-                      >
-                        <X className="size-4" />
-                      </button>
+                <label className="block space-y-3">
+                  {/*<span className="text-lg font-semibold text-foreground">Add detail</span>*/}
+                  <div className="group/textarea overflow-hidden rounded-[1rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.25)]">
+                    <Textarea
+                      value={detail}
+                      onChange={(event) => setDetail(event.target.value)}
+                      placeholder="Add detail"
+                      className="min-h-[10rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-6 py-2 text-base text-foreground placeholder:text-primary/60 shadow-none focus-visible:outline-none focus-visible:ring-0"
+                    />
+                  </div>
+                </label>
+
+                <div className="space-y-4">
+                  <span className="text-lg font-semibold text-foreground">Department</span>
+                  <div className="flex flex-wrap gap-3 mt-3">
+                    {departments.map((dept, index) => {
+                      const isDragOver = dragOverIndex === index
+                      const isDragging = draggingIndex === index
+                      const chipClassName = [
+                        departmentChipClass,
+                        isDragOver
+                          ? "border-primary bg-primary/10"
+                          : "",
+                        isDragging ? "cursor-grabbing opacity-80" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")
+
+                      return (
+                        <span
+                          key={dept}
+                          className={chipClassName}
+                          draggable
+                          aria-grabbed={isDragging}
+                          onDragStart={(event) => handleDepartmentDragStart(event, index)}
+                          onDragOver={(event) => handleDepartmentDragOver(event, index)}
+                          onDrop={(event) => handleDepartmentDrop(event, index)}
+                          onDragEnd={handleDepartmentDragEnd}
+                        >
+                          <span className="inline-flex items-center gap-2">
+                            <GripVertical className="size-4 text-primary/60" aria-hidden />
+                            <span>{dept}</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveDepartment(dept)}
+                            className={`${chipActionButtonClass} ml-auto`}
+                            aria-label={`Remove ${dept}`}
+                          >
+                            <X className="size-4" />
+                          </button>
+                        </span>
+                      )
+                    })}
+                  </div>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-primary/60">
+                      <Plus className="size-5" />
                     </span>
-                  )
-                })}
-              </div>
-              <div className="relative">
-                <span className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-primary/60">
-                  <Plus className="size-5" />
-                </span>
-                <Input
-                  value={departmentInput}
-                  onChange={(event) => setDepartmentInput(event.target.value)}
-                  onKeyDown={handleDepartmentKeyDown}
-                  placeholder="Add"
-                  className="h-14 rounded-[2rem] border-2 border-primary/40 bg-white/80 pl-12 pr-4 text-base font-medium text-foreground placeholder:text-primary/60"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-12 flex justify-end">
-            <Button
-              type="submit"
-              disabled={effectiveSubmitting}
-              className="rounded-full bg-button-background px-10 py-5 text-base font-semibold text-button-foreground transition-transform hover:bg-button-hover-background"
-            >
-              {submitLabel}
-            </Button>
-          </div>
-
-          {submitError ? (
-            <p className="mt-4 text-right text-sm text-destructive">{submitError}</p>
-          ) : null}
-        </form>
-
-        <div className="flex flex-col items-center gap-8">
-          <div
-            ref={previewCardRef}
-            className="relative w-full max-w-sm overflow-hidden rounded-[2.5rem] border-2 border-primary/30 bg-white/80 shadow-[0_4px_2px_0.15px_rgba(0,1,0,0.15)]"
-          >
-            <div className="relative aspect-square w-full">
-              <div className="pointer-events-none absolute inset-20 rounded-[2rem] border-2 border-primary/15" aria-hidden />
-              <div
-                ref={previewImageContainerRef}
-                className={[
-                  "absolute inset-20 overflow-hidden rounded-[1.75rem] bg-black/5 shadow-inner",
-                  imagePreview ? (isDraggingCrop ? "cursor-grabbing" : "cursor-grab") : "",
-                  imagePreview ? "select-none touch-none" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                onPointerDown={handleCropPointerDown}
-                onPointerMove={handleCropPointerMove}
-                onPointerUp={endCropDragging}
-                onPointerCancel={endCropDragging}
-              >
-                {imagePreview ? (
-                  <>
-                    <img
-                      src={imagePreview}
-                      alt="Selected preview"
-                      className="h-full w-full object-cover transition-transform duration-500 ease-out"
-                      style={previewImageStyle}
+                    <Input
+                      value={departmentInput}
+                      onChange={(event) => setDepartmentInput(event.target.value)}
+                      onKeyDown={handleDepartmentKeyDown}
+                      placeholder="Add"
+                      className="h-14 rounded-[2rem] border-2 border-primary/40 bg-white/80 pl-12 pr-4 text-base font-medium text-foreground placeholder:text-primary/60"
                     />
-                    <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/40" aria-hidden />
-                  </>
-                ) : (
-                  <div
-                    className="flex h-full w-full flex-col items-center justify-center gap-4 text-primary transition-[transform,opacity] duration-500 ease-out"
-                    style={{
-                      transform: "translateY(calc(var(--preview-scroll-progress, 0) * 0px))",
-                      opacity: "calc(0.6 + var(--preview-scroll-opacity, 1) - 1)",
-                    }}
-                  >
-                    <ImageIcon className="size-16" />
-                    <p className="text-base font-medium">Project image</p>
                   </div>
-                )}
-              </div>
-            </div>
-            {imagePreview ? (
-              <div className="flex items-center justify-center gap-4 px-4 pb-6 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-white/70 px-3 py-1.5 shadow-sm backdrop-blur-sm">
-                  <button
-                    type="button"
-                    onClick={handleZoomOut}
-                    className={zoomButtonClass}
-                    disabled={isZoomOutDisabled}
-                    aria-label="Zoom out"
-                  >
-                    <Minus className="size-4" aria-hidden />
-                  </button>
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      min={MIN_ZOOM.toFixed(2)}
-                      max={MAX_ZOOM.toFixed(2)}
-                      step="0.01"
-                      value={zoomInputValue}
-                      onChange={handleZoomInputChange}
-                      onBlur={handleZoomInputBlur}
-                      onKeyDown={handleZoomInputKeyDown}
-                      className={zoomInputClass}
-                      aria-label="Set zoom level"
-                      disabled={!imagePreview}
-                    />
-                    <span className="text-sm font-semibold text-foreground">x</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleZoomIn}
-                    className={zoomButtonClass}
-                    disabled={isZoomInDisabled}
-                    aria-label="Zoom in"
-                  >
-                    <Plus className="size-4" aria-hidden />
-                  </button>
                 </div>
+              </div>
+
+              <div className="mt-12 flex justify-end">
+                <Button
+                  type="submit"
+                  disabled={effectiveSubmitting}
+                  className="rounded-full bg-button-background px-10 py-5 text-base font-semibold text-button-foreground transition-transform hover:bg-button-hover-background"
+                >
+                  {submitLabel}
+                </Button>
+              </div>
+
+              {submitError ? (
+                <p className="mt-4 text-right text-sm text-destructive">{submitError}</p>
+              ) : null}
+            </div>
+
+            {!isCompactLayout ? (
+              <div className="hidden lg:flex lg:ml-auto lg:flex-col lg:items-end lg:gap-8 lg:sticky lg:top-[6.5rem]">
+                {renderPreviewContent({
+                  wrapperClassName: "items-center lg:items-end",
+                })}
               </div>
             ) : null}
           </div>
-
-          {selectedImageName ? (
-            <p className="text-sm text-muted-foreground">{selectedImageName}</p>
-          ) : null}
-          {imagePreview ? (
-            <p className="text-xs text-muted-foreground">
-              Drag the image to choose which area appears in the square preview.
-            </p>
-          ) : null}
-
-          <Button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="rounded-full bg-button-background px-8 py-5 text-base font-semibold text-button-foreground transition-transform  hover:bg-button-hover-background"
-          >
-            Add Image
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            className="sr-only"
-            onChange={handleImageSelect}
-          />
-        </div>
+        </form>
       </div>
     </div>
   )
