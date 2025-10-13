@@ -1,6 +1,7 @@
 อัพเดทพวก
-- ทำหน้า Homepage, Projects (Frontend) ยังมี bug เล็กๆน้อยอยู่
-- ทำหน้า Edit, Create ของ Project แต่ว่า bug ยังเยอะ กับ clean code ยังไม่เสร็จ
+- เขียน ADR-001 auth
+- ปรับปรุง auth system ของ Cookie ให้ตรงตาม CSP และคุกกี้ที่ไม่ risk จนเกินไปให้ เน้นการดึงจาก Server side เป็นหลัก
+- แก้บัค sign-in เล็กน้อย
 
 ## วิธี install ASAP
 
