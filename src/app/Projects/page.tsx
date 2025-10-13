@@ -117,6 +117,7 @@ export default function ProjectsPage() {
             createdAt={formatCreatedAt(project.createdAt)}
             description={project.description ?? ""}
             imageSrc={project.imageUrl ?? undefined}
+            onOpenProject={() => router.push(`/Projects/${project.id}`)}
             onEditProject={() => router.push(`/Projects/${project.id}/edit`)}
             onDelete={() => handleDelete(project.id)}
           />

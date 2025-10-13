@@ -31,6 +31,7 @@ export type ProjectCardProps = {
   description: string
   imageSrc?: string
   borderRadius?: string
+  onOpenProject?: () => void
   onEditProject?: () => void
   onDelete?: () => Promise<void> | void
 }
@@ -41,6 +42,7 @@ export function ProjectCard({
   description,
   imageSrc,
   borderRadius,
+  onOpenProject,
   onEditProject,
   onDelete,
 }: ProjectCardProps) {
@@ -78,11 +80,14 @@ export function ProjectCard({
   }
 
   const containerClassName = useMemo(() => {
+    const interactiveClass = onOpenProject
+      ? "cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/40"
+      : ""
     if (menuOpen || isHovering) {
-      return `${baseCardClass} project-card--active`
+      return `${baseCardClass} project-card--active ${interactiveClass}`.trim()
     }
-    return baseCardClass
-  }, [isHovering, menuOpen])
+    return `${baseCardClass} ${interactiveClass}`.trim()
+  }, [isHovering, menuOpen, onOpenProject])
 
   const handleDeleteClick = () => {
     setDeleteDialogOpen(true)
@@ -129,8 +134,31 @@ export function ProjectCard({
     <div
       className={containerClassName}
       style={cardStyle}
+      role={onOpenProject ? "button" : undefined}
+      tabIndex={onOpenProject ? 0 : undefined}
+      onKeyDown={(event) => {
+        if (!onOpenProject) return
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault()
+          onOpenProject()
+        }
+      }}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
+      onClick={(event) => {
+        if (!onOpenProject) return
+        const target = event.target
+        if (!(target instanceof Node)) {
+          return
+        }
+        if (!event.currentTarget.contains(target)) {
+          return
+        }
+        if (target instanceof Element && target.closest("[data-ignore-card-click='true']")) {
+          return
+        }
+        onOpenProject()
+      }}
     >
       {imageSrc ? (
         <div
@@ -180,6 +208,7 @@ export function ProjectCard({
             variant="ghost"
             size="icon"
             className="absolute top-6 right-6 hover:bg-transparent"
+            data-ignore-card-click="true"
             onMouseDown={(event) => event.preventDefault()}
           >
             <MoreHorizontal className="size-6 text-foreground" />
@@ -189,16 +218,27 @@ export function ProjectCard({
           align="end"
           sideOffset={-10}
           className="w-48 bg-button-background border-none rounded-2xl p-2"
+          data-ignore-card-click="true"
         >
           <DropdownMenuItem
             className="text-button-foreground hover:bg-button-hover-background rounded-xl py-3 px-4 cursor-pointer text-base"
-            onSelect={onEditProject}
+            data-ignore-card-click="true"
+            onSelect={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              onEditProject?.()
+            }}
           >
             Edit Project
           </DropdownMenuItem>
           <DropdownMenuItem
             className="text-button-foreground hover:bg-button-hover-background rounded-xl py-3 px-4 cursor-pointer text-base"
-            onSelect={handleDeleteClick}
+            data-ignore-card-click="true"
+            onSelect={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              handleDeleteClick()
+            }}
           >
             Delete Project
           </DropdownMenuItem>
@@ -208,7 +248,6 @@ export function ProjectCard({
       <AlertDialog
         open={deleteDialogOpen}
         onOpenChange={handleDeleteDialogChange}
-        disableModal
       >
         <AlertDialogContent className="bg-background border-2 border-primary/30 rounded-[2rem] px-8 py-10 text-center shadow-xl">
           <AlertDialogTitle className="text-2xl font-semibold text-foreground">

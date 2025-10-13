@@ -2,11 +2,15 @@
 
 import * as React from "react"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
 
-type AlertDialogRootProps = React.ComponentProps<typeof AlertDialogPrimitive.Root>
+type AlertDialogRootProps = React.ComponentPropsWithoutRef<
+  typeof AlertDialogPrimitive.Root
+>
+type DialogRootProps = React.ComponentPropsWithoutRef<typeof DialogPrimitive.Root>
 
 type AlertDialogProps = Omit<AlertDialogRootProps, "modal"> & {
   disableModal?: boolean
@@ -14,19 +18,29 @@ type AlertDialogProps = Omit<AlertDialogRootProps, "modal"> & {
 
 const AlertDialogDisableModalContext = React.createContext(false)
 
+function useDisableModalContext() {
+  return React.useContext(AlertDialogDisableModalContext)
+}
+
 function AlertDialog({
   disableModal = false,
   children,
   ...rest
 }: AlertDialogProps) {
+  const alertProps = rest as AlertDialogRootProps
+  const dialogProps = rest as DialogRootProps
+
   return (
     <AlertDialogDisableModalContext.Provider value={disableModal}>
-      <AlertDialogPrimitive.Root
-        data-slot="alert-dialog"
-        {...rest}
-      >
-        {children}
-      </AlertDialogPrimitive.Root>
+      {disableModal ? (
+        <DialogPrimitive.Root data-slot="alert-dialog" modal={false} {...dialogProps}>
+          {children}
+        </DialogPrimitive.Root>
+      ) : (
+        <AlertDialogPrimitive.Root data-slot="alert-dialog" {...alertProps}>
+          {children}
+        </AlertDialogPrimitive.Root>
+      )}
     </AlertDialogDisableModalContext.Provider>
   )
 }
@@ -34,27 +48,34 @@ function AlertDialog({
 function AlertDialogTrigger({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Trigger>) {
-  return (
-    <AlertDialogPrimitive.Trigger data-slot="alert-dialog-trigger" {...props} />
-  )
+  const disableModal = useDisableModalContext()
+  const TriggerComponent = disableModal
+    ? DialogPrimitive.Trigger
+    : AlertDialogPrimitive.Trigger
+  return <TriggerComponent data-slot="alert-dialog-trigger" {...props} />
 }
 
 function AlertDialogPortal({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Portal>) {
-  return (
-    <AlertDialogPrimitive.Portal data-slot="alert-dialog-portal" {...props} />
-  )
+  const disableModal = useDisableModalContext()
+  const PortalComponent = disableModal
+    ? DialogPrimitive.Portal
+    : AlertDialogPrimitive.Portal
+  return <PortalComponent data-slot="alert-dialog-portal" {...props} />
 }
 
 function AlertDialogOverlay({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Overlay>) {
-  const disableModal = React.useContext(AlertDialogDisableModalContext)
+  const disableModal = useDisableModalContext()
+  const OverlayComponent = disableModal
+    ? DialogPrimitive.Overlay
+    : AlertDialogPrimitive.Overlay
 
   return (
-    <AlertDialogPrimitive.Overlay
+    <OverlayComponent
       data-slot="alert-dialog-overlay"
       className={cn(
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50 backdrop-blur-sm",
@@ -70,10 +91,15 @@ function AlertDialogContent({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content>) {
+  const disableModal = useDisableModalContext()
+  const ContentComponent = disableModal
+    ? DialogPrimitive.Content
+    : AlertDialogPrimitive.Content
+
   return (
     <AlertDialogPortal>
       <AlertDialogOverlay />
-      <AlertDialogPrimitive.Content
+      <ContentComponent
         data-slot="alert-dialog-content"
         className={cn(
           "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg",
@@ -118,8 +144,13 @@ function AlertDialogTitle({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Title>) {
+  const disableModal = useDisableModalContext()
+  const TitleComponent = disableModal
+    ? DialogPrimitive.Title
+    : AlertDialogPrimitive.Title
+
   return (
-    <AlertDialogPrimitive.Title
+    <TitleComponent
       data-slot="alert-dialog-title"
       className={cn("text-lg font-semibold", className)}
       {...props}
@@ -131,8 +162,13 @@ function AlertDialogDescription({
   className,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Description>) {
+  const disableModal = useDisableModalContext()
+  const DescriptionComponent = disableModal
+    ? DialogPrimitive.Description
+    : AlertDialogPrimitive.Description
+
   return (
-    <AlertDialogPrimitive.Description
+    <DescriptionComponent
       data-slot="alert-dialog-description"
       className={cn("text-muted-foreground text-sm", className)}
       {...props}
@@ -142,11 +178,28 @@ function AlertDialogDescription({
 
 function AlertDialogAction({
   className,
+  asChild,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Action>) {
+  const disableModal = useDisableModalContext()
+
+  if (disableModal) {
+    const { onClick, ...rest } = props
+    return (
+      <button
+        data-slot="alert-dialog-action"
+        type="button"
+        className={cn(buttonVariants(), className)}
+        onClick={onClick}
+        {...rest}
+      />
+    )
+  }
+
   return (
     <AlertDialogPrimitive.Action
       className={cn(buttonVariants(), className)}
+      asChild={asChild}
       {...props}
     />
   )
@@ -154,11 +207,28 @@ function AlertDialogAction({
 
 function AlertDialogCancel({
   className,
+  asChild,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Cancel>) {
+  const disableModal = useDisableModalContext()
+
+  if (disableModal) {
+    const { onClick, ...rest } = props
+    return (
+      <button
+        data-slot="alert-dialog-cancel"
+        type="button"
+        className={cn(buttonVariants({ variant: "outline" }), className)}
+        onClick={onClick}
+        {...rest}
+      />
+    )
+  }
+
   return (
     <AlertDialogPrimitive.Cancel
       className={cn(buttonVariants({ variant: "outline" }), className)}
+      asChild={asChild}
       {...props}
     />
   )

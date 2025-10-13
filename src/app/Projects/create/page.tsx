@@ -4,6 +4,7 @@ import { useCallback, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import { ProjectForm, type ProjectFormValues } from "@/components/projects/ProjectForm"
+import { usePreferences } from "@/components/layout/AppShell"
 import { createProject } from "@/utils/projects/api"
 import { uploadProjectImage } from "@/utils/projects/media"
 
@@ -11,6 +12,8 @@ export default function CreateProjectPage() {
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const { profile } = usePreferences()
+  const preferredDepartmentLayout = profile?.departmentLayout ?? "fullWidth"
 
   const handleSubmit = useCallback(
     async (values: ProjectFormValues) => {
@@ -67,7 +70,7 @@ export default function CreateProjectPage() {
     <ProjectForm
       heading="Create Project"
       submitLabel={submitting ? "Creating…" : "Next"}
-      departmentChipVariant="compact"
+      departmentChipVariant={preferredDepartmentLayout}
       onSubmit={handleSubmit}
       submitting={submitting}
       submitError={submitError}

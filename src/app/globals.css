@@ -5,11 +5,16 @@
 
 :root {
   --background: #f4effa;          
-  --foreground: #2c2a4a;       
+  --foreground: #2c2a4a;  
+  
+  --foreground-for-nav: #2c2a4a;  
+  --hover-foreground-for-nav: #be0493;
+  --underline-foreground-for-nav: #ffffff;
 
   --button-background-on-nav: #f4effa;
   --button-foreground-on-nav: #2c2a4a;
   --button-hover-background-on-nav: #e8c3ff;
+  --hover-foreground-for-nav-header:rgb(250, 191, 255);
 
   --button-background: #4f518c;
   --button-foreground: #ffffff;
@@ -57,6 +62,258 @@
   --sidebar-ring: #97dffc;
 
   --radius: 0.625rem;
+
+  --scrollbar-track: #686bc8;
+  --scrollbar-thumb: #ab8dff;
+  --scrollbar-thumb-hover: #907ad6;
+}
+
+:root[data-theme="light"] {
+  --background: #fdfbff;
+  --foreground: #1f2937;
+
+  --foreground-for-nav: #2c2a4a;
+  --hover-foreground-for-nav: #be0493;
+  --hover-foreground-for-nav-header:rgb(250, 191, 255);
+  --underline-foreground-for-nav: #ffffff;
+
+  --button-background-on-nav: #ffffff;
+  --button-foreground-on-nav: #1f2937;
+  --button-hover-background-on-nav: #e5e7eb;
+
+  --button-background: #2563eb;
+  --button-foreground: #ffffff;
+  --button-hover-background: #1d4ed8;
+
+  --footer-bar: #2563eb;
+
+  --card: #ffffff;
+  --card-foreground: #1f2937;
+
+  --card-project: #f0f4ff;
+  --card-project-foreground: #1f2937;
+
+  --popover: #ffffff;
+  --popover-foreground: #1f2937;
+
+  --primary: #2563eb;
+  --primary-foreground: #f9fafb;
+  --primary-soft: #93c5fd;
+
+  --secondary: #a5b4fc;
+  --secondary-foreground: #1f2937;
+
+  --muted: #e0e7ff;
+  --muted-foreground: #1f2937;
+
+  --accent: #bae6fd;
+  --accent-foreground: #1f2937;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: #dbeafe;
+  --input: #dbeafe;
+  --ring: #60a5fa;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1f2937;
+  --sidebar-primary: #2563eb;
+  --sidebar-primary-foreground: #f9fafb;
+  --sidebar-accent: #93c5fd;
+  --sidebar-accent-foreground: #1f2937;
+  --sidebar-border: #dbeafe;
+  --sidebar-ring: #93c5fd;
+
+  --scrollbar-track: #bfd5ff;
+  --scrollbar-thumb: #60a5fa;
+  --scrollbar-thumb-hover: #2563eb;
+}
+
+:root[data-theme="dark"] {
+  --background: #111827;
+  --foreground: #f9fafb;
+
+  --foreground-for-nav: #2c2a4a;
+  --hover-foreground-for-nav: #be0493;
+  --underline-foreground-for-nav: #ffffff;
+
+  --button-background-on-nav: #1f2937;
+  --button-foreground-on-nav: #f9fafb;
+  --button-hover-background-on-nav: #374151;
+  --hover-foreground-for-nav-header:rgb(250, 191, 255);
+
+  --button-background: #6366f1;
+  --button-foreground: #f9fafb;
+  --button-hover-background: #4f46e5;
+
+  --footer-bar: #1f2937;
+
+  --card: #1f2937;
+  --card-foreground: #f9fafb;
+
+  --card-project: #0f172a;
+  --card-project-foreground: #f9fafb;
+
+  --popover: #1f2937;
+  --popover-foreground: #f9fafb;
+
+  --primary: #6366f1;
+  --primary-foreground: #f9fafb;
+  --primary-soft: #a5b4fc;
+
+  --secondary: #334155;
+  --secondary-foreground: #f9fafb;
+
+  --muted: #1f2937;
+  --muted-foreground: #d1d5db;
+
+  --accent: #0ea5e9;
+  --accent-foreground: #f9fafb;
+
+  --destructive: #f87171;
+  --destructive-foreground: #111827;
+
+  --border: #1f2937;
+  --input: #1f2937;
+  --ring: #6366f1;
+
+  --sidebar: #101826;
+  --sidebar-foreground: #f9fafb;
+  --sidebar-primary: #6366f1;
+  --sidebar-primary-foreground: #f9fafb;
+  --sidebar-accent: #0ea5e9;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #1f2937;
+  --sidebar-ring: #4f46e5;
+
+  --scrollbar-track: #1f2937;
+  --scrollbar-thumb: #4c51bf;
+  --scrollbar-thumb-hover: #818cf8;
+}
+
+:root[data-theme="red"] {
+  --background: #fff5f5;
+  --foreground: #3f0f0f;
+
+  --foreground-for-nav: #2c2a4a;
+  --hover-foreground-for-nav: #be0493;
+  --underline-foreground-for-nav: #ffffff;
+  --hover-foreground-for-nav-header:rgb(250, 191, 255);
+
+  --button-background-on-nav: #ffe3e3;
+  --button-foreground-on-nav: #3f0f0f;
+  --button-hover-background-on-nav: #ffc9c9;
+
+  --button-background: #e11d48;
+  --button-foreground: #fff5f5;
+  --button-hover-background: #be123c;
+
+  --footer-bar: #e11d48;
+
+  --card: #ffffff;
+  --card-foreground: #3f0f0f;
+
+  --card-project: #ffe8e8;
+  --card-project-foreground: #3f0f0f;
+
+  --popover: #ffffff;
+  --popover-foreground: #3f0f0f;
+
+  --primary: #e11d48;
+  --primary-foreground: #fff5f5;
+  --primary-soft: #fda4af;
+
+  --secondary: #fecdd3;
+  --secondary-foreground: #3f0f0f;
+
+  --muted: #ffe3e3;
+  --muted-foreground: #7f1d1d;
+
+  --accent: #fbcfe8;
+  --accent-foreground: #3f0f0f;
+
+  --destructive: #b91c1c;
+  --destructive-foreground: #fff5f5;
+
+  --border: #fecaca;
+  --input: #fecaca;
+  --ring: #f43f5e;
+
+  --sidebar: #fff0f1;
+  --sidebar-foreground: #3f0f0f;
+  --sidebar-primary: #e11d48;
+  --sidebar-primary-foreground: #fff5f5;
+  --sidebar-accent: #fecdd3;
+  --sidebar-accent-foreground: #3f0f0f;
+  --sidebar-border: #fecaca;
+  --sidebar-ring: #fda4af;
+
+  --scrollbar-track: #ffd1d6;
+  --scrollbar-thumb: #f97386;
+  --scrollbar-thumb-hover: #e11d48;
+}
+
+:root[data-theme="blue"] {
+  --background: #e6f4ff;
+  --foreground: #0f172a;
+
+  --foreground-for-nav: #2c2a4a;
+  --hover-foreground-for-nav: #be0493;
+  --underline-foreground-for-nav: #ffffff;
+  --hover-foreground-for-nav-header:rgb(250, 191, 255);
+
+  --button-background-on-nav: #ffffff;
+  --button-foreground-on-nav: #0f172a;
+  --button-hover-background-on-nav: #dbeafe;
+
+  --button-background: #1d4ed8;
+  --button-foreground: #f8fafc;
+  --button-hover-background: #1e40af;
+
+  --footer-bar: #1d4ed8;
+
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+
+  --card-project: #dbeafe;
+  --card-project-foreground: #0f172a;
+
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  --primary: #1d4ed8;
+  --primary-foreground: #f8fafc;
+  --primary-soft: #60a5fa;
+
+  --secondary: #38bdf8;
+  --secondary-foreground: #0f172a;
+
+  --muted: #bfdbfe;
+  --muted-foreground: #0f172a;
+
+  --accent: #c7d2fe;
+  --accent-foreground: #0f172a;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #f8fafc;
+
+  --border: #bfdbfe;
+  --input: #bfdbfe;
+  --ring: #3b82f6;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f172a;
+  --sidebar-primary: #1d4ed8;
+  --sidebar-primary-foreground: #f8fafc;
+  --sidebar-accent: #60a5fa;
+  --sidebar-accent-foreground: #0f172a;
+  --sidebar-border: #bfdbfe;
+  --sidebar-ring: #60a5fa;
+
+  --scrollbar-track: #cddffa;
+  --scrollbar-thumb: #60a5fa;
+  --scrollbar-thumb-hover: #2563eb;
 }
 
 
@@ -105,7 +362,11 @@
   --color-button-foreground: var(--button-foreground);
   --color-button-hover-background: var(--button-hover-background);
   --color-footer-bar: var(--footer-bar);
-
+  --color-foreground-for-nav: var(--foreground-for-nav);
+  --color-hover-foreground-for-nav: var(--hover-foreground-for-nav);
+  --color-underline-foreground-for-nav: var(--underline-foreground-for-nav);
+  --color-primary-soft: var(--primary-soft);
+  --color-hover-foreground-for-nav-header: var(--hover-foreground-for-nav-header);
 
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
@@ -152,44 +413,35 @@
   body {
     @apply bg-background text-foreground;
     scrollbar-width: thin;
-    scrollbar-color: var(--primary-soft) var(--button-background);
+    scrollbar-color: var(--scrollbar-thumb);
+  }
+  
+  textarea {
+    scrollbar-width: medium;
+    scrollbar-color: var(--scrollbar-thumb);
+    background-clip: padding-box;
   }
 
-  *::-webkit-scrollbar {
-    width: 0.85rem;
-    height: 0.85rem;
+  textarea::-webkit-scrollbar {
+    width: 0.8rem;
   }
 
-  *::-webkit-scrollbar-track {
-    background: var(--button-background);
+  body::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
     
   }
 
-  *::-webkit-scrollbar-thumb {
-    background: var(--primary-soft);
-    border-radius: 9999px;
-    border: 2px solid var(--button-background);
+  textarea::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
   }
 
-  *::-webkit-scrollbar-thumb:hover {
-    background: var(--primary);
-  }
-
-
-  textarea {
-    scrollbar-width: thick;
-    scrollbar-color: var(--primary-soft) var(--button-background);
-    background-clip: padding-box;
+  textarea::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
   }
 
   textarea::-webkit-resizer {
     background: var(--primary-soft)
   }
-
-
-   
-
-
 }
 
 @layer components {

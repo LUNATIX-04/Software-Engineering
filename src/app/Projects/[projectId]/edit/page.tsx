@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import { ProjectForm, type ProjectFormValues } from "@/components/projects/ProjectForm"
+import { usePreferences } from "@/components/layout/AppShell"
 import { fetchProjectById, updateProject, type ProjectRecord } from "@/utils/projects/api"
 import { uploadProjectImage } from "@/utils/projects/media"
 
@@ -17,6 +18,7 @@ type EditProjectPageProps = {
 export default function EditProjectPage({ params }: EditProjectPageProps) {
   const { projectId } = React.use(params)
   const router = useRouter()
+  const { profile } = usePreferences()
   const [project, setProject] = useState<ProjectRecord | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -141,6 +143,7 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
       heading="Edit Project"
       submitLabel={submitting ? "Saving…" : "Save"}
       initialValues={initialValues}
+      departmentChipVariant={profile?.departmentLayout ?? "fullWidth"}
       onSubmit={handleSubmit}
       submitting={submitting}
       submitError={submitError}
