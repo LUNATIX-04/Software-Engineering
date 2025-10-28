@@ -45,6 +45,29 @@ export type DepartmentLayoutOption = (typeof DEPARTMENT_LAYOUTS)[number]
 const THEME_OPTIONS = ["standard", "light", "dark", "red", "blue"] as const
 export type ThemeOption = (typeof THEME_OPTIONS)[number]
 
+export async function handleGoogleSignIn() {
+  const supabase = getSupabaseBrowserClient();
+  const {
+    data: { url },
+    error,
+  } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: `${window.location.origin}/auth/callback`,
+      queryParams: { prompt: "select_account" },
+    },
+  });
+
+  if (error) {
+    console.error("Failed to sign in with Google", error);
+    return;
+  }
+
+  if (url) {
+    window.location.assign(url);
+  }
+}
+
 const THEME_LABELS: Record<ThemeOption, string> = {
   standard: "Standard",
   light: "Light",
@@ -467,31 +490,6 @@ function AppShellInner({ children }: AppShellProps) {
   const themePreviewSwatches = THEME_SWATCHES[profile?.theme ?? "standard"]
   const departmentLabel =
     (profile && DEPARTMENT_LABELS[profile.departmentLayout]) || DEPARTMENT_LABELS.fullWidth
-  const handleGoogleSignIn = useCallback(async () => {
-    setAuthLoading(true)
-    const {
-      data: { url },
-      error,
-    } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: {
-          prompt: "select_account",
-        },
-      },
-    })
-
-    if (error) {
-      console.error("Failed to sign in with Google", error)
-      setAuthLoading(false)
-      return
-    }
-
-    if (url) {
-      window.location.assign(url)
-    }
-  }, [supabase])
 
   const handleSignOut = useCallback(
     async (options?: { redirect?: SignOutRedirect }) => {
@@ -844,6 +842,8 @@ function AppShellInner({ children }: AppShellProps) {
     }),
     [setHeaderVariant]
   )
+
+  
 
   return (
     <AppShellLayoutContext.Provider value={layoutContextValue}>

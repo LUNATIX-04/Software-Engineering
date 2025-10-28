@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
+import { handleGoogleSignIn } from "@/components/layout/AppShell";
 
 export default function Homepage() {
   return (
@@ -15,7 +16,7 @@ export default function Homepage() {
           </h2>
           <div className="pl-[clamp(0.75rem,4vw,2.5rem)]">
             <Button
-              onClick={() => (window.location.href = "/Projects")}
+              onClick={handleGoogleSignIn}
               className="bg-button-background hover:bg-button-hover-background text-button-foreground rounded-full px-[clamp(1.5rem,3vw,3.8rem)] py-[clamp(0.75rem,4vh,2.25rem)] text-[clamp(0.2rem,3vw,1.35rem)] font-semibold"
             >
               Get Started
