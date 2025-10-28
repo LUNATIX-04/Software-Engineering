@@ -1,9 +1,35 @@
 อัพเดทพวก
-- เขียน ADR-001 auth
-- ปรับปรุง auth system ของ Cookie ให้ตรงตาม CSP และคุกกี้ที่ไม่ risk จนเกินไปให้ เน้นการดึงจาก Server side เป็นหลัก
-- แก้บัค sign-in เล็กน้อย
+- ทำหน้า Traditional Login มาเพิ่ม กับแก้ bug notify
 
-## วิธี install ASAP
+## เวลาก่อนทำงานให้ใช้ (ดึงงานล่าสุดมาใช้)
+
+git pull origin main
+
+## เวลาจะพักแล้ว ส่งงานขึ้น main
+[ดูว่ามีใครอัพงานไหม. ถ้าไม่มีก็จัดไป]
+
+git status
+
+git add . //ที่เราเปลี่ยนอัพลงไป commit อันเดิมไม่เปลี่ยน
+
+git commit -m "เพิ่มอะไรใหม่"
+
+git push origin main //อัพลง main branch
+
+-จบ-
+
+## เวลาเพิ่ม schema
+
+npx prisma db push
+
+## วิธีติดตั้ง project (install ASAP)
+Method 1
+
+[First clone this project on your vscode]
+
+git clone https://github.com/LUNATIX-04/Software-Engineering.git
+
+[Open this repository and run command]
 
 # PostCss AutoPrefixer
 npm install -D postcss autoprefixer
@@ -63,36 +89,10 @@ npm install dns bcrypt
 
 npm audit fix --force
 
-## วิธีติดตั้ง project
-Method 1
-
-[First clone this project on your vscode]
-
-git clone https://github.com/i-don-t-sleep/Magic-Shop
-
-[Open this repository and run command]
-
 ## Role users
 
 Head: ปฏิบัติงาน, ยืนยันงาน, มอบหมายงาน, ตรวจสอบงาน
 Member: ปฏิบัติงานและยืนยันการเสร็จสินของงานที่ได้รับมอบหมาย
-
-## เวลาก่อนทำงานให้ใช้ (ดึงงานล่าสุดมาใช้)
-
-git pull origin main
-
-## เวลาจะพักแล้ว ส่งงานขึ้น main
-[ดูว่ามีใครอัพงานไหม. ถ้าไม่มีก็จัดไป]
-
-git status
-
-git add . //ที่เราเปลี่ยนอัพลงไป commit อันเดิมไม่เปลี่ยน
-
-git commit -m "เพิ่มอะไรใหม่"
-
-git push origin main //อัพลง main branch
-
--จบ-
 
 ## Getting Started
 

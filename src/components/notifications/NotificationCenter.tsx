@@ -63,17 +63,17 @@ type NotificationViewportProps = {
 
 function NotificationViewport({ notifications, onDismiss }: NotificationViewportProps) {
   return (
-    <div className="pointer-events-none fixed left-1/2 top-6 z-[70] flex w-full max-w-md -translate-x-1/2 flex-col gap-3 px-4">
+    <div className="pointer-events-none fixed left-1/2 top-[clamp(2rem,5vh,3rem)] z-[70] flex w-full max-w-md -translate-x-1/2 flex-col gap-3 px-4">
       {notifications.map((notification) => (
         <div
           key={notification.id}
           className={cn(
             "pointer-events-auto flex items-start justify-between gap-4 overflow-hidden rounded-[1.75rem] border border-white/10 px-6 py-4 transition-all duration-300 ease-out",
             VARIANT_CLASSES[notification.variant],
-            notification.status === "enter" && "translate-y-6 scale-[0.96] opacity-0",
+            notification.status === "enter" && "-translate-y-5 scale-[0.96] opacity-0",
             notification.status === "visible" && "translate-y-0 scale-100 opacity-100",
             notification.status === "exit" &&
-              "-translate-y-4 scale-[0.96] opacity-0 pointer-events-none"
+              "-translate-y-5 scale-[0.96] opacity-0 pointer-events-none"
           )}
           role="status"
           aria-live="polite"
@@ -150,7 +150,7 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         status: "enter",
       }
 
-      setNotifications((prev) => [...prev, record])
+      setNotifications((prev) => [record, ...prev])
 
       requestAnimationFrame(() => {
         setNotifications((prev) =>

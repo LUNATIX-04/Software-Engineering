@@ -153,12 +153,16 @@ const PreferencesContext = createContext<PreferencesContextValue>({
 
 type HeaderVariant = "homepage" | "projects" | "minimal" | "none"
 
+type HeaderSpacingControl = "auto" | "none"
+
 type AppShellLayoutContextValue = {
   setHeaderVariant: (variant: HeaderVariant | null) => void
+  setHeaderSpacing: (mode: HeaderSpacingControl) => void
 }
 
 const AppShellLayoutContext = createContext<AppShellLayoutContextValue>({
   setHeaderVariant: () => {},
+  setHeaderSpacing: () => {},
 })
 
 export function useAppShellLayout() {
@@ -207,6 +211,7 @@ function AppShellInner({ children }: AppShellProps) {
   const [manageDialogOpen, setManageDialogOpen] = useState(false)
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
   const [headerOverride, setHeaderOverride] = useState<HeaderVariant | null>(null)
+  const [headerSpacingOverride, setHeaderSpacingOverride] = useState<HeaderSpacingControl | null>(null)
   const lastAuthUserIdRef = useRef<string | null>(null)
   const signInToastTokensRef = useRef<Record<string, string>>({})
   const { notify } = useNotifications()
@@ -701,7 +706,7 @@ function AppShellInner({ children }: AppShellProps) {
                 <Button
                   variant="secondary"
                   className="bg-button-background-on-nav text-button-foreground-on-nav hover:bg-button-hover-background-on-nav rounded-full px-[clamp(2.5rem,5vw,4rem)] py-[clamp(0.5rem,1.6vh,0.85rem)] text-[clamp(1rem,2.1vw,1.15rem)] font-semibold"
-                  onClick={handleGoogleSignIn}
+                  onClick={() => router.push("/auth/traditional")}
                   disabled={authLoading}
                 >
                   {authLoading ? "Loading..." : "Sign In"}
@@ -753,7 +758,7 @@ function AppShellInner({ children }: AppShellProps) {
                   <Button
                     variant="secondary"
                     className="rounded-full bg-button-background-on-nav px-6 py-2 text-base font-semibold text-button-foreground-on-nav hover:bg-button-hover-background-on-nav"
-                    onClick={handleGoogleSignIn}
+                    onClick={() => router.push("/auth/traditional")}
                     disabled={authLoading}
                   >
                     {authLoading ? "Loading..." : "Sign In"}
@@ -826,21 +831,27 @@ function AppShellInner({ children }: AppShellProps) {
 
   const headerRequiresTabSpacing = headerVariant === "projects" && hasProjectTabs
 
+  const headerSpacingClass =
+    headerSpacingOverride === "none"
+      ? "pt-0"
+      : headerRequiresTabSpacing
+        ? "pt-[clamp(7rem,18vh,10rem)]"
+        : headerVariant !== "none"
+          ? "pt-[clamp(4.5rem,12vh,6rem)]"
+          : null
+
   const mainClassName = cn(
     "flex-1 bg-background",
-    headerRequiresTabSpacing
-      ? "pt-[clamp(7rem,18vh,10rem)]"
-      : headerVariant !== "none"
-        ? "pt-[clamp(4.5rem,12vh,6rem)]"
-        : null,
+    headerSpacingClass,
     headerVariant === "homepage" && "flex items-center justify-center"
   )
 
   const layoutContextValue = useMemo(
     () => ({
       setHeaderVariant,
+      setHeaderSpacing: setHeaderSpacingOverride,
     }),
-    [setHeaderVariant]
+    [setHeaderVariant, setHeaderSpacingOverride]
   )
 
   
