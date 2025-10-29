@@ -651,7 +651,7 @@ function AppShellInner({ children }: AppShellProps) {
               setManageDialogOpen(true)
             }}
           >
-            Manage my Account
+            Account Information
           </DropdownMenuItem>
           <DropdownMenuItem
             className="text-button-foreground-on-nav hover:bg-button-hover-background-on-nav rounded-xl py-3 px-4 cursor-pointer text-base"
@@ -869,7 +869,7 @@ function AppShellInner({ children }: AppShellProps) {
           <Dialog open={manageDialogOpen} onOpenChange={setManageDialogOpen}>
             <DialogContent className="sm:max-w-xl">
               <DialogHeader>
-                <DialogTitle>Manage Account</DialogTitle>
+                <DialogTitle>Account information</DialogTitle>
                 <DialogDescription>
                   Review your account information and current personalization choices.
                 </DialogDescription>
