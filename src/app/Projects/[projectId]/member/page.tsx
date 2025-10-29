@@ -103,6 +103,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             className="w-full rounded-full border-2 border-primary/40 bg-background py-3 pl-12 pr-4 text-sm text-foreground placeholder:text-primary/60 shadow-[0_6px_0_rgba(144,122,214,0.25)] focus:border-primary focus:outline-none"
+            data-cy="project-member-search"
           />
         </div>
       </div>

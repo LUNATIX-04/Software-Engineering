@@ -87,6 +87,7 @@ export default function ProjectsPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-12 pr-4 py-3 rounded-full border-2 border-primary/40 bg-background text-foreground placeholder:text-primary/60 focus:outline-none focus:border-primary transition-colors"
+            data-cy="project-search-input"
           />
         </div>
       </div>

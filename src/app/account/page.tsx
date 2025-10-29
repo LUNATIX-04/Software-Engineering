@@ -110,7 +110,10 @@ export default function ManageAccountPage() {
 
         <div className="mt-10 flex flex-wrap gap-3">
           <Link href="/account/settings">
-            <Button className="rounded-full bg-button-background px-6 py-3 text-base font-semibold text-button-foreground transition-colors hover:bg-button-hover-background">
+            <Button
+              className="rounded-full bg-button-background px-6 py-3 text-base font-semibold text-button-foreground transition-colors hover:bg-button-hover-background"
+              data-cy="account-open-settings"
+            >
               Open Settings
             </Button>
           </Link>

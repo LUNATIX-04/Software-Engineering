@@ -164,12 +164,19 @@ export function SettingsForm({ layout = "page", onSaved }: SettingsFormProps) {
           value={effectiveDepartmentLayout}
           onValueChange={(value) => setDepartmentLayout(value as DepartmentLayoutOption)}
         >
-          <SelectTrigger className="w-full max-w-sm justify-between rounded-full border-2 border-primary/30 bg-white/80 px-5 py-3 text-base font-semibold">
+          <SelectTrigger
+            className="w-full max-w-sm justify-between rounded-full border-2 border-primary/30 bg-white/80 px-5 py-3 text-base font-semibold"
+            data-cy="settings-department-select"
+          >
             <SelectValue placeholder="Select Type Display" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="compact">{departmentLabels.compact}</SelectItem>
-            <SelectItem value="fullWidth">{departmentLabels.fullWidth}</SelectItem>
+            <SelectItem value="compact" data-cy="settings-department-option-compact">
+              {departmentLabels.compact}
+            </SelectItem>
+            <SelectItem value="fullWidth" data-cy="settings-department-option-fullWidth">
+              {departmentLabels.fullWidth}
+            </SelectItem>
           </SelectContent>
         </Select>
       </section>
@@ -185,15 +192,28 @@ export function SettingsForm({ layout = "page", onSaved }: SettingsFormProps) {
           value={effectiveTheme}
           onValueChange={(value) => setTheme(value as ThemeOption)}
         >
-          <SelectTrigger className="w-full max-w-sm justify-between rounded-full border-2 border-primary/30 bg-white/80 px-5 py-3 text-base font-semibold">
+          <SelectTrigger
+            className="w-full max-w-sm justify-between rounded-full border-2 border-primary/30 bg-white/80 px-5 py-3 text-base font-semibold"
+            data-cy="settings-theme-select"
+          >
             <SelectValue placeholder="Select Theme" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="standard">{themeLabels.standard}</SelectItem>
-            <SelectItem value="light">{themeLabels.light}</SelectItem>
-            <SelectItem value="dark">{themeLabels.dark}</SelectItem>
-            <SelectItem value="red">{themeLabels.red}</SelectItem>
-            <SelectItem value="blue">{themeLabels.blue}</SelectItem>
+            <SelectItem value="standard" data-cy="settings-theme-option-standard">
+              {themeLabels.standard}
+            </SelectItem>
+            <SelectItem value="light" data-cy="settings-theme-option-light">
+              {themeLabels.light}
+            </SelectItem>
+            <SelectItem value="dark" data-cy="settings-theme-option-dark">
+              {themeLabels.dark}
+            </SelectItem>
+            <SelectItem value="red" data-cy="settings-theme-option-red">
+              {themeLabels.red}
+            </SelectItem>
+            <SelectItem value="blue" data-cy="settings-theme-option-blue">
+              {themeLabels.blue}
+            </SelectItem>
           </SelectContent>
         </Select>
 
@@ -220,6 +240,7 @@ export function SettingsForm({ layout = "page", onSaved }: SettingsFormProps) {
             "rounded-full bg-button-background px-8 py-3 text-base font-semibold text-button-foreground transition-colors hover:bg-button-hover-background",
             saving && "opacity-80"
           )}
+          data-cy="settings-save-button"
         >
           {saving ? "Saving..." : "Save changes"}
         </Button>

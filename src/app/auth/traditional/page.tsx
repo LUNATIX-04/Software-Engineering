@@ -238,6 +238,7 @@ export default function TraditionalAuthPage() {
                     !isSignUp ? "bg-button-background text-button-foreground shadow" : ""
                   }`}
                   disabled={pending && !isSignUp}
+                  data-cy="auth-mode-sign-in"
                 >
                   Sign In
                 </button>
@@ -248,6 +249,7 @@ export default function TraditionalAuthPage() {
                     isSignUp ? "bg-button-background text-button-foreground shadow" : ""
                   }`}
                   disabled={pending && isSignUp}
+                  data-cy="auth-mode-sign-up"
                 >
                   Sign Up
                 </button>
@@ -275,6 +277,7 @@ export default function TraditionalAuthPage() {
                               placeholder="Sasiwimon Thammasat"
                               disabled={pending}
                               className="h-12 rounded-2xl border border-primary/20 bg-white/80 text-base"
+                              data-cy="auth-fullname-input"
                             />
                           </FormControl>
                           <FormMessage />
@@ -299,6 +302,7 @@ export default function TraditionalAuthPage() {
                             placeholder="you@university.edu"
                             disabled={pending}
                             className="h-12 rounded-2xl border border-primary/20 bg-white/80 text-base"
+                            data-cy="auth-email-input"
                           />
                         </FormControl>
                         <FormMessage />
@@ -322,6 +326,7 @@ export default function TraditionalAuthPage() {
                             placeholder="At least 6 characters"
                             disabled={pending}
                             className="h-12 rounded-2xl border border-primary/20 bg-white/80 text-base"
+                            data-cy="auth-password-input"
                           />
                         </FormControl>
                         <FormMessage />
@@ -337,6 +342,7 @@ export default function TraditionalAuthPage() {
                     type="submit"
                     className="h-12 w-full rounded-2xl bg-button-background text-lg font-semibold text-button-foreground transition hover:bg-button-hover-background"
                     disabled={pending}
+                    data-cy="auth-submit"
                   >
                     {pending
                       ? isSignUp
@@ -362,6 +368,7 @@ export default function TraditionalAuthPage() {
                 onClick={handleGoogleSignIn}
                 disabled={pending}
                 className="h-12 w-full rounded-2xl border-primary/30 bg-white/90 text-base font-semibold text-card-foreground transition hover:border-primary hover:bg-white"
+                data-cy="auth-google-signin"
               >
                 Continue with Google
               </Button>

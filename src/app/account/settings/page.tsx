@@ -16,6 +16,7 @@ export default function AccountSettingsPage() {
           <Link
             href="/account"
             className="text-sm font-semibold text-primary underline-offset-4 hover:underline"
+            data-cy="settings-back-to-account"
           >
             ← Back to account
           </Link>

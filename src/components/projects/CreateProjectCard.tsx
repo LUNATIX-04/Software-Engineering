@@ -42,7 +42,13 @@ export function CreateProjectCard({
   }
 
   return (
-    <button type="button" className={baseCardClass} style={cardStyle} onClick={onClick}>
+    <button
+      type="button"
+      className={baseCardClass}
+      style={cardStyle}
+      onClick={onClick}
+      data-cy="create-project-card"
+    >
       <div
         className="create-card-thumbnail flex items-center justify-center flex-shrink-0"
         style={thumbnailStyle}

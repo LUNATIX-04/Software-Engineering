@@ -34,7 +34,11 @@ export default function UnauthorizedPage() {
         planning effortlessly.
       </p>
       <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row">
-        <Button asChild className="rounded-full px-8 py-3 text-base font-semibold">
+        <Button
+          asChild
+          className="rounded-full px-8 py-3 text-base font-semibold"
+          data-cy="unauthorized-go-home"
+        >
           <Link href="/Homepage">Go to Homepage</Link>
         </Button>
       </div>

@@ -13,6 +13,7 @@ export default function Instruments() {
                   onChange={(event) => setDetail(event.target.value)}
                   className={"c_text_a1"}
                   placeholder="Add detail"
+                  data-cy="instruments-detail-textarea"
                 />
 
                 <textarea
@@ -20,6 +21,7 @@ export default function Instruments() {
           " flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
           "c_text_a1",
         )}
+        data-cy="instruments-native-textarea"
       />
               </div>
   )

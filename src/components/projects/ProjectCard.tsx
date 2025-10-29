@@ -136,6 +136,7 @@ export function ProjectCard({
       style={cardStyle}
       role={onOpenProject ? "button" : undefined}
       tabIndex={onOpenProject ? 0 : undefined}
+      data-cy="project-card"
       onKeyDown={(event) => {
         if (!onOpenProject) return
         if (event.key === "Enter" || event.key === " ") {
@@ -210,6 +211,7 @@ export function ProjectCard({
             className="absolute top-6 right-6 hover:bg-transparent"
             data-ignore-card-click="true"
             onMouseDown={(event) => event.preventDefault()}
+            data-cy="project-card-menu-button"
           >
             <MoreHorizontal className="size-6 text-foreground" />
           </Button>
@@ -228,6 +230,7 @@ export function ProjectCard({
               event.stopPropagation()
               onEditProject?.()
             }}
+            data-cy="project-card-menu-edit"
           >
             Edit Project
           </DropdownMenuItem>
@@ -239,6 +242,7 @@ export function ProjectCard({
               event.stopPropagation()
               handleDeleteClick()
             }}
+            data-cy="project-card-menu-delete"
           >
             Delete Project
           </DropdownMenuItem>
@@ -254,15 +258,19 @@ export function ProjectCard({
             Are you sure? <br/> You want to delete this project? <br/><br/> " {title} "
           </AlertDialogTitle>
           <AlertDialogFooter className="mt-8 flex w-full flex-row justify-between sm:!justify-between gap-6">
-            <AlertDialogCancel className="rounded-full bg-secondary border-none px-8 py-3 text-base font-semibold text-secondary-foreground shadow-none transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-            onClick={handleNoConfirmDelete}
-            disabled={deleting}>
+            <AlertDialogCancel
+              className="rounded-full bg-secondary border-none px-8 py-3 text-base font-semibold text-secondary-foreground shadow-none transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              onClick={handleNoConfirmDelete}
+              disabled={deleting}
+              data-cy="project-delete-cancel"
+            >
               No
             </AlertDialogCancel>
             <AlertDialogAction
               className="rounded-full bg-primary px-8 py-3 text-base font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               onClick={handleConfirmDelete}
               disabled={deleting}
+              data-cy="project-delete-confirm"
             >
               {deleting ? "Deleting…" : "Yes"}
             </AlertDialogAction>

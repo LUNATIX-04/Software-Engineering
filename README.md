@@ -1,5 +1,5 @@
 อัพเดทพวก
-- ทำหน้า Traditional Login มาเพิ่ม กับแก้ bug notify
+- เปลี่ยนมาใช้ bun
 
 ## เวลาก่อนทำงานให้ใช้ (ดึงงานล่าสุดมาใช้)
 
@@ -31,63 +31,13 @@ git clone https://github.com/LUNATIX-04/Software-Engineering.git
 
 [Open this repository and run command]
 
-# PostCss AutoPrefixer
-npm install -D postcss autoprefixer
+## ติดตั้ง Bun
 
-# UI Components
-npm install @radix-ui/react-slot @radix-ui/react-dialog @radix-ui/react-dropdown-menu 
+curl -fsSL https://bun.sh/install | bash
 
-npm install class-variance-authority tailwind-merge
+## ใช้ Bun ติดตั้ง
 
-npm install lucide-react
-
-npx shadcn@lastest init
-
-npx shadcn@lastest add button input textarea select form dialog dropdown-menu popover calendar alert-dialog card calendar
-
-
-# Data Fetching
-npm install @tanstack/react-query axios
-
-# ElysiaJS (Backend Framework)
-npm install elysia @elysiajs/cors @elysiajs/static socket.io socket.io-client
-
-# Prisma ORM + PostgreSQL
-npm install @prisma/client
-
-npm install prisma --save-dev
-
-npx prisma init
-
-# Authentication
-npm install next-auth
-
-# Cloud Storage (Supabase)
-npm install @supabase/ssr @supabase/supabase-js
-npm install @react-native-async-storage/async-storage
-
-
-# Time & Date
-npm install dayjs
-
-# Unit / Integration Test
-npm install -D jest jest-environment-jsdom @testing-library/react @testing-library/dom @testing-library/jest-dom ts-node @types/jest
-
-npm audit fix --force
-
-npm init jest@latest
-
-กด yes yes jsdom yes b8 yes
-
-# E2E Testing
-npm install playwright --save-dev
-
-npx playwright install
-
-# Email Domain Check (???)
-npm install dns bcrypt
-
-npm audit fix --force
+bun install
 
 ## Role users
 

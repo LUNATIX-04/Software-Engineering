@@ -847,6 +847,7 @@ export function ProjectForm({
               className={zoomButtonClass}
               disabled={isZoomOutDisabled}
               aria-label="Zoom out"
+              data-cy="project-image-zoom-out"
             >
               <Minus className="size-4" aria-hidden />
             </button>
@@ -864,6 +865,7 @@ export function ProjectForm({
                 className={zoomInputClass}
                 aria-label="Set zoom level"
                 disabled={!imagePreview}
+                data-cy="project-image-zoom-input"
               />
               <span className="text-sm font-semibold text-foreground">x</span>
             </div>
@@ -873,6 +875,7 @@ export function ProjectForm({
               className={zoomButtonClass}
               disabled={isZoomInDisabled}
               aria-label="Zoom in"
+              data-cy="project-image-zoom-in"
             >
               <Plus className="size-4" aria-hidden />
             </button>
@@ -893,6 +896,7 @@ export function ProjectForm({
         type="button"
         onClick={() => fileInputRef.current?.click()}
         className="rounded-full bg-button-background px-8 py-5 text-base font-semibold text-button-foreground transition-transform  hover:bg-button-hover-background"
+        data-cy="project-image-add"
       >
         Add Image
       </Button>
@@ -925,6 +929,7 @@ export function ProjectForm({
                     onChange={(event) => setTitle(event.target.value)}
                     placeholder="Project Title"
                     className="h-12 w-3/4 rounded-[2rem] border-2 border-primary/40 bg-white/80 px-6 text-lg font-semibold text-foreground placeholder:text-primary/60 lg:max-w-md"
+                    data-cy="project-title-input"
                   />
                 </label>
                 {!isDesktopLayout ? (
@@ -932,6 +937,7 @@ export function ProjectForm({
                     type="button"
                     onClick={() => setIsImageDialogOpen(true)}
                     className="rounded-full bg-button-background px-6 py-3 text-sm font-semibold text-button-foreground transition-colors hover:bg-button-hover-background lg:hidden"
+                    data-cy="project-image-dialog"
                   >
                     Image Project
                   </Button>
@@ -947,6 +953,7 @@ export function ProjectForm({
                   onChange={(event) => setDetail(event.target.value)}
                   placeholder="Add detail"
                   className="min-h-[10rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-6 py-2 text-base text-foreground placeholder:text-primary/60 shadow-none focus-visible:outline-none focus-visible:ring-0"
+                  data-cy="project-detail-textarea"
                 />
               </div>
             </label>
@@ -987,6 +994,8 @@ export function ProjectForm({
                         onClick={() => handleRemoveDepartment(dept)}
                         className={`${chipActionButtonClass} ml-auto`}
                         aria-label={`Remove ${dept}`}
+                        data-cy="project-department-remove"
+                        data-department={dept}
                       >
                         <X className="size-4" />
                       </button>
@@ -1004,6 +1013,7 @@ export function ProjectForm({
                   onKeyDown={handleDepartmentKeyDown}
                   placeholder="Add"
                   className="h-14 rounded-[2rem] border-2 border-primary/40 bg-white/80 pl-12 pr-4 text-base font-medium text-foreground placeholder:text-primary/60"
+                  data-cy="project-department-input"
                 />
               </div>
             </div>
@@ -1014,6 +1024,7 @@ export function ProjectForm({
               type="submit"
               disabled={effectiveSubmitting}
               className="rounded-full bg-button-background px-10 py-5 text-base font-semibold text-button-foreground transition-transform hover:bg-button-hover-background"
+              data-cy="project-submit-button"
             >
               {submitLabel}
             </Button>
@@ -1050,6 +1061,7 @@ export function ProjectForm({
         accept="image/*"
         className="sr-only"
         onChange={handleImageSelect}
+        data-cy="project-image-file-input"
       />
     </div>
   )
