@@ -20,6 +20,7 @@ export default function Homepage() {
             <Button
               onClick={() => router.push("/auth/traditional")}
               className="bg-button-background hover:bg-button-hover-background text-button-foreground rounded-full px-[clamp(1.5rem,3vw,3.8rem)] py-[clamp(0.75rem,4vh,2.25rem)] text-[clamp(0.2rem,3vw,1.35rem)] font-semibold"
+              data-cy="get-started"
             >
               Get Started
             </Button>
