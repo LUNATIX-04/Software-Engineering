@@ -1,7 +1,6 @@
 describe('test', () => {
   it('should display login form', () => {
     cy.visit('/')
-
   })
 });
 

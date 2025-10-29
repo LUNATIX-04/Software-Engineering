@@ -111,7 +111,7 @@ export default function ProjectsPage() {
           </div>
         ) : null}
 
-        {filteredProjects.map((project) => (
+        {filteredProjects.map((project, index) => (
           <ProjectCard
             key={project.id}
             title={project.title}
@@ -121,6 +121,7 @@ export default function ProjectsPage() {
             onOpenProject={() => router.push(`/Projects/${project.id}`)}
             onEditProject={() => router.push(`/Projects/${project.id}/edit`)}
             onDelete={() => handleDelete(project.id)}
+            dataCyIndex={index}
           />
         ))}
         <CreateProjectCard onClick={() => router.push("/Projects/create")} />
