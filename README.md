@@ -1,9 +1,25 @@
 อัพเดทพวก
-- เปลี่ยนมาใช้ bun
+- ทำ E2E Testing 6 secnarios
+- ใช้ bun
+- ย้ายมา Cypress
 
 ## เวลาก่อนทำงานให้ใช้ (ดึงงานล่าสุดมาใช้)
 
 git pull origin main
+
+## ดึงงานจาก branch ที่สนใจ มาทับ branch ในเครื่องที่เราทำอยู่
+
+git fetch origin E2E_Test
+
+git reset --hard origin/E2E_Test
+
+## วิธีรัน Testing
+
+bunx cypress open
+
+## วิธี run เปิด web
+
+bun dev
 
 ## เวลาจะพักแล้ว ส่งงานขึ้น main
 [ดูว่ามีใครอัพงานไหม. ถ้าไม่มีก็จัดไป]
@@ -16,13 +32,11 @@ git commit -m "เพิ่มอะไรใหม่"
 
 git push origin main //อัพลง main branch
 
--จบ-
-
-## เวลาเพิ่ม schema
+## เวลาเพิ่มใน schema เช่น อัพเดท column เพิ่ม ใช้
 
 npx prisma db push
 
-## วิธีติดตั้ง project (install ASAP)
+##-- วิธีติดตั้ง project (install ASAP)--
 Method 1
 
 [First clone this project on your vscode]
@@ -43,26 +57,6 @@ bun install
 
 Head: ปฏิบัติงาน, ยืนยันงาน, มอบหมายงาน, ตรวจสอบงาน
 Member: ปฏิบัติงานและยืนยันการเสร็จสินของงานที่ได้รับมอบหมาย
-
-## Getting Started
-
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More
 
