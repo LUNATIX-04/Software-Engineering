@@ -34,6 +34,7 @@ export type ProjectCardProps = {
   onOpenProject?: () => void
   onEditProject?: () => void
   onDelete?: () => Promise<void> | void
+  dataCyIndex?: number
 }
 
 export function ProjectCard({
@@ -45,6 +46,7 @@ export function ProjectCard({
   onOpenProject,
   onEditProject,
   onDelete,
+  dataCyIndex,
 }: ProjectCardProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [isHovering, setIsHovering] = useState(false)
@@ -130,13 +132,16 @@ export function ProjectCard({
     }
   }
 
+  const dataCySuffix = typeof dataCyIndex === "number" ? `-${dataCyIndex}` : ""
+  const buildDataCy = (base: string) => `${base}${dataCySuffix}`
+
   return (
     <div
       className={containerClassName}
       style={cardStyle}
       role={onOpenProject ? "button" : undefined}
       tabIndex={onOpenProject ? 0 : undefined}
-      data-cy="project-card"
+      data-cy={buildDataCy("project-card")}
       onKeyDown={(event) => {
         if (!onOpenProject) return
         if (event.key === "Enter" || event.key === " ") {
@@ -211,7 +216,7 @@ export function ProjectCard({
             className="absolute top-6 right-6 hover:bg-transparent"
             data-ignore-card-click="true"
             onMouseDown={(event) => event.preventDefault()}
-            data-cy="project-card-menu-button"
+            data-cy={buildDataCy("project-card-menu-button")}
           >
             <MoreHorizontal className="size-6 text-foreground" />
           </Button>
@@ -230,7 +235,7 @@ export function ProjectCard({
               event.stopPropagation()
               onEditProject?.()
             }}
-            data-cy="project-card-menu-edit"
+            data-cy={buildDataCy("project-card-menu-edit")}
           >
             Edit Project
           </DropdownMenuItem>
@@ -242,7 +247,7 @@ export function ProjectCard({
               event.stopPropagation()
               handleDeleteClick()
             }}
-            data-cy="project-card-menu-delete"
+            data-cy={buildDataCy("project-card-menu-delete")}
           >
             Delete Project
           </DropdownMenuItem>
@@ -262,7 +267,7 @@ export function ProjectCard({
               className="rounded-full bg-secondary border-none px-8 py-3 text-base font-semibold text-secondary-foreground shadow-none transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               onClick={handleNoConfirmDelete}
               disabled={deleting}
-              data-cy="project-delete-cancel"
+              data-cy={buildDataCy("project-delete-cancel")}
             >
               No
             </AlertDialogCancel>
@@ -270,7 +275,7 @@ export function ProjectCard({
               className="rounded-full bg-primary px-8 py-3 text-base font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               onClick={handleConfirmDelete}
               disabled={deleting}
-              data-cy="project-delete-confirm"
+              data-cy={buildDataCy("project-delete-confirm")}
             >
               {deleting ? "Deleting…" : "Yes"}
             </AlertDialogAction>
