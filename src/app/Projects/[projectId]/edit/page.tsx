@@ -101,7 +101,7 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
           departments,
           imageUrl,
         })
-        router.push("/Projects")
+        router.push("/projects")
       } catch (error) {
         console.error("Failed to update project", error)
         const raw =

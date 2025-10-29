@@ -66,5 +66,5 @@ export async function POST(request: NextRequest) {
     },
   })
 
-  return NextResponse.json(project, { status: 201 })
+  return NextResponse.json(project, { status: 200 })
 }

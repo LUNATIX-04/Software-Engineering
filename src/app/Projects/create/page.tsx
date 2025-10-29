@@ -49,7 +49,7 @@ export default function CreateProjectPage() {
           departments,
           imageUrl,
         })
-        router.push("/Projects")
+        router.push("/projects")
       } catch (error) {
         console.error("Failed to create project", error)
         const raw =

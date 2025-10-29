@@ -122,8 +122,8 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
 
           <div className="flex flex-1 flex-col gap-5">
             <div>
-              <h1 className="text-3xl font-bold text-foreground md:text-4xl">{project.title}</h1>
-              <p className="mt-3 text-base text-foreground/80">
+              <h1 className="text-3xl font-bold text-foreground md:text-4xl" data-cy="project-name">{project.title}</h1>
+              <p className="mt-3 text-base text-foreground/80" data-cy="project-description">
                 {hasDescription
                   ? project.description
                   : "This project does not have a description yet. Add one from the edit page to help your team stay aligned."}
@@ -149,7 +149,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
                 <Tags className="mt-0.5 size-5 text-primary" />
                 <div>
                   <dt className="text-sm font-semibold text-foreground">Departments</dt>
-                  <dd>{project.departments.length > 0 ? project.departments.length : "No departments yet"}</dd>
+                  <dd data-cy="project-department">{project.departments.length > 0 ? project.departments.length : "No departments yet"}</dd>
                 </div>
               </div>
               <div className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]">

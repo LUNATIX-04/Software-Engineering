@@ -10,10 +10,10 @@ export async function GET(request: NextRequest) {
   
   // Prevent open redirects by only allowing relative, same-origin paths
   const safeNextPath = (() => {
-    if (!next) return "/Projects"
+    if (!next) return "/projects"
     // must start with single "/" and not be protocol-relative "//"
     if (next.startsWith("/") && !next.startsWith("//")) return next
-    return "/Projects"
+    return "/projects"
   })()
 
   if (code) {
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (error) {
       console.error("Failed to exchange auth code for session", error)
-      const errorUrl = new URL("/Homepage", origin)
+      const errorUrl = new URL("/homepage", origin)
       errorUrl.searchParams.set("authError", "1")
       return NextResponse.redirect(errorUrl)
     }

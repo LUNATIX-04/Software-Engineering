@@ -118,13 +118,13 @@ export default function ProjectsPage() {
             createdAt={formatCreatedAt(project.createdAt)}
             description={project.description ?? ""}
             imageSrc={project.imageUrl ?? undefined}
-            onOpenProject={() => router.push(`/Projects/${project.id}`)}
-            onEditProject={() => router.push(`/Projects/${project.id}/edit`)}
+            onOpenProject={() => router.push(`/projects/${project.id}`)}
+            onEditProject={() => router.push(`/projects/${project.id}/edit`)}
             onDelete={() => handleDelete(project.id)}
             dataCyIndex={index}
           />
         ))}
-        <CreateProjectCard onClick={() => router.push("/Projects/create")} />
+        <CreateProjectCard onClick={() => router.push("/projects/create")} />
       </div>
     </div>
   )

@@ -30,7 +30,7 @@ export default function Homepage() {
         <div className="flex justify-center" onContextMenu={(event) => event.preventDefault()}>
           <div className="relative w-full max-w-[min(28rem,60vw)] max-h-[55vh] aspect-square select-none">
             <Image
-              src="/imageWeb/Homepage/logo.png"
+              src="/imageWeb/homepage/logo.png"
               alt="Project management illustration showing to-do lists, charts, and productivity tools"
               fill
               draggable={false}

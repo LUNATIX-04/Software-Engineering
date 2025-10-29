@@ -13,7 +13,7 @@ export default function UnauthorizedPage() {
   const pathname = usePathname()
 
   useEffect(() => {
-    if (!pathname?.startsWith("/Projects")) {
+    if (!pathname?.startsWith("/projects")) {
       return
     }
     setHeaderVariant("minimal")
@@ -39,7 +39,7 @@ export default function UnauthorizedPage() {
           className="rounded-full px-8 py-3 text-base font-semibold"
           data-cy="unauthorized-go-home"
         >
-          <Link href="/Homepage">Go to Homepage</Link>
+          <Link href="/homepage">Go to Homepage</Link>
         </Button>
       </div>
     </div>

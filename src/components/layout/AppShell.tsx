@@ -200,8 +200,8 @@ export default function AppShell({ children }: AppShellProps) {
 function AppShellInner({ children }: AppShellProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const isHomepage = pathname === "/Homepage"
-  const isProjects = pathname?.startsWith("/Projects") ?? false
+  const isHomepage = pathname === "/homepage"
+  const isProjects = pathname?.startsWith("/projects") ?? false
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const supabase = useMemo(() => getSupabaseBrowserClient(), [])
   const [session, setSession] = useState<Session | null>(null)
@@ -507,7 +507,7 @@ function AppShellInner({ children }: AppShellProps) {
       }
       setAccountMenuOpen(false)
       setAuthLoading(false)
-      router.push("/Homepage")
+      router.push("/homepage")
       notify({
         title: "Signed out successfully",
         description: "See you soon on ASAP!",
@@ -521,7 +521,7 @@ function AppShellInner({ children }: AppShellProps) {
     if (isHomepage) {
       return
     }
-    router.push("/Homepage")
+    router.push("/homepage")
   }, [isHomepage, router])
 
   const avatarUrl =
@@ -563,37 +563,37 @@ function AppShellInner({ children }: AppShellProps) {
       {
         key: "info" as const,
         label: "Info.",
-        href: activeProjectId ? `/Projects/${activeProjectId}` : "/Projects",
+        href: activeProjectId ? `/projects/${activeProjectId}` : "/projects",
         disabled: !activeProjectId,
       },
       {
         key: "member" as const,
         label: "Member",
-        href: activeProjectId ? `/Projects/${activeProjectId}/member` : "",
+        href: activeProjectId ? `/projects/${activeProjectId}/member` : "",
         disabled: !activeProjectId,
       },
       {
         key: "department" as const,
         label: "Department",
-        href: activeProjectId ? `/Projects/${activeProjectId}/department` : "",
+        href: activeProjectId ? `/projects/${activeProjectId}/department` : "",
         disabled: !activeProjectId,
       },
       {
         key: "task" as const,
         label: "Task",
-        href: activeProjectId ? `/Projects/${activeProjectId}/task` : "",
+        href: activeProjectId ? `/projects/${activeProjectId}/task` : "",
         disabled: !activeProjectId,
       },
       {
         key: "calendar" as const,
         label: "Calendar",
-        href: activeProjectId ? `/Projects/${activeProjectId}/calendar` : "",
+        href: activeProjectId ? `/projects/${activeProjectId}/calendar` : "",
         disabled: !activeProjectId,
       },
       {
         key: "profile" as const,
         label: "Profile",
-        href: activeProjectId ? `/Projects/${activeProjectId}/profile` : "/account",
+        href: activeProjectId ? `/projects/${activeProjectId}/profile` : "/account",
         disabled: false,
       },
       {
@@ -745,7 +745,7 @@ function AppShellInner({ children }: AppShellProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => router.push("/Projects")}
+                  onClick={() => router.push("/projects")}
                   className="rounded-full bg-primary/30 px-6 py-1 text-lg font-semibold text-primary-foreground transition hover:bg-primary/40 hover:text-hover-foreground-for-nav-header focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/40"
                 >
                   Projects

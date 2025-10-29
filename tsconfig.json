@@ -32,6 +32,6 @@
     "**/*.tsx",
     ".next/types/**/*.ts",
     "cypress/**/*.ts"
-  ],
+, "cypress/e2e/sample_test.cy.js"  ],
   "exclude": ["node_modules"]
 }

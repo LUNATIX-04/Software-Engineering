@@ -164,7 +164,7 @@ export default function TraditionalAuthPage() {
             description: "Welcome to ASAP! Redirecting you to your workspace.",
             variant: "success",
           })
-          router.push("/Projects")
+          router.push("/projects")
         }
         return
       }
@@ -174,7 +174,7 @@ export default function TraditionalAuthPage() {
         description: "Let’s build something awesome together.",
         variant: "success",
       })
-      router.push("/Projects")
+      router.push("/projects")
     } catch (error) {
       const message =
         error instanceof Error && error.message.trim().length > 0
