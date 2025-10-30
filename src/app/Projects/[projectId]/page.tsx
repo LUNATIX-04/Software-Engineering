@@ -3,7 +3,8 @@
 import * as React from "react"
 
 import Image from "next/image"
-import { CalendarDays, FolderKanban, RefreshCcw, Tags } from "lucide-react"
+import Link from "next/link"
+import { ArrowLeft, CalendarDays, FolderKanban, RefreshCcw, Tags } from "lucide-react"
 
 import { fetchProjectById, type ProjectRecord } from "@/utils/projects/api"
 
@@ -98,9 +99,28 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
 
   const hasDescription = Boolean(project.description?.trim())
   const hasDepartments = project.departments.length > 0
+  const projectDetailCopy = hasDescription
+    ? project.description
+    : "This project does not have a description yet. Add one from the edit page to help your team stay aligned."
 
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-20 pt-10">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <Link
+          href="/projects"
+          className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-primary/40 bg-background text-primary shadow-[0_10px_0_rgba(144,122,214,0.2)] transition hover:bg-primary/10"
+          aria-label="Go back to projects"
+        >
+          <ArrowLeft className="size-5" />
+        </Link>
+        <Link
+          href={`/projects/${projectId}/edit`}
+          className="inline-flex items-center justify-center rounded-full border-2 border-primary/60 px-6 py-2 text-sm font-semibold text-primary shadow-[0_10px_0_rgba(144,122,214,0.2)] transition hover:bg-primary/10"
+        >
+          Edit Project
+        </Link>
+      </div>
+
       <section className="rounded-[2.75rem] border-2 border-primary/40 bg-primary/10 p-8 shadow-[0_18px_0_rgba(144,122,214,0.15)]">
         <div className="flex flex-col gap-8 md:flex-row md:items-center">
           <div className="flex shrink-0 justify-center">
@@ -122,12 +142,9 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
 
           <div className="flex flex-1 flex-col gap-5">
             <div>
-              <h1 className="text-3xl font-bold text-foreground md:text-4xl" data-cy="project-name">{project.title}</h1>
-              <p className="mt-3 text-base text-foreground/80" data-cy="project-description">
-                {hasDescription
-                  ? project.description
-                  : "This project does not have a description yet. Add one from the edit page to help your team stay aligned."}
-              </p>
+              <h1 className="text-3xl font-bold text-foreground md:text-4xl" data-cy="project-name">
+                {project.title}
+              </h1>
             </div>
 
             <dl className="grid gap-5 text-sm text-foreground/80 sm:grid-cols-2">
@@ -149,7 +166,9 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
                 <Tags className="mt-0.5 size-5 text-primary" />
                 <div>
                   <dt className="text-sm font-semibold text-foreground">Departments</dt>
-                  <dd data-cy="project-department">{project.departments.length > 0 ? project.departments.length : "No departments yet"}</dd>
+                  <dd data-cy="project-department">
+                    {project.departments.length > 0 ? project.departments.length : "No departments yet"}
+                  </dd>
                 </div>
               </div>
               <div className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]">
@@ -167,9 +186,9 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
       <section className="rounded-[2.75rem] border-2 border-primary/30 bg-background px-8 py-6 shadow-[0_14px_0_rgba(144,122,214,0.1)]">
         <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-foreground">Project Overview</h2>
-            <p className="text-sm text-foreground/70">
-              Snapshot of departments and project metadata for quick reference.
+            <h2 className="text-xl font-semibold text-foreground">Project Detail</h2>
+            <p className="text-sm text-foreground/70" data-cy="project-description">
+              {projectDetailCopy}
             </p>
           </div>
         </header>
@@ -195,17 +214,6 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
                 No departments assigned yet. You can add them from the Edit Project page.
               </p>
             )}
-          </div>
-
-          <div>
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-foreground/70">
-              Notes
-            </h3>
-            <p className="mt-3 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 text-sm text-foreground/75 shadow-[0_6px_0_rgba(144,122,214,0.15)]">
-              Keep your project team aligned by maintaining updated descriptions and department
-              ownership. Use the tabs above to manage members, tasks, and calendars connected to
-              this project.
-            </p>
           </div>
         </div>
       </section>

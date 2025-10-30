@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-const baseCardClass = "project-card rounded-3xl flex items-center relative select-none"
+const baseCardClass = "project-card w-full rounded-3xl flex items-center relative select-none"
 
 export type ProjectCardProps = {
   title: string

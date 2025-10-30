@@ -12,7 +12,7 @@ import {
 } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import Image from "next/image"
-import { User as UserIcon } from "lucide-react"
+import { MoreHorizontal, User as UserIcon } from "lucide-react"
 import type { AuthChangeEvent, Session } from "@supabase/supabase-js"
 
 import { Button } from "@/components/ui/button"
@@ -202,6 +202,7 @@ function AppShellInner({ children }: AppShellProps) {
   const router = useRouter()
   const isHomepage = pathname === "/homepage"
   const isProjects = pathname?.startsWith("/projects") ?? false
+  const isTraditionalAuth = pathname === "/auth/traditional"
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const supabase = useMemo(() => getSupabaseBrowserClient(), [])
   const [session, setSession] = useState<Session | null>(null)
@@ -517,13 +518,6 @@ function AppShellInner({ children }: AppShellProps) {
     [notify, router, supabase]
   )
 
-  const handleLogoClick = useCallback(() => {
-    if (isHomepage) {
-      return
-    }
-    router.push("/homepage")
-  }, [isHomepage, router])
-
   const avatarUrl =
     (authenticatedUser?.user_metadata?.avatar_url as string | undefined) ?? undefined
 
@@ -562,7 +556,7 @@ function AppShellInner({ children }: AppShellProps) {
     () => [
       {
         key: "info" as const,
-        label: "Info.",
+        label: "Info",
         href: activeProjectId ? `/projects/${activeProjectId}` : "/projects",
         disabled: !activeProjectId,
       },
@@ -580,7 +574,7 @@ function AppShellInner({ children }: AppShellProps) {
       },
       {
         key: "task" as const,
-        label: "Task",
+        label: "Tasks",
         href: activeProjectId ? `/projects/${activeProjectId}/task` : "",
         disabled: !activeProjectId,
       },
@@ -589,18 +583,6 @@ function AppShellInner({ children }: AppShellProps) {
         label: "Calendar",
         href: activeProjectId ? `/projects/${activeProjectId}/calendar` : "",
         disabled: !activeProjectId,
-      },
-      {
-        key: "profile" as const,
-        label: "Profile",
-        href: activeProjectId ? `/projects/${activeProjectId}/profile` : "/account",
-        disabled: false,
-      },
-      {
-        key: "more" as const,
-        label: "...",
-        href: "",
-        disabled: true,
       },
     ],
     [activeProjectId]
@@ -616,6 +598,12 @@ function AppShellInner({ children }: AppShellProps) {
       ? "projects"
       : "none"
   const headerVariant = headerOverride ?? defaultHeaderVariant
+
+  const logoDestination = headerVariant === "minimal" ? "/homepage" : "/projects"
+
+  const handleLogoClick = useCallback(() => {
+    router.push(logoDestination)
+  }, [router, logoDestination])
 
   const renderAccountDropdown = (redirect: SignOutRedirect) => {
     if (!authenticatedUser) {
@@ -673,6 +661,69 @@ function AppShellInner({ children }: AppShellProps) {
     )
   }
 
+  const renderProjectActionsMenu = () => {
+    if (!activeProjectId) {
+      return null
+    }
+    return (
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-11 rounded-full border border-button-background-on-nav/40 bg-button-background-on-nav/30 text-button-foreground-on-nav transition hover:border-button-hover-background-on-nav/60 hover:bg-button-hover-background-on-nav/40"
+            aria-label="Project actions"
+          >
+            <MoreHorizontal className="size-5" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="end"
+          className="w-48 rounded-3xl border border-button-background-on-nav/40 bg-button-background-on-nav/95 p-2 text-button-foreground-on-nav shadow-[0_16px_30px_rgba(39,36,66,0.25)]"
+        >
+          <DropdownMenuItem
+            className="rounded-2xl px-4 py-3 text-sm font-semibold transition hover:bg-button-hover-background-on-nav"
+            onSelect={() => {
+              if (typeof navigator?.clipboard?.writeText === "function") {
+                const inviteUrl = `${window.location.origin}/projects/${activeProjectId}`
+                navigator.clipboard.writeText(inviteUrl).catch(() => null)
+              }
+            }}
+          >
+            Invite Link
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="rounded-2xl px-4 py-3 text-sm font-semibold transition hover:bg-button-hover-background-on-nav"
+            onSelect={() => router.push("/profile")}
+          >
+            Change Username
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="rounded-2xl px-4 py-3 text-sm font-semibold transition hover:bg-button-hover-background-on-nav"
+            onSelect={() => {
+              if (activeProjectId) {
+                router.push(`/projects/${activeProjectId}/edit`)
+              }
+            }}
+          >
+            Edit Project
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="rounded-2xl px-4 py-3 text-sm font-semibold text-destructive transition hover:bg-button-hover-background-on-nav"
+            onSelect={() => {
+              if (activeProjectId) {
+                router.push(`/projects/${activeProjectId}`)
+              }
+            }}
+          >
+            Delete Project
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    )
+  }
+
   const header = (() => {
     if (headerVariant === "homepage") {
       return (
@@ -687,7 +738,7 @@ function AppShellInner({ children }: AppShellProps) {
                   "rounded-full bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-button-foreground-on-nav/40",
                   isHomepage ? "cursor-default" : "cursor-pointer"
                 )}
-                aria-label={isHomepage ? "ASAP" : "Go to homepage"}
+                aria-label={isHomepage ? "ASAP" : "Go to projects"}
               >
                 <span
                   className="text-primary-foreground text-3xl font-bold leading-none select-none"
@@ -732,7 +783,7 @@ function AppShellInner({ children }: AppShellProps) {
                     "rounded-full bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-button-foreground-on-nav/40",
                     isHomepage ? "cursor-default" : "cursor-pointer"
                   )}
-                  aria-label={isHomepage ? "ASAP" : "Go to homepage"}
+                  aria-label={isHomepage ? "ASAP" : "Go to projects"}
                 >
                   <span
                     className="select-none text-3xl font-bold leading-none text-primary-foreground"
@@ -743,15 +794,9 @@ function AppShellInner({ children }: AppShellProps) {
                     ASAP
                   </span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => router.push("/projects")}
-                  className="rounded-full bg-primary/30 px-6 py-1 text-lg font-semibold text-primary-foreground transition hover:bg-primary/40 hover:text-hover-foreground-for-nav-header focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/40"
-                >
-                  Projects
-                </button>
               </div>
-              <div className="flex items-center gap-2 ">
+              <div className="flex items-center gap-3">
+                {renderProjectActionsMenu()}
                 {authenticatedUser ? (
                   renderAccountDropdown("homepage")
                 ) : (
@@ -843,7 +888,10 @@ function AppShellInner({ children }: AppShellProps) {
   const mainClassName = cn(
     "flex-1 bg-background",
     headerSpacingClass,
-    headerVariant === "homepage" && "flex items-center justify-center"
+    headerVariant === "homepage" && "flex items-center justify-center",
+    isTraditionalAuth && [
+      " bg-gradient-to-br from-primary via-primary-soft to-secondary",
+    ]
   )
 
   const layoutContextValue = useMemo(

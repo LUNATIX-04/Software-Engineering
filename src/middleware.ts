@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 
 // Extend this list with any new segments that should require authentication.
-const PROTECTED_PATH_PREFIXES = ["/Projects", "/account"]
+const PROTECTED_PATH_PREFIXES = ["/projects", "/account"]
 
 function isProtectedPath(pathname: string) {
   return PROTECTED_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix))
