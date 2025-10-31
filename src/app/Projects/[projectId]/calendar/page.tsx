@@ -4,6 +4,12 @@ import * as React from "react"
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, ChevronLeft, ChevronRight } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -12,6 +18,40 @@ import {
   TASK_STATUS_STYLE,
   type TaskRecord,
 } from "../task/data"
+
+function parseTaskDeadline(deadline: string): Date | null {
+  const trimmed = deadline?.trim()
+  if (!trimmed) {
+    return null
+  }
+  const match = trimmed.match(/^\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s*$/)
+  if (match) {
+    const day = Number(match[1])
+    const month = Number(match[2]) - 1
+    const year = Number(match[3])
+    if (
+      Number.isInteger(day) &&
+      Number.isInteger(month) &&
+      Number.isInteger(year) &&
+      day >= 1 &&
+      day <= 31 &&
+      month >= 0 &&
+      month <= 11 &&
+      year >= 1900 &&
+      year <= 2100
+    ) {
+      const candidate = new Date(year, month, day)
+      if (
+        candidate.getFullYear() === year &&
+        candidate.getMonth() === month &&
+        candidate.getDate() === day
+      ) {
+        return candidate
+      }
+    }
+  }
+  return null
+}
 
 type CalendarCell = {
   date: Date | null
@@ -53,7 +93,38 @@ type ProjectCalendarPageProps = {
 export default function ProjectCalendarPage({ params }: ProjectCalendarPageProps) {
   const { projectId } = React.use(params)
   const router = useRouter()
-  const [referenceDate, setReferenceDate] = useState(() => new Date())
+  const tasksWithDates = React.useMemo(
+    () =>
+      DEFAULT_TASKS.map((task, index) => {
+        const parsed = parseTaskDeadline(task.deadline)
+        if (parsed) {
+          return { task, date: parsed }
+        }
+        const fallback = new Date()
+        fallback.setFullYear(fallback.getFullYear(), index % 12, Math.max(1, index + 1))
+        return { task, date: fallback }
+      }),
+    []
+  )
+
+  const availableYears = React.useMemo(() => {
+    const years = new Set<number>(tasksWithDates.map(({ date }) => date.getFullYear()))
+    if (years.size === 0) {
+      for (let year = 1900; year <= 2100; year += 1) {
+        years.add(year)
+      }
+    }
+    return Array.from(years).sort((a, b) => a - b)
+  }, [tasksWithDates])
+
+  const initialReferenceDate = React.useMemo(() => {
+    const maxYear = availableYears.length > 0 ? availableYears[availableYears.length - 1] : new Date().getFullYear()
+    const taskInMaxYear = tasksWithDates.find(({ date }) => date.getFullYear() === maxYear)
+    const month = taskInMaxYear ? taskInMaxYear.date.getMonth() : 0
+    return new Date(maxYear, month, 1)
+  }, [availableYears, tasksWithDates])
+
+  const [referenceDate, setReferenceDate] = useState(() => initialReferenceDate)
 
   const firstDayOfMonth = useMemo(() => {
     const base = new Date(referenceDate)
@@ -75,13 +146,12 @@ export default function ProjectCalendarPage({ params }: ProjectCalendarPageProps
   const cells = useMemo<CalendarCell[]>(() => {
     const list: CalendarCell[] = []
     const tasksByDate = new Map<string, TaskRecord[]>()
-    DEFAULT_TASKS.forEach((task) => {
-      const dateKey = "2024-09-0" + Math.max(1, Math.min(9, DEFAULT_TASKS.indexOf(task) + 7))
-      // Placeholder logic; real data should include ISO dates.
-      if (!tasksByDate.has(dateKey)) {
-        tasksByDate.set(dateKey, [])
+    tasksWithDates.forEach(({ task, date }) => {
+      const key = date.toISOString().split("T")[0]
+      if (!tasksByDate.has(key)) {
+        tasksByDate.set(key, [])
       }
-      tasksByDate.get(dateKey)?.push(task)
+      tasksByDate.get(key)?.push(task)
     })
 
     const baseYear = referenceDate.getFullYear()
@@ -101,7 +171,7 @@ export default function ProjectCalendarPage({ params }: ProjectCalendarPageProps
       })
     }
     return list
-  }, [daysInMonth, leadingEmptyCells, referenceDate])
+  }, [daysInMonth, leadingEmptyCells, referenceDate, tasksWithDates])
 
   const monthLabel = `${MONTHS[referenceDate.getMonth()]}`
 
@@ -136,7 +206,40 @@ export default function ProjectCalendarPage({ params }: ProjectCalendarPageProps
           >
             <ChevronLeft className="size-5" />
           </button>
-          <span className="min-w-[10rem] text-center">{monthLabel}</span>
+          <div className="flex items-center gap-3">
+            <span className="min-w-[8rem] text-center">{monthLabel}</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 rounded-full border border-primary/40 bg-white px-4 py-2 text-base font-semibold text-[#2F2766] shadow-[0_4px_0_rgba(144,122,214,0.2)] focus:outline-none"
+                >
+                  {referenceDate.getFullYear()}
+                  <ChevronRight className="size-4 -rotate-90" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="max-h-60 w-32 overflow-y-auto rounded-3xl border border-primary/40 bg-white px-2 py-2 text-sm font-semibold text-[#2F2766] shadow-[0_10px_30px_rgba(72,68,110,0.2)]"
+              >
+                {availableYears.map((year) => (
+                  <DropdownMenuItem
+                    key={year}
+                    onSelect={() =>
+                      setReferenceDate((prev) => {
+                        const next = new Date(prev)
+                        next.setFullYear(year)
+                        return next
+                      })
+                    }
+                    className="rounded-2xl px-3 py-2 focus:bg-primary/10 focus:text-primary"
+                  >
+                    {year}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <button
             type="button"
             onClick={() => updateMonth(1)}

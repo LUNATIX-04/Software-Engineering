@@ -7,6 +7,8 @@ import {
   ChevronRightIcon,
 } from "lucide-react"
 import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker"
+import { format } from "date-fns"
+import { enUS } from "date-fns/locale"
 
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -19,14 +21,20 @@ function Calendar({
   buttonVariant = "ghost",
   formatters,
   components,
+  locale = enUS,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
 }) {
   const defaultClassNames = getDefaultClassNames()
 
+  const monthFormatter = (date: Date) => format(date, "MMM", { locale })
+  const captionFormatter = (date: Date) => format(date, "MMMM yyyy", { locale })
+  const yearFormatter = (date: Date) => format(date, "yyyy", { locale })
+
   return (
     <DayPicker
+      locale={locale}
       showOutsideDays={showOutsideDays}
       className={cn(
         "bg-background group/calendar p-3 [--cell-size:--spacing(8)] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
@@ -36,8 +44,9 @@ function Calendar({
       )}
       captionLayout={captionLayout}
       formatters={{
-        formatMonthDropdown: (date) =>
-          date.toLocaleString("default", { month: "short" }),
+        formatMonthDropdown: monthFormatter,
+        formatYearDropdown: yearFormatter,
+        formatCaption: captionFormatter,
         ...formatters,
       }}
       classNames={{
@@ -70,11 +79,11 @@ function Calendar({
           defaultClassNames.dropdowns
         ),
         dropdown_root: cn(
-          "relative has-focus:border-ring border border-input shadow-xs has-focus:ring-ring/50 has-focus:ring-[3px] rounded-md",
+          "inline-flex h-9 min-w-[6rem] items-center rounded-full border border-primary/40 bg-white px-3 text-sm font-semibold text-foreground shadow-xs focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/40",
           defaultClassNames.dropdown_root
         ),
         dropdown: cn(
-          "absolute bg-popover inset-0 opacity-0",
+          "w-full h-full cursor-pointer appearance-none bg-transparent text-sm font-semibold text-foreground",
           defaultClassNames.dropdown
         ),
         caption_label: cn(
@@ -201,13 +210,17 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 dark:hover:text-accent-foreground flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70",
-        defaultClassNames.day,
+        "size-(--cell-size) rounded-full p-0 font-medium text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 [&[data-selected=true]]:bg-primary [&[data-selected=true]]:text-primary-foreground [&[data-selected=true]]:ring-0 [&[data-selected=true]]:hover:bg-primary/90",
+        defaultClassNames.day_button,
         className
       )}
       {...props}
-    />
+    >
+      {day.date.getDate()}
+    </Button>
   )
 }
 
-export { Calendar, CalendarDayButton }
+Calendar.displayName = "Calendar"
+
+export { Calendar }

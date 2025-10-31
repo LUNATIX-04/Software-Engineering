@@ -17,11 +17,17 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
   DEFAULT_TASKS,
   DEPARTMENTS,
   TASK_STATUS_LABEL,
   TASK_STATUS_STYLE,
-  type TaskRecord,
+  type TaskRecord, 
 } from "./data"
 
 type ProjectTaskPageProps = {
@@ -37,7 +43,6 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const [search, setSearch] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState<string>("Registration")
   const [currentPage, setCurrentPage] = useState(1)
-  const [menuTaskId, setMenuTaskId] = useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [pendingDeleteTask, setPendingDeleteTask] = useState<TaskRecord | null>(null)
   const pageSize = 6
@@ -75,12 +80,10 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   }, [filteredTasks, currentPage, pageSize])
 
   const handleEditTask = (taskId: string) => {
-    setMenuTaskId(null)
     handleOpenTask(taskId)
   }
 
   const handleDeleteTaskRequest = (task: TaskRecord) => {
-    setMenuTaskId(null)
     setPendingDeleteTask(task)
     setDeleteDialogOpen(true)
   }
@@ -171,9 +174,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
           <Button
             type="button"
             variant="outline"
-            onClick={() => {
-              // placeholder navigation
-            }}
+            onClick={() => router.push(`/projects/${projectId}/task/create`)}
             className="inline-flex h-12 items-center gap-2 rounded-full border-primary/40 px-6 text-base font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-primary-foreground"
           >
             <PlusCircle className="size-5" />
@@ -213,46 +214,36 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                 >
                   {TASK_STATUS_LABEL[task.status]}
                 </span>
-                <div className="relative">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-10 rounded-full border border-transparent text-[#2F2766] hover:border-primary/40"
-                    onClick={() =>
-                      setMenuTaskId((prev) => (prev === task.id ? null : task.id))
-                    }
-                    aria-haspopup="menu"
-                    aria-expanded={menuTaskId === task.id}
-                    aria-label={`Task ${task.title} actions`}
-                    data-task-menu="true"
-                  >
-                    <MoreHorizontal className="size-5" />
-                  </Button>
-                  {menuTaskId === task.id ? (
-                    <div
-                      className="absolute right-0 top-12 z-10 flex w-40 flex-col gap-1 rounded-3xl border border-primary/40 bg-[#4A3F86] px-4 py-3 text-sm font-semibold text-white shadow-[0_10px_0_rgba(74,63,134,0.3)]"
-                      data-task-menu="true"
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-10 rounded-full border border-transparent text-[#2F2766] hover:border-primary/40"
+                      aria-label={`Task ${task.title} actions`}
                     >
-                      <button
-                        type="button"
-                        onClick={() => handleEditTask(task.id)}
-                        className="rounded-2xl px-3 py-2 text-left transition hover:bg-white/10"
-                        data-task-menu="true"
-                      >
-                        Edit Task
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTaskRequest(task)}
-                        className="rounded-2xl px-3 py-2 text-left transition hover:bg-white/10"
-                        data-task-menu="true"
-                      >
-                        Delete Task
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
+                      <MoreHorizontal className="size-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-40 rounded-3xl border border-primary/40 bg-[#4A3F86] px-3 py-2 text-sm font-semibold text-white shadow-[0_10px_0_rgba(74,63,134,0.3)]"
+                  >
+                    <DropdownMenuItem
+                      onSelect={() => handleEditTask(task.id)}
+                      className="rounded-2xl px-3 py-2 text-left text-sm font-semibold text-white focus:bg-white/10 focus:text-white"
+                    >
+                      Edit Task
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={() => handleDeleteTaskRequest(task)}
+                      className="rounded-2xl px-3 py-2 text-left text-sm font-semibold text-destructive focus:bg-destructive/10 focus:text-destructive"
+                    >
+                      Delete Task
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </article>
           ))}

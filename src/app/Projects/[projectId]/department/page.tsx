@@ -3,9 +3,15 @@
 import * as React from "react"
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Palette, Plus, Search } from "lucide-react"
+import { ArrowLeft, ChevronDown, Palette, Plus, Search } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 type DepartmentRecord = {
   id: string
@@ -163,20 +169,34 @@ function DepartmentCard({ department, onSelectHead, onCycleColor }: DepartmentCa
         className="flex flex-col gap-4 rounded-[2rem] border-2 border-primary/30 px-5 py-5"
         style={{ backgroundColor: innerTone }}
       >
-        <label className="text-sm font-semibold" style={{ color: CARD_TEXT_COLOR }}>
-          Head :
-          <select
-            value={department.head ?? "Select"}
-            onChange={(event) => onSelectHead(department.id, event.target.value)}
-            className="mt-2 w-full rounded-full border-2 border-primary/30 bg-white px-4 py-2 text-base font-medium text-primary shadow-[0_6px_0_rgba(144,122,214,0.2)] focus:border-primary focus:outline-none"
-          >
-            {HEAD_OPTIONS.map((headOption) => (
-              <option key={headOption} value={headOption}>
-                {headOption}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="text-sm font-semibold" style={{ color: CARD_TEXT_COLOR }}>
+          <span>Head :</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="mt-2 flex w-full items-center justify-between rounded-full border-2 border-primary/30 bg-white px-4 py-2 text-base font-medium text-primary shadow-[0_6px_0_rgba(144,122,214,0.2)] focus:outline-none"
+              >
+                <span>{department.head ?? "Select"}</span>
+                <ChevronDown className="size-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className="w-48 rounded-3xl border border-primary/40 bg-white px-3 py-2 text-sm font-semibold text-primary shadow-[0_10px_30px_rgba(72,68,110,0.2)]"
+            >
+              {HEAD_OPTIONS.map((headOption) => (
+                <DropdownMenuItem
+                  key={headOption}
+                  onSelect={() => onSelectHead(department.id, headOption)}
+                  className="rounded-2xl px-3 py-2 focus:bg-primary/10 focus:text-primary"
+                >
+                  {headOption}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <p className="text-base font-medium" style={{ color: CARD_TEXT_COLOR }}>
           Number of Member : {department.memberCount}
         </p>

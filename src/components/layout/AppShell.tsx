@@ -211,6 +211,8 @@ function AppShellInner({ children }: AppShellProps) {
   const [preferencesLoading, setPreferencesLoading] = useState(false)
   const [manageDialogOpen, setManageDialogOpen] = useState(false)
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false)
+  const [usernameDialogOpen, setUsernameDialogOpen] = useState(false)
+  const [pendingUsername, setPendingUsername] = useState("")
   const [headerOverride, setHeaderOverride] = useState<HeaderVariant | null>(null)
   const [headerSpacingOverride, setHeaderSpacingOverride] = useState<HeaderSpacingControl | null>(null)
   const lastAuthUserIdRef = useRef<string | null>(null)
@@ -695,7 +697,12 @@ function AppShellInner({ children }: AppShellProps) {
           </DropdownMenuItem>
           <DropdownMenuItem
             className="rounded-2xl px-4 py-3 text-sm font-semibold transition hover:bg-button-hover-background-on-nav"
-            onSelect={() => router.push("/profile")}
+            onSelect={() => {
+              if (profile?.fullName) {
+                setPendingUsername(profile.fullName)
+              }
+              setUsernameDialogOpen(true)
+            }}
           >
             Change Username
           </DropdownMenuItem>
@@ -986,6 +993,31 @@ function AppShellInner({ children }: AppShellProps) {
                 </DialogDescription>
               </DialogHeader>
               <SettingsForm layout="dialog" />
+            </DialogContent>
+          </Dialog>
+          <Dialog open={usernameDialogOpen} onOpenChange={setUsernameDialogOpen}>
+            <DialogContent className="max-w-md rounded-[3rem] border-2 border-primary/40 bg-white/95 px-10 py-8 text-center shadow-[0_20px_40px_rgba(72,68,110,0.25)]">
+              <DialogHeader className="space-y-2">
+                <DialogTitle className="text-xl font-bold text-[#2F2766]">
+                  Change Username in this Project
+                </DialogTitle>
+              </DialogHeader>
+              <div className="mt-4 space-y-6">
+                <input
+                  type="text"
+                  value={pendingUsername}
+                  onChange={(event) => setPendingUsername(event.target.value)}
+                  className="h-12 w-full rounded-full border-2 border-primary/40 bg-white px-5 text-base font-semibold text-[#2F2766] shadow-[0_6px_0_rgba(144,122,214,0.2)] focus:border-primary focus:outline-none"
+                  placeholder="Username"
+                />
+                <Button
+                  type="button"
+                  className="inline-flex h-12 items-center justify-center rounded-full bg-[#3F3478] px-8 text-base font-semibold text-white shadow-[0_6px_0_rgba(63,52,120,0.3)] transition hover:bg-[#2F2766]"
+                  onClick={() => setUsernameDialogOpen(false)}
+                >
+                  Save
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
           <div className="min-h-dvh flex flex-col overflow-x-hidden">
