@@ -23,15 +23,38 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
     return DEFAULT_TASKS.find((item) => item.id === taskId) ?? null
   }, [taskId])
 
-  const handleSave = (values: TaskFormValues) => {
-    console.info("Would save task", {
-      projectId,
-      taskId,
-      ...values,
-    })
-  }
+  const [saving, setSaving] = React.useState(false)
 
-  if (!task) {
+  const initialValues = React.useMemo<TaskFormValues | null>(() => {
+    if (!task) {
+      return null
+    }
+    return {
+      title: task.title,
+      detail: task.description ?? "",
+      assignees: task.assignees.length > 0 ? [...task.assignees] : [],
+      deadline: task.deadline ?? "DD/MM/YYYY",
+      status: task.status,
+    }
+  }, [task])
+
+  const handleSave = React.useCallback(
+    async (values: TaskFormValues) => {
+      setSaving(true)
+      try {
+        console.info("Would save task", {
+          projectId,
+          taskId,
+          ...values,
+        })
+      } finally {
+        setSaving(false)
+      }
+    },
+    [projectId, taskId]
+  )
+
+  if (!task || !initialValues) {
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6 px-6 py-16 text-center">
         <p className="text-xl font-semibold text-primary">Task not found.</p>
@@ -59,14 +82,9 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
 
       <TaskForm
         heading="Edit Task"
-        submitLabel="Save"
-        initialValues={{
-          title: task.title,
-          detail: task.description ?? "",
-          assignees: task.assignee ? [task.assignee] : [],
-          deadline: task.deadline ?? "DD/MM/YYYY",
-          status: task.status,
-        }}
+        submitLabel={saving ? "Saving…" : "Save"}
+        initialValues={initialValues}
+        submitting={saving}
         onSubmit={handleSave}
       />
     </div>

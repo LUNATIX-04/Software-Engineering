@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form"
-import { useNotifications } from "@/components/notifications/NotificationCenter"
+import { useNotifications } from "@/components/notifications/Notification"
 import { getSupabaseBrowserClient } from "@/utils/supabase/client"
 import { handleGoogleSignIn, useAppShellLayout } from "@/components/layout/AppShell"
 import { cn } from "@/lib/utils"

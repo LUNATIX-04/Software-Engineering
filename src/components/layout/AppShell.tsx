@@ -33,7 +33,7 @@ import { SettingsForm } from "@/components/settings/SettingsForm"
 import {
   NotificationProvider,
   useNotifications,
-} from "@/components/notifications/NotificationCenter"
+} from "@/components/notifications/Notification"
 
 import { cn } from "@/lib/utils"
 import { getSupabaseBrowserClient } from "@/utils/supabase/client"
@@ -777,10 +777,40 @@ function AppShellInner({ children }: AppShellProps) {
     }
 
     if (headerVariant === "projects") {
+      const projectNavContent = hasProjectTabs ? (
+        <nav className="flex max-w-4xl flex-1 items-center gap-2 overflow-x-auto px-2">
+          {projectNavItems.map((item) => {
+            const isActive = currentProjectSection === item.key
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => {
+                  if (item.disabled || !item.href) {
+                    return
+                  }
+                  router.push(item.href)
+                }}
+                aria-current={isActive ? "page" : undefined}
+                disabled={item.disabled}
+                className={cn(
+                  "relative flex min-w-[5.5rem] flex-1 items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-button-foreground-on-nav transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50",
+                  isActive &&
+                    "text-foreground-for-nav before:absolute before:bottom-1 before:left-4 before:right-4 before:h-1 before:rounded-full before:bg-underline-foreground-for-nav before:content-['']",
+                  !isActive && "hover:text-hover-foreground-for-nav"
+                )}
+              >
+                {item.label}
+              </button>
+            )
+          })}
+        </nav>
+      ) : null
+
       return (
         <header className="fixed inset-x-0 top-0 z-50 bg-primary">
           <div className="px-[clamp(1.5rem,1vw,3rem)] py-[clamp(0.6rem,1vh,1rem)]">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
               <div className="flex items-center gap-6">
                 <button
                   type="button"
@@ -802,54 +832,30 @@ function AppShellInner({ children }: AppShellProps) {
                   </span>
                 </button>
               </div>
-              <div className="flex items-center gap-3">
-                {renderProjectActionsMenu()}
-                {authenticatedUser ? (
-                  renderAccountDropdown("homepage")
+              <div className="flex flex-1 items-center gap-3 min-w-0">
+                {hasProjectTabs ? (
+                  <div className="flex flex-1 justify-center min-w-0">{projectNavContent}</div>
                 ) : (
-                  <Button
-                    variant="secondary"
-                    className="rounded-full bg-button-background-on-nav px-6 py-2 text-base font-semibold text-button-foreground-on-nav hover:bg-button-hover-background-on-nav"
-                    onClick={() => router.push("/auth/traditional")}
-                    disabled={authLoading}
-                  >
-                    {authLoading ? "Loading..." : "Sign In"}
-                  </Button>
+                  <div className="flex-1" />
                 )}
+                <div className="flex items-center gap-3">
+                  {renderProjectActionsMenu()}
+                  {authenticatedUser ? (
+                    renderAccountDropdown("homepage")
+                  ) : (
+                    <Button
+                      variant="secondary"
+                      className="rounded-full bg-button-background-on-nav px-6 py-2 text-base font-semibold text-button-foreground-on-nav hover:bg-button-hover-background-on-nav"
+                      onClick={() => router.push("/auth/traditional")}
+                      disabled={authLoading}
+                    >
+                      {authLoading ? "Loading..." : "Sign In"}
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-          {hasProjectTabs ? (
-            <nav className="flex justify-center bg-primary-soft">
-              <div className="flex w-full max-w-4xl items-center gap-2 overflow-x-auto px-4 py-2">
-                {projectNavItems.map((item) => {
-                  const isActive = currentProjectSection === item.key
-                  return (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() => {
-                        if (item.disabled || !item.href) {
-                          return
-                        }
-                        router.push(item.href)
-                      }}
-                      aria-current={isActive ? "page" : undefined}
-                      disabled={item.disabled}
-                      className={cn(
-                        "relative flex min-w-[5.5rem] flex-1 items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-button-foreground-on-nav transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50",
-                        isActive &&
-                          "text-foreground-for-nav before:absolute before:bottom-1 before:left-4 before:right-4 before:h-1 before:rounded-full before:bg-underline-foreground-for-nav before:content-['']",
-                        !isActive && "hover:text-hover-foreground-for-nav"
-                      )}
-                    >
-                      {item.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </nav>
-          ) : null}
         </header>
       )
     }
@@ -881,16 +887,12 @@ function AppShellInner({ children }: AppShellProps) {
     return null
   })()
 
-  const headerRequiresTabSpacing = headerVariant === "projects" && hasProjectTabs
-
   const headerSpacingClass =
     headerSpacingOverride === "none"
       ? "pt-0"
-      : headerRequiresTabSpacing
-        ? "pt-[clamp(7rem,18vh,10rem)]"
-        : headerVariant !== "none"
-          ? "pt-[clamp(4.5rem,12vh,6rem)]"
-          : null
+      : headerVariant !== "none"
+        ? "pt-[clamp(4.5rem,12vh,6rem)]"
+        : null
 
   const mainClassName = cn(
     "flex-1 bg-background",

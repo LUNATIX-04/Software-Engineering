@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker"
 import { format } from "date-fns"
+import type { Locale } from "date-fns"
 import { enUS } from "date-fns/locale"
 
 import { cn } from "@/lib/utils"
@@ -21,20 +22,25 @@ function Calendar({
   buttonVariant = "ghost",
   formatters,
   components,
-  locale = enUS,
+  locale: providedLocale = enUS,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
 }) {
   const defaultClassNames = getDefaultClassNames()
 
-  const monthFormatter = (date: Date) => format(date, "MMM", { locale })
-  const captionFormatter = (date: Date) => format(date, "MMMM yyyy", { locale })
-  const yearFormatter = (date: Date) => format(date, "yyyy", { locale })
+  const resolvedLocale = React.useMemo<Locale>(() => {
+    return { ...enUS, ...providedLocale } as Locale
+  }, [providedLocale])
+
+  const monthFormatter = (date: Date) => format(date, "MMM", { locale: resolvedLocale })
+  const captionFormatter = (date: Date) =>
+    format(date, "MMMM yyyy", { locale: resolvedLocale })
+  const yearFormatter = (date: Date) => format(date, "yyyy", { locale: resolvedLocale })
 
   return (
     <DayPicker
-      locale={locale}
+      locale={resolvedLocale}
       showOutsideDays={showOutsideDays}
       className={cn(
         "bg-background group/calendar p-3 [--cell-size:--spacing(8)] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent",
@@ -210,7 +216,7 @@ function CalendarDayButton({
       data-range-end={modifiers.range_end}
       data-range-middle={modifiers.range_middle}
       className={cn(
-        "size-(--cell-size) rounded-full p-0 font-medium text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 [&[data-selected=true]]:bg-primary [&[data-selected=true]]:text-primary-foreground [&[data-selected=true]]:ring-0 [&[data-selected=true]]:hover:bg-primary/90",
+        "size-(--cell-size) rounded-full p-0 font-medium text-sm transition hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 [&[data-selected=true]]:rounded-2xl [&[data-selected=true]]:border-2 [&[data-selected=true]]:border-primary [&[data-selected=true]]:bg-[#F3ECFF] [&[data-selected=true]]:text-primary [&[data-selected=true]]:shadow-[0_0_0_2px_rgba(144,122,214,0.25)]",
         defaultClassNames.day_button,
         className
       )}

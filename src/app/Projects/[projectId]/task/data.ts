@@ -4,7 +4,7 @@ export type TaskRecord = {
   id: string
   title: string
   deadline: string
-  assignee: string
+  assignees: string[]
   department: string
   status: TaskStatus
   description: string
@@ -28,8 +28,8 @@ export const DEFAULT_TASKS: TaskRecord[] = [
   {
     id: "task-1",
     title: "Task 1",
-    deadline: "DD/MM/YYYY",
-    assignee: "Username 1",
+    deadline: "07/10/2025",
+    assignees: ["Username 1"],
     department: "Registration",
     status: "submitted",
     description: "Task Detail for Task 1",
@@ -37,8 +37,8 @@ export const DEFAULT_TASKS: TaskRecord[] = [
   {
     id: "task-2",
     title: "Task 2",
-    deadline: "DD/MM/YYYY",
-    assignee: "Username 2",
+    deadline: "15/12/2025",
+    assignees: ["Username 2"],
     department: "Registration",
     status: "in-progress",
     description: "Task Detail for Task 2",
@@ -46,8 +46,8 @@ export const DEFAULT_TASKS: TaskRecord[] = [
   {
     id: "task-3",
     title: "Task 3",
-    deadline: "DD/MM/YYYY",
-    assignee: "Username 3",
+    deadline: "04/04/2024",
+    assignees: ["Username 3"],
     department: "Account",
     status: "blocked",
     description: "Task Detail for Task 3",

@@ -84,7 +84,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
         <div className="space-y-4 text-[#2F2766]">
           <p className="text-base font-semibold">
-            Assigned To : <span className="font-normal">{task.assignee}</span>
+            Assigned To :
+            <span className="font-normal">
+              {task.assignees.length > 0 ? ` ${task.assignees.join(", ")}` : " —"}
+            </span>
           </p>
           <p className="text-base font-semibold">
             Deadline Date : <span className="font-normal">{task.deadline}</span>

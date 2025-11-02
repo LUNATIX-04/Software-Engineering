@@ -18,6 +18,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { GripVertical, Image as ImageIcon, Minus, Plus, X } from "lucide-react"
+import { useNotifications } from "@/components/notifications/Notification"
+import { ERROR_MESSAGES } from "@/constants/error"
 
 const FALLBACK_DEPARTMENTS: string[] = []
 
@@ -303,6 +305,9 @@ export function ProjectForm({
   const [title, setTitle] = useState(normalizedInitial.title)
   const [detail, setDetail] = useState(normalizedInitial.detail)
   const [departments, setDepartments] = useState<string[]>([...normalizedInitial.departments])
+  const [activeDepartmentIndex, setActiveDepartmentIndex] = useState<number>(
+    normalizedInitial.departments.length > 0 ? 0 : -1
+  )
   const [departmentInput, setDepartmentInput] = useState("")
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -335,11 +340,14 @@ export function ProjectForm({
     }
     return window.matchMedia("(min-width: 1024px)").matches
   })
+  const { notify } = useNotifications()
 
   useEffect(() => {
     setTitle(normalizedInitial.title)
     setDetail(normalizedInitial.detail)
     setDepartments([...normalizedInitial.departments])
+    setDepartmentInput("")
+    setActiveDepartmentIndex(normalizedInitial.departments.length > 0 ? 0 : -1)
     setImagePreview(normalizedInitial.imageUrl)
     setImageCropPosition(normalizedInitial.imageCropPosition)
     setSelectedImageName(null)
@@ -579,18 +587,47 @@ export function ProjectForm({
 
   const handleAddDepartment = () => {
     const trimmed = departmentInput.trim()
-    if (!trimmed) return
-    if (departments.some((dept) => dept.toLowerCase() === trimmed.toLowerCase())) {
-      setDepartmentInput("")
+    if (!trimmed) {
+      const { title, description } = ERROR_MESSAGES.emptyDepartment
+      notify({
+        title,
+        description,
+        variant: "destructive",
+      })
       return
     }
-
-    setDepartments((prev) => [...prev, trimmed])
     setDepartmentInput("")
+    setDepartments((prev) => {
+      if (prev.some((dept) => dept.toLowerCase() === trimmed.toLowerCase())) {
+        return prev
+      }
+      const next = [...prev, trimmed]
+      setActiveDepartmentIndex(next.length - 1)
+      return next
+    })
   }
 
   const handleRemoveDepartment = (value: string) => {
-    setDepartments((prev) => prev.filter((dept) => dept !== value))
+    setDepartments((prev) => {
+      const indexToRemove = prev.findIndex((dept) => dept === value)
+      if (indexToRemove === -1) {
+        return prev
+      }
+      const next = prev.filter((dept) => dept !== value)
+      setActiveDepartmentIndex((current) => {
+        if (current === indexToRemove) {
+          if (next.length === 0) {
+            return -1
+          }
+          return Math.min(indexToRemove, next.length - 1)
+        }
+        if (current > indexToRemove) {
+          return current - 1
+        }
+        return current
+      })
+      return next
+    })
   }
 
   const handleDepartmentDragStart = (event: DragEvent<HTMLSpanElement>, index: number) => {
@@ -635,12 +672,34 @@ export function ProjectForm({
       const updated = [...prev]
       const [movedItem] = updated.splice(fromIndex, 1)
       updated.splice(index, 0, movedItem)
+      setActiveDepartmentIndex((current) => {
+        if (current === fromIndex) {
+          return index
+        }
+        if (fromIndex < index) {
+          if (current > fromIndex && current <= index) {
+            return current - 1
+          }
+        } else if (fromIndex > index) {
+          if (current >= index && current < fromIndex) {
+            return current + 1
+          }
+        }
+        return current
+      })
       return updated
     })
 
     setDragOverIndex(null)
     setDraggingIndex(null)
     draggedDepartmentIndexRef.current = null
+  }
+
+  const handleDepartmentChipKeyDown = (event: KeyboardEvent<HTMLSpanElement>, index: number) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault()
+      setActiveDepartmentIndex(index)
+    }
   }
 
   const handleDepartmentDragEnd = () => {
@@ -964,11 +1023,14 @@ export function ProjectForm({
                 {departments.map((dept, index) => {
                   const isDragOver = dragOverIndex === index
                   const isDragging = draggingIndex === index
+                  const isActive = index === activeDepartmentIndex
+
                   const chipClassName = [
                     departmentChipClass,
-                    isDragOver
-                      ? "border-primary bg-primary/10"
+                    isActive
+                      ? "border-primary bg-[#E9E0FF] text-[#2F2766] shadow-[0_6px_0_rgba(144,122,214,0.22)]"
                       : "",
+                    isDragOver ? "border-primary bg-primary/10" : "",
                     isDragging ? "cursor-grabbing opacity-80" : "",
                   ]
                     .filter(Boolean)
@@ -979,19 +1041,32 @@ export function ProjectForm({
                       key={dept}
                       className={chipClassName}
                       draggable
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={isActive}
                       aria-grabbed={isDragging}
+                      onFocus={() => setActiveDepartmentIndex(index)}
+                      onClick={() => setActiveDepartmentIndex(index)}
+                      onKeyDown={(event) => handleDepartmentChipKeyDown(event, index)}
                       onDragStart={(event) => handleDepartmentDragStart(event, index)}
                       onDragOver={(event) => handleDepartmentDragOver(event, index)}
                       onDrop={(event) => handleDepartmentDrop(event, index)}
                       onDragEnd={handleDepartmentDragEnd}
+                      data-active={isActive || undefined}
                     >
                       <span className="inline-flex items-center gap-2">
-                        <GripVertical className="size-4 text-primary/60" aria-hidden />
+                        <GripVertical
+                          className={`size-4 ${isActive ? "text-primary" : "text-primary/60"}`}
+                          aria-hidden
+                        />
                         <span>{dept}</span>
                       </span>
                       <button
                         type="button"
-                        onClick={() => handleRemoveDepartment(dept)}
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          handleRemoveDepartment(dept)
+                        }}
                         className={`${chipActionButtonClass} ml-auto`}
                         aria-label={`Remove ${dept}`}
                         data-cy="project-department-remove"
@@ -1004,12 +1079,19 @@ export function ProjectForm({
                 })}
               </div>
               <div className="relative">
-                <span className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-primary/60">
+                <button
+                  type="button"
+                  onClick={handleAddDepartment}
+                  aria-label="Add department"
+                  className="absolute left-5 top-1/2 -translate-y-1/2 text-primary/60 transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                >
                   <Plus className="size-5" />
-                </span>
+                </button>
                 <Input
                   value={departmentInput}
-                  onChange={(event) => setDepartmentInput(event.target.value)}
+                  onChange={(event) => {
+                    setDepartmentInput(event.target.value)
+                  }}
                   onKeyDown={handleDepartmentKeyDown}
                   placeholder="Add"
                   className="h-14 rounded-[2rem] border-2 border-primary/40 bg-white/80 pl-12 pr-4 text-base font-medium text-foreground placeholder:text-primary/60"

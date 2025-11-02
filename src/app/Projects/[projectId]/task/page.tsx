@@ -11,9 +11,7 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
-  AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
@@ -45,6 +43,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const [currentPage, setCurrentPage] = useState(1)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [pendingDeleteTask, setPendingDeleteTask] = useState<TaskRecord | null>(null)
+  const [deletingTask, setDeletingTask] = useState(false)
   const pageSize = 6
 
   const filteredTasks = useMemo(() => {
@@ -54,7 +53,9 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
         departmentFilter === "All Departments" || task.department === departmentFilter
       if (!matchesDepartment) return false
       if (!normalizedSearch) return true
-      const haystack = [task.title, task.assignee, task.department].join(" ").toLowerCase()
+      const haystack = [task.title, task.department, ...task.assignees]
+        .join(" ")
+        .toLowerCase()
       return haystack.includes(normalizedSearch)
     })
   }, [departmentFilter, search, tasks])
@@ -80,18 +81,28 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   }, [filteredTasks, currentPage, pageSize])
 
   const handleEditTask = (taskId: string) => {
-    handleOpenTask(taskId)
+    router.push(`/projects/${projectId}/task/${taskId}/edit`)
   }
 
   const handleDeleteTaskRequest = (task: TaskRecord) => {
     setPendingDeleteTask(task)
+    setDeletingTask(false)
     setDeleteDialogOpen(true)
   }
 
+  const closeDeleteDialog = React.useCallback(() => {
+    setDeleteDialogOpen(false)
+    setPendingDeleteTask(null)
+  }, [])
+
   const handleDialogOpenChange = (open: boolean) => {
-    setDeleteDialogOpen(open)
-    if (!open) {
-      setPendingDeleteTask(null)
+    if (deletingTask) {
+      return
+    }
+    if (open) {
+      setDeleteDialogOpen(true)
+    } else {
+      closeDeleteDialog()
     }
   }
 
@@ -99,9 +110,21 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     if (!pendingDeleteTask) {
       return
     }
-    setTasks((prev) => prev.filter((task) => task.id !== pendingDeleteTask.id))
-    setPendingDeleteTask(null)
-    setDeleteDialogOpen(false)
+    const taskToDelete = pendingDeleteTask
+    try {
+      setDeletingTask(true)
+      setTasks((prev) => prev.filter((task) => task.id !== taskToDelete.id))
+      closeDeleteDialog()
+    } finally {
+      setDeletingTask(false)
+    }
+  }
+
+  const handleCancelDelete = () => {
+    if (deletingTask) {
+      return
+    }
+    closeDeleteDialog()
   }
 
   const handleOpenTask = (taskId: string) => {
@@ -205,7 +228,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                   </span>
                 </div>
                 <p className="text-sm font-medium text-[#2F2766]">
-                  Assigned to : {task.assignee}
+                  Assigned to : {task.assignees.length > 0 ? task.assignees.join(", ") : "—"}
                 </p>
               </div>
               <div className="flex items-center gap-4 self-start sm:self-auto">
@@ -222,6 +245,10 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                       size="icon"
                       className="size-10 rounded-full border border-transparent text-[#2F2766] hover:border-primary/40"
                       aria-label={`Task ${task.title} actions`}
+                      data-task-menu="true"
+                      onClick={(event) => event.stopPropagation()}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onKeyDown={(event) => event.stopPropagation()}
                     >
                       <MoreHorizontal className="size-5" />
                     </Button>
@@ -229,15 +256,27 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                   <DropdownMenuContent
                     align="end"
                     className="w-40 rounded-3xl border border-primary/40 bg-[#4A3F86] px-3 py-2 text-sm font-semibold text-white shadow-[0_10px_0_rgba(74,63,134,0.3)]"
+                    data-task-menu="true"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => event.stopPropagation()}
                   >
                     <DropdownMenuItem
-                      onSelect={() => handleEditTask(task.id)}
+                      data-task-menu="true"
+                      onSelect={(event) => {
+                        event.stopPropagation()
+                        handleEditTask(task.id)
+                      }}
                       className="rounded-2xl px-3 py-2 text-left text-sm font-semibold text-white focus:bg-white/10 focus:text-white"
                     >
                       Edit Task
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onSelect={() => handleDeleteTaskRequest(task)}
+                      data-task-menu="true"
+                      onSelect={(event) => {
+                        event.stopPropagation()
+                        handleDeleteTaskRequest(task)
+                      }}
                       className="rounded-2xl px-3 py-2 text-left text-sm font-semibold text-destructive focus:bg-destructive/10 focus:text-destructive"
                     >
                       Delete Task
@@ -284,24 +323,25 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       </section>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={handleDialogOpenChange}>
-        <AlertDialogContent className="max-w-md rounded-[2.5rem] border-2 border-primary/40 bg-white/95 px-10 py-8 text-center shadow-[0_18px_0_rgba(74,63,134,0.2)]">
-          <AlertDialogHeader className="gap-3">
-            <AlertDialogTitle className="text-xl font-semibold text-[#2F2766]">
-              Are you sure you want to delete this task?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-[#2F2766]/80">
-              This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-6 flex-col gap-3 sm:flex-row sm:justify-center">
-            <AlertDialogCancel className="h-11 min-w-[6rem] rounded-full border-2 border-primary/40 bg-[#E6D7FF] px-6 text-base font-semibold text-primary shadow-[0_6px_0_rgba(144,122,214,0.2)] transition hover:border-primary hover:text-primary">
+        <AlertDialogContent className="bg-background border-2 border-primary/30 rounded-[2rem] px-8 py-10 text-center shadow-xl">
+          <AlertDialogTitle className="text-2xl font-semibold text-foreground">
+            Are you sure? <br /> You want to delete this task? <br />
+            <br />" {pendingDeleteTask?.title ?? ""} "
+          </AlertDialogTitle>
+          <AlertDialogFooter className="mt-8 flex w-full flex-row justify-between gap-6 sm:!justify-between">
+            <AlertDialogCancel
+              className="rounded-full bg-secondary border-none px-8 py-3 text-base font-semibold text-secondary-foreground shadow-none transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              onClick={handleCancelDelete}
+              disabled={deletingTask}
+            >
               No
             </AlertDialogCancel>
             <AlertDialogAction
+              className="rounded-full bg-primary px-8 py-3 text-base font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               onClick={handleConfirmDelete}
-              className="h-11 min-w-[6rem] rounded-full border-2 border-[#3F3478] bg-[#3F3478] px-6 text-base font-semibold text-white shadow-[0_6px_0_rgba(74,63,134,0.35)] transition hover:bg-[#2F2766]"
+              disabled={deletingTask}
             >
-              Yes
+              {deletingTask ? "Deleting…" : "Yes"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -63,7 +63,7 @@ type NotificationViewportProps = {
 
 function NotificationViewport({ notifications, onDismiss }: NotificationViewportProps) {
   return (
-    <div className="pointer-events-none fixed left-1/2 top-[clamp(2rem,5vh,3rem)] z-[70] flex w-full max-w-md -translate-x-1/2 flex-col gap-3 px-4">
+    <div className="pointer-events-none fixed right-[clamp(0.75rem,1vw,1.75rem)] top-[clamp(1.5rem,5vh,3rem)] z-[70] flex w-full max-w-sm flex-col items-end gap-3 px-4 sm:px-0">
       {notifications.map((notification) => (
         <div
           key={notification.id}
