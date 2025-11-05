@@ -121,7 +121,7 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
   if (loading) {
     return (
       <div className="mx-auto w-full max-w-4xl px-6 py-12 text-center text-foreground/70">
-        Loading project details…
+        Loading project details
       </div>
     )
   }
@@ -141,7 +141,7 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
   return (
     <ProjectForm
       heading="Edit Project"
-      submitLabel={submitting ? "Saving…" : "Save"}
+      submitLabel={submitting ? "Saving" : "Save"}
       initialValues={initialValues}
       departmentChipVariant={profile?.departmentLayout ?? "fullWidth"}
       onSubmit={handleSubmit}

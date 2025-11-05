@@ -15,6 +15,10 @@ git reset --hard origin/E2E_Test
 
 bunx cypress open
 
+## ตอนแรกตั้ง prisma
+
+bunx prisma generate
+
 ## วิธี run เปิด web
 
 bun dev

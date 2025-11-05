@@ -664,7 +664,7 @@ function AppShellInner({ children }: AppShellProps) {
   }
 
   const renderProjectActionsMenu = () => {
-    if (!activeProjectId) {
+    if (!activeProjectId || isProjectEditPage) {
       return null
     }
     return (
@@ -895,7 +895,7 @@ function AppShellInner({ children }: AppShellProps) {
         : null
 
   const mainClassName = cn(
-    "flex-1 bg-background",
+    "flex-1 bg-background flex flex-col",
     headerSpacingClass,
     headerVariant === "homepage" && "flex items-center justify-center",
     isTraditionalAuth && [

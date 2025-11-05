@@ -1,12 +1,19 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Search } from "lucide-react"
+import { Check, Search } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { CreateProjectCard, ProjectCard } from "@/components/projects"
 import { deleteProject, fetchProjects, type ProjectRecord } from "@/utils/projects/api"
+import { cn } from "@/lib/utils"
 
 export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState("")
@@ -17,7 +24,8 @@ export default function ProjectsPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(6)
   const [pageInput, setPageInput] = useState("1")
-  const [pageInputFocused, setPageInputFocused] = useState(false)
+  const [pageHintVisible, setPageHintVisible] = useState(false)
+  const paginationControlsRef = useRef<HTMLDivElement | null>(null)
   const router = useRouter()
 
   const loadProjects = useCallback(async () => {
@@ -74,6 +82,35 @@ export default function ProjectsPage() {
     return filteredProjects.slice(startIndex, startIndex + pageSize)
   }, [filteredProjects, page, pageSize])
 
+  useEffect(() => {
+    if (!pageHintVisible) {
+      return
+    }
+
+    const handlePointerDown = (event: Event) => {
+      if (!paginationControlsRef.current?.contains(event.target as Node)) {
+        setPageHintVisible(false)
+      }
+    }
+
+    const handleFocusIn = (event: FocusEvent) => {
+      if (!paginationControlsRef.current?.contains(event.target as Node)) {
+        setPageHintVisible(false)
+      }
+    }
+
+    const pointerEventName =
+      typeof window !== "undefined" && "PointerEvent" in window ? "pointerdown" : "mousedown"
+
+    document.addEventListener(pointerEventName, handlePointerDown as EventListener)
+    document.addEventListener("focusin", handleFocusIn)
+
+    return () => {
+      document.removeEventListener(pointerEventName, handlePointerDown as EventListener)
+      document.removeEventListener("focusin", handleFocusIn)
+    }
+  }, [pageHintVisible])
+
   const handleDelete = useCallback(
     async (projectId: string) => {
       setDeleteError(null)
@@ -123,9 +160,16 @@ export default function ProjectsPage() {
     setPage(parsed)
   }, [page, pageInput, totalPages])
 
+  const pageSizeOptions = [3, 6, 9, 12]
+  const containerMinHeight = "calc(100dvh - 30rem)"
+  const cardListMaxHeight = "calc(100dvh - 18rem)"
+
   return (
-    <div className="max-w-[min(90rem,90vw)] w-full mx-auto px-[clamp(1.5rem,2vw,4rem)] pb-[clamp(2rem,5vh,4rem)]">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div
+      className="mx-auto flex w-full max-w-[min(92rem,92vw)] flex-1 flex-col gap-6 overflow-hidden px-[clamp(1.5rem,2vw,4rem)]"
+      style={{ minHeight: containerMinHeight }}
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full max-w-xl sm:max-w-lg">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-primary/60" />
           <input
@@ -138,23 +182,47 @@ export default function ProjectsPage() {
           />
         </div>
         <div className="flex items-center justify-end gap-3 sm:w-auto">
-          <label className="flex items-center gap-2 text-sm font-medium text-primary">
-            Per page
-            <select
-              value={pageSize}
-              onChange={(event) => {
-                setPageSize(Number(event.target.value))
-                setPage(1)
-              }}
-              className="rounded-full border-2 border-primary/40 bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none"
-            >
-              {[3, 6, 9, 12].map((sizeOption) => (
-                <option key={sizeOption} value={sizeOption}>
-                  {sizeOption}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="flex items-center gap-2 text-sm font-medium text-primary">
+            <span>Per page</span>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="rounded-full border-2 border-primary/40 bg-background px-4 py-2 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/10"
+                >
+                  {pageSize}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-28 rounded-2xl border border-primary/30 bg-background/95 p-2 text-sm text-primary shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
+              >
+                {pageSizeOptions.map((sizeOption) => {
+                  const isActive = sizeOption === pageSize
+                  return (
+                    <DropdownMenuItem
+                      key={sizeOption}
+                      className={cn(
+                        "flex items-center justify-between rounded-xl px-3 py-2 font-semibold transition hover:bg-primary/10",
+                        isActive && "bg-primary/10"
+                      )}
+                      onSelect={() => {
+                        if (isActive) {
+                          return
+                        }
+                        setPageSize(sizeOption)
+                        setPage(1)
+                      }}
+                    >
+                      <span>{sizeOption}</span>
+                      {isActive ? <Check className="size-4" /> : null}
+                    </DropdownMenuItem>
+                  )
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <Button
             type="button"
             variant="outline"
@@ -169,45 +237,60 @@ export default function ProjectsPage() {
         </div>
       </div>
 
-      <div className="space-y-6">
-        {projectsError ? (
-          <div className="rounded-2xl border border-destructive/50 bg-destructive/10 px-6 py-5 text-destructive">
-            {projectsError}
-          </div>
-        ) : null}
+      <div className="flex flex-1 min-h-0 flex-col">
+        <div
+          className="flex-1 space-y-6 overflow-y-auto pr-1"
+          style={{ maxHeight: cardListMaxHeight }}
+        >
+          {projectsError ? (
+            <div className="rounded-2xl border border-destructive/50 bg-destructive/10 px-6 py-5 text-destructive">
+              {projectsError}
+            </div>
+          ) : null}
 
-        {projectsLoading ? (
-          <div className="rounded-2xl border border-primary/20 bg-primary/5 px-6 py-5 text-sm text-primary">
-            Loading projects…
-          </div>
-        ) : null}
+          {projectsLoading ? (
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 px-6 py-5 text-sm text-primary">
+              Loading projects…
+            </div>
+          ) : null}
 
-        {deleteError ? (
-          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-6 py-4 text-sm text-destructive">
-            {deleteError}
-          </div>
-        ) : null}
+          {deleteError ? (
+            <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-6 py-4 text-sm text-destructive">
+              {deleteError}
+            </div>
+          ) : null}
 
-        {paginatedProjects.map((project, index) => (
-          <ProjectCard
-            key={project.id}
-            title={project.title}
-            createdAt={formatCreatedAt(project.createdAt)}
-            description={project.description ?? ""}
-            imageSrc={project.imageUrl ?? undefined}
-            onOpenProject={() => router.push(`/projects/${project.id}`)}
-            onEditProject={() => router.push(`/projects/${project.id}/edit`)}
-            onDelete={() => handleDelete(project.id)}
-            dataCyIndex={index}
-          />
-        ))}
+          {paginatedProjects.map((project, index) => (
+            <ProjectCard
+              key={project.id}
+              title={project.title}
+              createdAt={formatCreatedAt(project.createdAt)}
+              description={project.description ?? ""}
+              imageSrc={project.imageUrl ?? undefined}
+              onOpenProject={() => router.push(`/projects/${project.id}`)}
+              onEditProject={() => router.push(`/projects/${project.id}/edit`)}
+              onDelete={() => handleDelete(project.id)}
+              dataCyIndex={index}
+            />
+          ))}
 
-        {!projectsLoading && filteredProjects.length === 0 ? (
-          <CreateProjectCard onClick={() => router.push("/projects/create")} />
-        ) : null}
+          {!projectsLoading && filteredProjects.length === 0 ? (
+            <CreateProjectCard onClick={() => router.push("/projects/create")} />
+          ) : null}
+        </div>
 
         {!projectsLoading && filteredProjects.length > 0 ? (
-          <div className="flex items-center justify-center gap-4 pt-4">
+          <div
+            ref={paginationControlsRef}
+            className="mt-auto mb-4 flex items-center justify-center gap-4 pt-4"
+            onFocus={() => setPageHintVisible(true)}
+            onBlur={(event) => {
+              const nextTarget = event.relatedTarget as HTMLElement | null
+              if (!nextTarget || !paginationControlsRef.current?.contains(nextTarget)) {
+                setPageHintVisible(false)
+              }
+            }}
+          >
             <Button
               type="button"
               variant="ghost"
@@ -218,7 +301,7 @@ export default function ProjectsPage() {
               &#9664;
             </Button>
             <div className="relative flex flex-col items-center gap-1">
-              {pageInputFocused ? (
+              {pageHintVisible ? (
                 <span className="absolute -top- whitespace-nowrap rounded-full border border-primary/30 bg-white px-3 py-1 text-xs font-medium text-primary shadow-sm">
                   {pageHint}
                 </span>
@@ -231,9 +314,8 @@ export default function ProjectsPage() {
                 type="text"
                 inputMode="numeric"
                 value={pageInput}
-                onFocus={() => setPageInputFocused(true)}
+                onFocus={() => setPageHintVisible(true)}
                 onBlur={() => {
-                  setPageInputFocused(false)
                   commitPageInput()
                 }}
                 onChange={(event) => {
