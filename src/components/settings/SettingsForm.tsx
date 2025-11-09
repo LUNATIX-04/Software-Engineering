@@ -2,11 +2,8 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react"
 
-import {
-  DepartmentLayoutOption,
-  ThemeOption,
-  usePreferences,
-} from "@/components/layout/AppShell"
+import { usePreferences } from "@/contexts/preferences"
+import type { DepartmentLayoutOption, ThemeOption } from "@/types/preferences"
 import {
   Select,
   SelectContent,
@@ -155,9 +152,9 @@ export function SettingsForm({ layout = "page", onSaved }: SettingsFormProps) {
     <form onSubmit={handleSubmit} className="space-y-10">
       <section className="space-y-3">
         <header>
-          <h2 className="text-xl font-semibold text-foreground">Project Department</h2>
+          <h2 className="text-xl font-semibold text-foreground">Chips UI</h2>
           <p className="text-sm text-foreground/70">
-            Pick the chip style you want to see by default when you create or edit projects.
+            Pick the chip style you want to see by default.
           </p>
         </header>
         <Select

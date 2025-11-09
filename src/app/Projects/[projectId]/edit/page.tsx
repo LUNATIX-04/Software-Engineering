@@ -3,9 +3,11 @@
 import * as React from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
+import { ArrowLeft } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import { ProjectForm, type ProjectFormValues } from "@/components/projects/ProjectForm"
-import { usePreferences } from "@/components/layout/AppShell"
+import { usePreferences } from "@/contexts/preferences"
 import { fetchProjectById, updateProject, type ProjectRecord } from "@/utils/projects/api"
 import { uploadProjectImage } from "@/utils/projects/media"
 
@@ -18,7 +20,9 @@ type EditProjectPageProps = {
 export default function EditProjectPage({ params }: EditProjectPageProps) {
   const { projectId } = React.use(params)
   const router = useRouter()
+  const handleNavigateBack = useCallback(() => router.push("/projects"), [router])
   const { profile } = usePreferences()
+  const preferredDepartmentLayout = profile?.departmentLayout ?? "fullWidth"
   const [project, setProject] = useState<ProjectRecord | null>(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -118,35 +122,54 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
     [project?.imageUrl, projectId, router]
   )
 
-  if (loading) {
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="mx-auto w-full max-w-4xl px-6 py-12 text-center text-foreground/70">
+          Loading project details…
+        </div>
+      )
+    }
+    if (loadError) {
+      return (
+        <div className="mx-auto w-full max-w-4xl px-6 py-12 text-center text-destructive">
+          {loadError}
+        </div>
+      )
+    }
+    if (!project || !initialValues) {
+      return null
+    }
     return (
-      <div className="mx-auto w-full max-w-4xl px-6 py-12 text-center text-foreground/70">
-        Loading project details
-      </div>
+      <ProjectForm
+        heading="Edit Project"
+        submitLabel={submitting ? "Saving" : "Save"}
+        initialValues={initialValues}
+        departmentChipVariant={preferredDepartmentLayout}
+        onSubmit={handleSubmit}
+        submitting={submitting}
+      />
     )
-  }
-
-  if (loadError) {
-    return (
-      <div className="mx-auto w-full max-w-4xl px-6 py-12 text-center text-destructive">
-        {loadError}
-      </div>
-    )
-  }
-
-  if (!project || !initialValues) {
-    return null
   }
 
   return (
-    <ProjectForm
-      heading="Edit Project"
-      submitLabel={submitting ? "Saving" : "Save"}
-      initialValues={initialValues}
-      departmentChipVariant={profile?.departmentLayout ?? "fullWidth"}
-      onSubmit={handleSubmit}
-      submitting={submitting}
-      submitError={submitError}
-    />
+    <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
+      <div className="flex w-full max-w-7xl flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
+        <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
+          <Button
+            type="button"
+            onClick={handleNavigateBack}
+            variant="ghost"
+            className="inline-flex size-12 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary focus-visible:ring-0"
+            aria-label="Back to projects"
+          >
+            <ArrowLeft className="size-6" aria-hidden="true" />
+          </Button>
+        </div>
+        <div className="flex-1 lg:mt-10">
+          {renderContent()}
+        </div>
+      </div>
+    </div>
   )
 }

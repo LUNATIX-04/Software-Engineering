@@ -1,13 +1,14 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import type { Session } from "@supabase/supabase-js"
 
 import Image from "next/image"
+import { Eye, EyeOff } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -51,12 +52,26 @@ const HERO_HIGHLIGHTS = [
 
 export default function TraditionalAuthPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { notify } = useNotifications()
   const supabase = useMemo(() => getSupabaseBrowserClient(), [])
   const { setHeaderVariant, setHeaderSpacing } = useAppShellLayout()
   const [mode, setMode] = useState<"signIn" | "signUp">("signIn")
   const [pending, setPending] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
+  const [passwordVisible, setPasswordVisible] = useState(false)
+  const modeInitializedRef = useRef(false)
+
+  const redirectTarget = useMemo(() => {
+    const target = searchParams.get("redirectTo")
+    if (!target) {
+      return null
+    }
+    if (target.startsWith("/")) {
+      return target
+    }
+    return `/${target.replace(/^\/?/, "")}`
+  }, [searchParams])
 
   useEffect(() => {
     setHeaderVariant("minimal")
@@ -66,6 +81,19 @@ export default function TraditionalAuthPage() {
       setHeaderSpacing("auto")
     }
   }, [setHeaderVariant, setHeaderSpacing])
+
+  useEffect(() => {
+    if (modeInitializedRef.current) {
+      return
+    }
+    const modeParam = searchParams.get("mode")
+    if (modeParam === "signUp" || modeParam === "signIn") {
+      setMode(modeParam)
+      modeInitializedRef.current = true
+    } else {
+      modeInitializedRef.current = true
+    }
+  }, [searchParams])
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -77,6 +105,10 @@ export default function TraditionalAuthPage() {
   })
 
   const isSignUp = mode === "signUp"
+
+  useEffect(() => {
+    setPasswordVisible(false)
+  }, [mode])
 
   useEffect(() => {
     if (!isSignUp) {
@@ -173,7 +205,7 @@ export default function TraditionalAuthPage() {
             description: "Welcome to ASAP! Redirecting you to your workspace.",
             variant: "success",
           })
-          router.push("/projects")
+          router.push(redirectTarget ?? "/projects")
         }
         return
       }
@@ -183,7 +215,7 @@ export default function TraditionalAuthPage() {
         description: "Let’s build something awesome together.",
         variant: "success",
       })
-      router.push("/projects")
+      router.push(redirectTarget ?? "/projects")
     } catch (error) {
       const message =
         error instanceof Error && error.message.trim().length > 0
@@ -195,11 +227,11 @@ export default function TraditionalAuthPage() {
     }
   }
 
-  return (
-    <div className="relative flex items-stretch justify-center overflow-hidden px-[clamp(1.5rem,6vw,4rem)] pb-[clamp(2rem,5vh,5rem)] pt-[clamp(4.5rem,12vh,6.5rem)]">
+  return ( //relative pb-[clamp(2rem,5vh,5rem)] pt-[clamp(4.5rem,12vh,6.5rem)]
+    <div className="relative flex justify-center asap-scroll w-full min-h-[calc(100vh-6.3rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3 w-full overflow-y-auto px-[clamp(1.5rem,5vw,4rem)] pt-6 mt-[3.25rem]">
       <div className="absolute right-[8%] top-10 size-48 rounded-full bg-white/20 blur-3xl" />
       <div className="absolute left-[12%] bottom-10 size-56 rounded-[45%] bg-accent/30 blur-3xl" />
-      <div className="relative z-10 grid w-full max-w-6xl items-start gap-[clamp(2rem,6vw,4rem)] lg:grid-cols-[1.1fr_1fr]">
+      <div className="relative z-10 grid w-full max-w-6xl gap-x-[clamp(2rem,6vw,4rem)] lg:grid-cols-[1.1fr_1fr]">
         <div className="flex flex-col justify-center gap-[clamp(1.5rem,4vh,2.5rem)] text-primary-foreground">
           <div className="space-y-6">
             <div className="space-y-3">
@@ -257,28 +289,28 @@ export default function TraditionalAuthPage() {
                   />
                 </div>}
               </div>
-              <div className="grid grid-cols-2 gap-2 rounded-full bg-muted p-1 text-xs font-semibold text-muted-foreground">
+              <div className="inline-flex grid grid-cols-2 gap-2 rounded-full bg-muted p-1 text-xs font-semibold text-muted-foreground">
                 <button
                   type="button"
                   onClick={() => setMode("signIn")}
-                  className={`rounded-full px-3 py-1 transition ${
+                  className={`rounded-full px-2 py-1 transition ${
                     !isSignUp ? "bg-button-background text-button-foreground shadow" : ""
                   }`}
                   disabled={pending && !isSignUp}
                   data-cy="auth-mode-sign-in"
                 >
-                  Sign<br/>In
+                  Sign In
                 </button>
                 <button
                   type="button"
                   onClick={() => setMode("signUp")}
-                  className={`rounded-full px-3 py-1 transition ${
+                  className={`rounded-full px-2 py-1 transition ${
                     isSignUp ? "bg-button-background text-button-foreground shadow" : ""
                   }`}
                   disabled={pending && isSignUp}
                   data-cy="auth-mode-sign-up"
                 >
-                  Sign<br/>Up
+                  Sign Up
                 </button>
               </div>
             </div>
@@ -352,15 +384,26 @@ export default function TraditionalAuthPage() {
                           Password
                         </FormLabel>
                         <FormControl>
-                          <Input
-                            {...field}
-                            type="password"
-                            autoComplete={isSignUp ? "new-password" : "current-password"}
-                            placeholder="At least 6 characters"
-                            disabled={pending}
-                            className="h-12 rounded-2xl border border-primary/20 bg-white/80 text-base"
-                            data-cy="auth-password-input"
-                          />
+                          <div className="relative">
+                            <Input
+                              {...field}
+                              type={passwordVisible ? "text" : "password"}
+                              autoComplete={isSignUp ? "new-password" : "current-password"}
+                              placeholder="At least 6 characters"
+                              disabled={pending}
+                              className="h-12 rounded-2xl border border-primary/20 bg-white/80 pr-12 text-base"
+                              data-cy="auth-password-input"
+                            />
+                            <button
+                              type="button"
+                              aria-label={passwordVisible ? "Hide password" : "Show password"}
+                              onClick={() => setPasswordVisible((prev) => !prev)}
+                              className="absolute inset-y-0 right-3 flex items-center text-muted-foreground/80 transition hover:text-muted-foreground disabled:opacity-50"
+                              disabled={pending}
+                            >
+                              {passwordVisible ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                            </button>
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -433,8 +476,12 @@ export default function TraditionalAuthPage() {
               </Button>
             </div>
           </div>
-        </div>
+        </div> 
+        <div aria-hidden className="h-8" />
       </div>
     </div>
   )
 }
+/*
+ 
+*/

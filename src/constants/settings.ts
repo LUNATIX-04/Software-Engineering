@@ -1,9 +1,6 @@
 "use client"
 
-import type {
-  DepartmentLayoutOption,
-  ThemeOption,
-} from "@/components/layout/AppShell"
+import type { DepartmentLayoutOption, ThemeOption } from "@/types/preferences"
 
 export const SETTINGS_THEME_LABELS: Record<ThemeOption, string> = {
   standard: "Standard",

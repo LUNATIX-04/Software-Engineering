@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils"
 
 export type NotificationVariant = "success" | "info" | "warning" | "destructive"
 
+export const MAX_NOTIFICATIONS = 3
+
 export type NotificationOptions = {
   title: string
   description?: string
@@ -150,7 +152,27 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         status: "enter",
       }
 
-      setNotifications((prev) => [record, ...prev])
+      setNotifications((prev) => {
+        const stablePrev = prev.filter((item) => item.status !== "exit")
+        const next = [record, ...stablePrev]
+        if (next.length <= MAX_NOTIFICATIONS) {
+          return next
+        }
+        const trimmed = next.slice(0, MAX_NOTIFICATIONS)
+        next.slice(MAX_NOTIFICATIONS).forEach((item) => {
+          const autoTimer = autoDismissTimers.current[item.id]
+          if (autoTimer) {
+            clearTimeout(autoTimer)
+            delete autoDismissTimers.current[item.id]
+          }
+          const exitTimer = exitTimers.current[item.id]
+          if (exitTimer) {
+            clearTimeout(exitTimer)
+            delete exitTimers.current[item.id]
+          }
+        })
+        return trimmed
+      })
 
       requestAnimationFrame(() => {
         setNotifications((prev) =>

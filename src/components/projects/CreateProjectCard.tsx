@@ -6,7 +6,7 @@ import { Plus } from "lucide-react"
 
 import { projectCardSizing } from "./cardSizing"
 
-const baseCardClass = "create-card w-full rounded-3xl flex items-center select-none"
+const baseCardClass = "create-card w-full rounded-3xl flex items-center select-none shrink-0"
 
 export type CreateProjectCardProps = {
   label?: string

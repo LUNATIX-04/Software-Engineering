@@ -20,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${fredoka.className} antialiased`}>
+      <body className={`${fredoka.className} antialiased overflow-hidden`}>
         <AppShell>{children}</AppShell>
       </body>
     </html>

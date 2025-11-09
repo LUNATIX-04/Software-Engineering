@@ -3,6 +3,7 @@ import { z } from "zod"
 import bcrypt from "bcrypt"
 
 import { prisma } from "@/lib/prisma"
+import { AUTH_ERROR_MESSAGES } from "@/constants/authErrors"
 import { createClient } from "@/utils/supabase/server"
 
 const loginSchema = z.object({
@@ -23,26 +24,28 @@ export async function POST(request: NextRequest) {
     }
     payload = parsed.data
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 })
+    return NextResponse.json({ error: AUTH_ERROR_MESSAGES.invalidJsonBody }, { status: 400 })
   }
 
   const { email, password } = payload
 
-  const profile = await prisma.profile.findUnique({
-    where: { email },
+  const profile = await prisma.profile.findFirst({
+    where: {
+      email: {
+        equals: email,
+        mode: "insensitive",
+      },
+    },
     select: { id: true, passwordHash: true, fullName: true },
   })
 
   if (!profile?.passwordHash) {
-    return NextResponse.json(
-      { error: "No password is set for this account. Please use Google sign-in instead." },
-      { status: 400 }
-    )
+    return NextResponse.json({ error: AUTH_ERROR_MESSAGES.noPasswordConfigured }, { status: 400 })
   }
 
   const passwordMatches = await bcrypt.compare(password, profile.passwordHash)
   if (!passwordMatches) {
-    return NextResponse.json({ error: "Incorrect email or password." }, { status: 401 })
+    return NextResponse.json({ error: AUTH_ERROR_MESSAGES.incorrectCredentials }, { status: 401 })
   }
 
   const { data, error } = await supabase.auth.signInWithPassword({

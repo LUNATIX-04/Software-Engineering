@@ -14,12 +14,13 @@ import {
 } from "react"
 
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { GripVertical, Image as ImageIcon, Minus, Plus, X } from "lucide-react"
 import { useNotifications } from "@/components/notifications/Notification"
 import { ERROR_MESSAGES } from "@/constants/error"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import { TOOLTIP_DELAY_DURATION_MS } from "@/constants/ui"
 
 const FALLBACK_DEPARTMENTS: string[] = []
 
@@ -254,6 +255,7 @@ export type ProjectFormValues = {
   imageFile: File | null
   imagePreviewUrl: string | null
   imageCropPosition: ImageCropSelection | null
+  imageRemoved: boolean
 }
 
 export type ProjectFormInitialValues = {
@@ -273,7 +275,6 @@ export type ProjectFormProps = {
   defaultDepartments?: string[]
   departmentChipVariant?: DepartmentChipVariant
   submitting?: boolean
-  submitError?: string | null
 }
 
 export function ProjectForm({
@@ -285,7 +286,6 @@ export function ProjectForm({
   defaultDepartments = FALLBACK_DEPARTMENTS,
   departmentChipVariant = "fullWidth",
   submitting,
-  submitError,
 }: ProjectFormProps) {
   const normalizedInitial = useMemo(() => {
     return {
@@ -319,8 +319,10 @@ export function ProjectForm({
   )
   const [selectedImageName, setSelectedImageName] = useState<string | null>(null)
   const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imageRemoved, setImageRemoved] = useState(false)
   const objectUrlRef = useRef<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const departmentInputRef = useRef<HTMLInputElement | null>(null)
   const previewCardRef = useRef<HTMLDivElement | null>(null)
   const draggedDepartmentIndexRef = useRef<number | null>(null)
   const cropDragStateRef = useRef<{
@@ -333,14 +335,12 @@ export function ProjectForm({
   const [zoomInputValue, setZoomInputValue] = useState(DEFAULT_ZOOM.toFixed(2))
   const [internalSubmitting, setInternalSubmitting] = useState(false)
   const [isDraggingCrop, setIsDraggingCrop] = useState(false)
-  const [isImageDialogOpen, setIsImageDialogOpen] = useState(false)
-  const [isDesktopLayout, setIsDesktopLayout] = useState(() => {
-    if (typeof window === "undefined") {
-      return false
-    }
-    return window.matchMedia("(min-width: 1024px)").matches
-  })
   const { notify } = useNotifications()
+
+  const openImageFilePicker = () => {
+    fileInputRef.current?.click()
+  }
+
 
   useEffect(() => {
     setTitle(normalizedInitial.title)
@@ -352,6 +352,7 @@ export function ProjectForm({
     setImageCropPosition(normalizedInitial.imageCropPosition)
     setSelectedImageName(null)
     setImageFile(null)
+    setImageRemoved(false)
     setImageZoom(DEFAULT_ZOOM)
     setZoomInputValue(DEFAULT_ZOOM.toFixed(2))
     croppedImageCacheRef.current = null
@@ -378,30 +379,6 @@ export function ProjectForm({
       setZoomInputValue(DEFAULT_ZOOM.toFixed(2))
     }
   }, [imagePreview])
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return
-    }
-
-    const mediaQuery = window.matchMedia("(min-width: 1024px)")
-    const handleChange = () => {
-      setIsDesktopLayout(mediaQuery.matches)
-    }
-
-    handleChange()
-    mediaQuery.addEventListener("change", handleChange)
-
-    return () => {
-      mediaQuery.removeEventListener("change", handleChange)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (isDesktopLayout && isImageDialogOpen) {
-      setIsImageDialogOpen(false)
-    }
-  }, [isDesktopLayout, isImageDialogOpen])
 
   const applyZoom = (value: number | ((current: number) => number)) => {
     setImageZoom((prevZoom) => {
@@ -715,6 +692,24 @@ export function ProjectForm({
     }
   }
 
+  const handleClearImage = () => {
+    if (objectUrlRef.current) {
+      URL.revokeObjectURL(objectUrlRef.current)
+      objectUrlRef.current = null
+    }
+    croppedImageCacheRef.current = null
+    setImagePreview(null)
+    setSelectedImageName(null)
+    setImageFile(null)
+    setImageCropPosition(null)
+    setImageZoom(DEFAULT_ZOOM)
+    setZoomInputValue(DEFAULT_ZOOM.toFixed(2))
+    setImageRemoved(true)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
   const handleImageSelect = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) {
@@ -731,6 +726,7 @@ export function ProjectForm({
     setImagePreview(previewUrl)
     setSelectedImageName(file.name)
     setImageFile(file)
+    setImageRemoved(false)
     setImageZoom(DEFAULT_ZOOM)
     setZoomInputValue(DEFAULT_ZOOM.toFixed(2))
     setImageCropPosition({ xPercent: 50, yPercent: 50 })
@@ -792,6 +788,24 @@ export function ProjectForm({
       return
     }
 
+    if (!title.trim()) {
+      notify({
+        title: "Project title required",
+        description: "Please enter a project title before submitting.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    if (departments.length === 0) {
+      notify({
+        title: "At least one department",
+        description: "Add at least one department to categorize this project.",
+        variant: "destructive",
+      })
+      return
+    }
+
     let preparedFile = imageFile
     let preparedPreviewUrl = imagePreview
 
@@ -808,6 +822,7 @@ export function ProjectForm({
       imageFile: preparedFile,
       imagePreviewUrl: preparedPreviewUrl,
       imageCropPosition,
+      imageRemoved,
     })
 
     if (result && typeof (result as Promise<unknown>).then === "function") {
@@ -850,135 +865,154 @@ export function ProjectForm({
     objectPosition: `${cropXPercent}% ${cropYPercent}%`,
     willChange: "transform",
   }
+  const imageDialogTriggerLabel = imagePreview ? "Edit Image" : "Add Image"
 
-  const renderImageSection = (attachScrollRef: boolean) => (
-    <>
-      <div
-        ref={attachScrollRef ? previewCardRef : undefined}
-        className="relative w-full max-w-sm overflow-hidden rounded-[2.5rem] border-2 border-primary/30 bg-white/80 shadow-[0_4px_2px_0.15px_rgba(0,1,0,0.15)]"
-      >
-        <div className="relative aspect-square w-full">
-          <div className="pointer-events-none absolute inset-20 rounded-[2rem] border-2 border-primary/15" aria-hidden />
-          <div
-            className={[
-              "absolute inset-20 overflow-hidden rounded-[1.75rem] bg-black/5 shadow-inner",
-              imagePreview ? (isDraggingCrop ? "cursor-grabbing" : "cursor-grab") : "",
-              imagePreview ? "select-none touch-none" : "",
-            ]
-              .filter(Boolean)
-              .join(" ")}
-            onPointerDown={handleCropPointerDown}
-            onPointerMove={handleCropPointerMove}
-            onPointerUp={endCropDragging}
-            onPointerCancel={endCropDragging}
-          >
-            {imagePreview ? (
-              <>
-                <img
-                  src={imagePreview}
-                  alt="Selected preview"
-                  className="h-full w-full object-cover transition-transform duration-500 ease-out"
-                  style={previewImageStyle}
-                />
-                <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/40" aria-hidden />
-              </>
-            ) : (
-              <div
-                className="flex h-full w-full flex-col items-center justify-center gap-4 text-primary transition-[transform,opacity] duration-500 ease-out"
-                style={{
-                  transform: "translateY(calc(var(--preview-scroll-progress, 0) * 0px))",
-                  opacity: "calc(0.6 + var(--preview-scroll-opacity, 1) - 1)",
-                }}
-              >
-                <ImageIcon className="size-16" />
-                <p className="text-base font-medium">Project image</p>
-              </div>
-            )}
-          </div>
+  const renderImagePreviewCard = ({
+    attachScrollRef = false,
+    interactive = false,
+  }: {
+    attachScrollRef?: boolean
+    interactive?: boolean
+  }) => (
+    <div
+      ref={attachScrollRef ? previewCardRef : undefined}
+      className="relative w-4/5 max-w-md sm:max-w-lg xl:max-w-xl overflow-hidden rounded-[2.5rem] border-2 border-primary/30 bg-white/80 shadow-[0_2px_6px_rgba(0,0,0,0.12)]"
+    >
+      <div className="relative aspect-square w-full">
+        <div className="pointer-events-none absolute inset-8 rounded-[2rem] border-2 border-primary/15" aria-hidden />
+        <div
+          className={[
+            "absolute inset-8 overflow-hidden rounded-[1.75rem] bg-black/5 shadow-inner",
+            interactive && imagePreview ? (isDraggingCrop ? "cursor-grabbing" : "cursor-grab") : "",
+            interactive && imagePreview ? "select-none touch-none" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          onPointerDown={interactive ? handleCropPointerDown : undefined}
+          onPointerMove={interactive ? handleCropPointerMove : undefined}
+          onPointerUp={interactive ? endCropDragging : undefined}
+          onPointerCancel={interactive ? endCropDragging : undefined}
+        >
+          {imagePreview ? (
+            <>
+              <img
+                src={imagePreview}
+                alt="Selected preview"
+                className="h-full w-full object-cover transition-transform duration-500 ease-out"
+                style={previewImageStyle}
+              />
+              <div className="pointer-events-none absolute inset-0 ring-1 ring-inset ring-white/40" aria-hidden />
+            </>
+          ) : (
+            <div
+              className="flex h-full w-full flex-col items-center justify-center gap-2 text-primary transition-[transform,opacity] duration-500 ease-out"
+              style={{
+                transform: "translateY(calc(var(--preview-scroll-progress, 0) * 0px))",
+                opacity: "calc(0.6 + var(--preview-scroll-opacity, 1) - 1)",
+              }}
+            >
+              <ImageIcon className="size-16" />
+              <p className="text-base font-medium">Project image</p>
+            </div>
+          )}
         </div>
       </div>
       {imagePreview ? (
-        <div className="flex items-center justify-center gap-4 px-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-white/70 px-3 py-1.5 shadow-sm backdrop-blur-sm">
-            <button
-              type="button"
-              onClick={handleZoomOut}
-              className={zoomButtonClass}
-              disabled={isZoomOutDisabled}
-              aria-label="Zoom out"
-              data-cy="project-image-zoom-out"
-            >
-              <Minus className="size-4" aria-hidden />
-            </button>
-            <div className="flex items-center gap-1">
-              <input
-                type="number"
-                inputMode="decimal"
-                min={MIN_ZOOM.toFixed(2)}
-                max={MAX_ZOOM.toFixed(2)}
-                step="0.01"
-                value={zoomInputValue}
-                onChange={handleZoomInputChange}
-                onBlur={handleZoomInputBlur}
-                onKeyDown={handleZoomInputKeyDown}
-                className={zoomInputClass}
-                aria-label="Set zoom level"
-                disabled={!imagePreview}
-                data-cy="project-image-zoom-input"
-              />
-              <span className="text-sm font-semibold text-foreground">x</span>
+        <button
+          type="button"
+          onClick={handleClearImage}
+          className="group absolute right-6 top-6 inline-flex size-10 items-center justify-center rounded-full border border-primary/30 bg-white/95 text-primary shadow-sm transition hover:bg-destructive/10 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          aria-label="Remove project image"
+          data-cy="project-image-remove"
+        >
+          <X className="size-5" aria-hidden />
+        </button>
+      ) : null}
+    </div>
+  )
+
+  const renderImageSection = ({ attachScrollRef = false }: { attachScrollRef?: boolean } = {}) => (
+    <>
+      {renderImagePreviewCard({ attachScrollRef, interactive: true })}
+      <div className="mt-1 flex w-full flex-col items-center gap-3">
+        <div className="flex w-full flex-wrap items-center justify-center gap-3">
+          <Button
+            type="button"
+            onClick={openImageFilePicker}
+            className="rounded-full bg-button-background px-8 py-5 text-base font-semibold text-button-foreground transition-transform hover:bg-button-hover-background"
+            data-cy="project-image-add"
+          >
+            {imageDialogTriggerLabel}
+          </Button>
+          {imagePreview ? (
+            <div className="flex items-center gap-2 rounded-full border border-primary/20 bg-white/70 px-3 py-1.5 shadow-sm backdrop-blur-sm">
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                className={zoomButtonClass}
+                disabled={isZoomOutDisabled}
+                aria-label="Zoom out"
+                data-cy="project-image-zoom-out"
+              >
+                <Minus className="size-4" aria-hidden />
+              </button>
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min={MIN_ZOOM.toFixed(2)}
+                  max={MAX_ZOOM.toFixed(2)}
+                  step="0.01"
+                  value={zoomInputValue}
+                  onChange={handleZoomInputChange}
+                  onBlur={handleZoomInputBlur}
+                  onKeyDown={handleZoomInputKeyDown}
+                  className={zoomInputClass}
+                  aria-label="Set zoom level"
+                  disabled={!imagePreview}
+                  data-cy="project-image-zoom-input"
+                />
+                <span className="text-sm font-semibold text-foreground">x</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                className={zoomButtonClass}
+                disabled={isZoomInDisabled}
+                aria-label="Zoom in"
+                data-cy="project-image-zoom-in"
+              >
+                <Plus className="size-4" aria-hidden />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={handleZoomIn}
-              className={zoomButtonClass}
-              disabled={isZoomInDisabled}
-              aria-label="Zoom in"
-              data-cy="project-image-zoom-in"
-            >
-              <Plus className="size-4" aria-hidden />
-            </button>
-          </div>
+          ) : null}
         </div>
-      ) : null}
-
-      {/*selectedImageName ? (
-        <p className="text-sm text-muted-foreground">{selectedImageName}</p>
-      ) : null*/}
-      {imagePreview ? (
-        <p className="text-xs text-muted-foreground">
-          Drag the image to choose which area appears in the square preview.
+        <p className="px-6 text-center text-sm text-muted-foreground">
+          {imagePreview
+            ? "Drag the image and use zoom to fine-tune the square preview."
+            : "Add an image to make your project stand out."}
         </p>
-      ) : null}
-
-      <Button
-        type="button"
-        onClick={() => fileInputRef.current?.click()}
-        className="rounded-full bg-button-background px-8 py-5 text-base font-semibold text-button-foreground transition-transform  hover:bg-button-hover-background"
-        data-cy="project-image-add"
-      >
-        Add Image
-      </Button>
+      </div>
     </>
   )
  
   return (
     <div
       className={[
-        "max-w-6xl w-full mx-auto px-[clamp(1.5rem,4vw,4rem)] pb-[clamp(2rem,6vh,4rem)]",
+        "max-w-7xl w-full mx-auto px-[clamp(1.5rem,4vw,4rem)] pb-[clamp(2rem,6vh,4rem)]",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
     >
-      <div className="grid gap-25 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.8fr)] items-start">
+      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.95fr)] lg:gap-16">
         <form
-          onSubmit={handleSubmit}                                         //0px 3px 5px 1px rgba(0, 0, 0, 0.25)
-          className="rounded-[2.5rem] border-2 border-primary/30 bg-card-project px-10 pt-5 pb-12 shadow-[0_4px_2px_0.15px_rgba(0,1,0,0.15)]"
+          onSubmit={handleSubmit} //0px 3px 5px 1px rgba(0, 0, 0, 0.25)
+          className="rounded-[2.5rem] border-2 border-primary/30 bg-card-project px-10 pt-4 pb-8 shadow-[0_2px_6px_rgba(0,0,0,0.12)]"
         >
           <h1 className="text-3xl font-bold text-foreground">{heading}</h1>
 
-          <div className="mt-5 space-y-4">
+          <div className="mt-4 space-y-4">
             <div className="space-y-3">
               <div className="flex flex-wrap items-center gap-3">
                 <label className="flex-1 min-w-0">
@@ -987,20 +1021,10 @@ export function ProjectForm({
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
                     placeholder="Project Title"
-                    className="h-12 w-3/4 rounded-[2rem] border-2 border-primary/40 bg-white/80 px-6 text-lg font-semibold text-foreground placeholder:text-primary/60 lg:max-w-md"
+                    className="h-12 w-full max-w-2xl rounded-[2rem] border-2 border-primary/40 bg-white/80 px-6 text-lg font-semibold text-foreground placeholder:text-primary/60"
                     data-cy="project-title-input"
                   />
                 </label>
-                {!isDesktopLayout ? (
-                  <Button
-                    type="button"
-                    onClick={() => setIsImageDialogOpen(true)}
-                    className="rounded-full bg-button-background px-6 py-3 text-sm font-semibold text-button-foreground transition-colors hover:bg-button-hover-background lg:hidden"
-                    data-cy="project-image-dialog"
-                  >
-                    Image Project
-                  </Button>
-                ) : null}
               </div>
             </div>
 
@@ -1010,16 +1034,16 @@ export function ProjectForm({
                 <Textarea
                   value={detail}
                   onChange={(event) => setDetail(event.target.value)}
-                  placeholder="Add detail"
-                  className="min-h-[10rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-6 py-2 text-base text-foreground placeholder:text-primary/60 shadow-none focus-visible:outline-none focus-visible:ring-0"
+                  placeholder="Add Detail"
+                  className="project-detail-scroll min-h-[10rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-6 py-2 text-base text-foreground placeholder:text-primary/60 shadow-none focus-visible:outline-none focus-visible:ring-0"
                   data-cy="project-detail-textarea"
                 />
               </div>
             </label>
 
-            <div className="space-y-4">
+            <div className="space-y-2">
               <span className="text-lg font-semibold text-foreground">Department</span>
-              <div className="flex flex-wrap gap-3 mt-3">
+              <div className="mt-1 flex flex-wrap gap-3">
                 {departments.map((dept, index) => {
                   const isDragOver = dragOverIndex === index
                   const isDragging = draggingIndex === index
@@ -1028,7 +1052,7 @@ export function ProjectForm({
                   const chipClassName = [
                     departmentChipClass,
                     isActive
-                      ? "border-primary bg-[#E9E0FF] text-[#2F2766] shadow-[0_6px_0_rgba(144,122,214,0.22)]"
+                      ? "border-primary bg-[#E9E0FF] text-[#2F2766] shadow-[0_2px_0_rgba(144,122,214,0.22)]"
                       : "",
                     isDragOver ? "border-primary bg-primary/10" : "",
                     isDragging ? "cursor-grabbing opacity-80" : "",
@@ -1037,44 +1061,66 @@ export function ProjectForm({
                     .join(" ")
 
                   return (
-                    <span
-                      key={dept}
-                      className={chipClassName}
-                      draggable
-                      role="button"
-                      tabIndex={0}
-                      aria-pressed={isActive}
-                      aria-grabbed={isDragging}
-                      onFocus={() => setActiveDepartmentIndex(index)}
-                      onClick={() => setActiveDepartmentIndex(index)}
-                      onKeyDown={(event) => handleDepartmentChipKeyDown(event, index)}
-                      onDragStart={(event) => handleDepartmentDragStart(event, index)}
-                      onDragOver={(event) => handleDepartmentDragOver(event, index)}
-                      onDrop={(event) => handleDepartmentDrop(event, index)}
-                      onDragEnd={handleDepartmentDragEnd}
-                      data-active={isActive || undefined}
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <GripVertical
-                          className={`size-4 ${isActive ? "text-primary" : "text-primary/60"}`}
-                          aria-hidden
-                        />
-                        <span>{dept}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          handleRemoveDepartment(dept)
-                        }}
-                        className={`${chipActionButtonClass} ml-auto`}
-                        aria-label={`Remove ${dept}`}
-                        data-cy="project-department-remove"
-                        data-department={dept}
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </span>
+                    <Tooltip key={`department-chip-tooltip-${dept}-${index}`} delayDuration={TOOLTIP_DELAY_DURATION_MS}>
+                      <TooltipTrigger asChild>
+                        <span
+                          className={chipClassName}
+                          draggable
+                          role="button"
+                          tabIndex={0}
+                          aria-pressed={isActive}
+                          aria-grabbed={isDragging}
+                          onFocus={() => setActiveDepartmentIndex(index)}
+                          onClick={() => setActiveDepartmentIndex(index)}
+                          onKeyDown={(event) => handleDepartmentChipKeyDown(event, index)}
+                          onDoubleClick={() => {
+                            setDepartmentInput(dept)
+                            setDepartments((prev) => {
+                              const next = [...prev]
+                              next.splice(index, 1)
+                              return next
+                            })
+                            setTimeout(() => {
+                              if (departmentInputRef.current) {
+                                departmentInputRef.current.focus()
+                                departmentInputRef.current.select()
+                              }
+                            }, 0)
+                          }}
+                          onDragStart={(event) => handleDepartmentDragStart(event, index)}
+                          onDragOver={(event) => handleDepartmentDragOver(event, index)}
+                          onDrop={(event) => handleDepartmentDrop(event, index)}
+                          onDragEnd={handleDepartmentDragEnd}
+                          data-active={isActive || undefined}
+                        >
+                          <span className="inline-flex items-center gap-2">
+                            <GripVertical
+                              className={`size-4 ${isActive ? "text-primary" : "text-primary/60"}`}
+                              aria-hidden
+                            />
+                            <span className="max-w-[12rem] truncate" title={dept}>
+                              {dept}
+                            </span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleRemoveDepartment(dept)
+                            }}
+                            className={`${chipActionButtonClass} ml-auto`}
+                            aria-label={`Remove ${dept}`}
+                            data-cy="project-department-remove"
+                            data-department={dept}
+                          >
+                            <X className="size-4" />
+                          </button>
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" sideOffset={6}>
+                        Double-click to edit
+                      </TooltipContent>
+                    </Tooltip>
                   )
                 })}
               </div>
@@ -1083,11 +1129,12 @@ export function ProjectForm({
                   type="button"
                   onClick={handleAddDepartment}
                   aria-label="Add department"
-                  className="absolute left-5 top-1/2 -translate-y-1/2 text-primary/60 transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  className="absolute left-5 top-1/2 -translate-y-1/2 cursor-pointer text-primary/60 transition hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 >
                   <Plus className="size-5" />
                 </button>
                 <Input
+                  ref={departmentInputRef}
                   value={departmentInput}
                   onChange={(event) => {
                     setDepartmentInput(event.target.value)
@@ -1101,7 +1148,7 @@ export function ProjectForm({
             </div>
           </div>
 
-          <div className="mt-12 flex justify-end">
+          <div className="mt-6 flex justify-end">
             <Button
               type="submit"
               disabled={effectiveSubmitting}
@@ -1112,30 +1159,12 @@ export function ProjectForm({
             </Button>
           </div>
 
-          {submitError ? (
-            <p className="mt-4 text-right text-sm text-destructive">{submitError}</p>
-          ) : null}
         </form>
 
-        {isDesktopLayout ? (
-          <div className="flex flex-col items-center gap-8">
-            {renderImageSection(true)}
-          </div>
-        ) : null}
+        <div className="mt-10 flex w-full flex-col items-center gap-6 lg:mt-12">
+          {renderImageSection({ attachScrollRef: true })}
+        </div>
       </div>
-
-      {!isDesktopLayout ? (
-        <Dialog open={isImageDialogOpen} onOpenChange={setIsImageDialogOpen}>
-          <DialogContent className="sm:max-w-xl">
-            <DialogHeader>
-              <DialogTitle>Project image</DialogTitle>
-            </DialogHeader>
-            <div className="flex flex-col items-center gap-8">
-              {renderImageSection(false)}
-            </div>
-          </DialogContent>
-        </Dialog>
-      ) : null}
 
       <input
         ref={fileInputRef}

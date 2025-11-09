@@ -35,7 +35,7 @@ export const projectCardSizing: ProjectCardSizing = {
     },
     gap: "1.5rem",
     borderRadius: "1.5rem",
-    shadow: "0px 3px 5px 1px rgba(0, 0, 0, 0.25)",
+    shadow: "0px 3px 4px 0px rgba(0, 0, 0, 0.15)",
   },
   cardCreate: {
     minHeight: "clamp(2rem, 20vh, 5rem)",

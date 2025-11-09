@@ -4,14 +4,13 @@ import { useMemo, useState, type CSSProperties } from "react"
 
 import Image from "next/image"
 
-import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { ImageIcon, MoreHorizontal } from "lucide-react"
+import { ImageIcon, LogOut, MoreHorizontal, PencilLine, Trash2, UserPen } from "lucide-react"
 
 import { projectCardSizing } from "./cardSizing"
 import {
@@ -23,7 +22,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-const baseCardClass = "project-card w-full rounded-3xl flex items-center relative select-none"
+const baseCardClass =
+  "project-card w-full rounded-3xl flex items-center relative select-none shrink-0"
 
 export type ProjectCardProps = {
   title: string
@@ -34,6 +34,13 @@ export type ProjectCardProps = {
   onOpenProject?: () => void
   onEditProject?: () => void
   onDelete?: () => Promise<void> | void
+  onChangeOwner?: () => void
+  onLeaveProject?: () => void
+  canEdit?: boolean
+  canDelete?: boolean
+  canChangeOwner?: boolean
+  canLeave?: boolean
+  isOwnerCard?: boolean
   dataCyIndex?: number
 }
 
@@ -46,6 +53,13 @@ export function ProjectCard({
   onOpenProject,
   onEditProject,
   onDelete,
+  onChangeOwner,
+  onLeaveProject,
+  canEdit = false,
+  canDelete = false,
+  canChangeOwner = false,
+  canLeave = true,
+  isOwnerCard = false,
   dataCyIndex,
 }: ProjectCardProps) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -85,11 +99,28 @@ export function ProjectCard({
     const interactiveClass = onOpenProject
       ? "cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/40"
       : ""
+    const ownerClass = isOwnerCard ? menuOpen?"bg-primary/50 border-primary":"project-card--owner group hover:bg-primary/50 hover:border-primary" : menuOpen?"bg-primary/20":""
     if (menuOpen || isHovering) {
-      return `${baseCardClass} project-card--active ${interactiveClass}`.trim()
+      return `${baseCardClass} project-card--active ${ownerClass} ${interactiveClass}`.trim()
     }
-    return `${baseCardClass} ${interactiveClass}`.trim()
-  }, [isHovering, menuOpen, onOpenProject])
+    return `${baseCardClass} ${ownerClass} ${interactiveClass}`.trim()
+  }, [isHovering, isOwnerCard, menuOpen, onOpenProject])
+
+  const menuButtonClassName = useMemo(
+    () =>
+      [
+        "absolute px-2 py-2 top-6 right-6 rounded-full border transition-colors duration-200 cursor-pointer",
+        "focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-transparent focus-visible:outline-none",
+        menuOpen
+          ? "border-primary/40 bg-white/90 text-primary shadow-[0_1px_3px_rgba(79,61,152,0.95)]"
+          : "border-transparent text-foreground hover:border-primary/30 hover:bg-white/80 hover:text-primary",
+      ]
+        .filter(Boolean)
+        .join(" "),
+    [menuOpen]
+  )
+
+  const menuIconClassName = menuOpen ? "size-6 text-primary" : "size-6 text-current"
 
   const handleDeleteClick = () => {
     setDeleteDialogOpen(true)
@@ -195,9 +226,15 @@ export function ProjectCard({
           >
             {title}
           </h3>
-          <span className="text-sm text-muted-foreground whitespace-nowrap flex-none ml-auto text-right">Create : {createdAt}</span>
+          <span className="text-sm text-muted-foreground whitespace-nowrap flex-none ml-auto text-right">
+            Created: {createdAt}
+          </span>
         </div>
-        <p className="clamp-ellipsis-1 min-w-0 text-foreground/70">{description}</p>
+        {description ? (
+          <p className="clamp-ellipsis-1 min-w-0 text-foreground/70">{description}</p>
+        ) : (
+          <div className="min-h-[1.5rem]" aria-hidden />
+        )}
       </div>
 
       <DropdownMenu
@@ -210,16 +247,17 @@ export function ProjectCard({
         }}
       >
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="absolute top-6 right-6 hover:bg-transparent"
+          <button
+            type="button"
+            className={menuButtonClassName}
             data-ignore-card-click="true"
             onMouseDown={(event) => event.preventDefault()}
             data-cy={buildDataCy("project-card-menu-button")}
+            aria-pressed={menuOpen}
           >
-            <MoreHorizontal className="size-6 text-foreground" />
-          </Button>
+            <MoreHorizontal className={menuIconClassName} />
+            <span className="sr-only">Open project menu</span>
+          </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
@@ -227,30 +265,72 @@ export function ProjectCard({
           className="w-48 bg-button-background border-none rounded-2xl p-2"
           data-ignore-card-click="true"
         >
-          <DropdownMenuItem
-            className="text-button-foreground hover:bg-button-hover-background rounded-xl py-3 px-4 cursor-pointer text-base"
-            data-ignore-card-click="true"
-            onSelect={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              onEditProject?.()
-            }}
-            data-cy={buildDataCy("project-card-menu-edit")}
-          >
-            Edit Project
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="text-button-foreground hover:bg-button-hover-background rounded-xl py-3 px-4 cursor-pointer text-base"
-            data-ignore-card-click="true"
-            onSelect={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              handleDeleteClick()
-            }}
-            data-cy={buildDataCy("project-card-menu-delete")}
-          >
-            Delete Project
-          </DropdownMenuItem>
+          {canEdit ? (
+            <DropdownMenuItem
+              className="text-button-foreground hover:bg-button-hover-background rounded-xl py-3 px-4 cursor-pointer text-base"
+              data-ignore-card-click="true"
+              onSelect={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                onEditProject?.()
+              }}
+              data-cy={buildDataCy("project-card-menu-edit")}
+            >
+              <span className="inline-flex items-center gap-2">
+                <PencilLine className="size-4 hover:text-foreground" />
+                Edit Project
+              </span>
+            </DropdownMenuItem>
+          ) : null}
+          {canChangeOwner ? (
+            <DropdownMenuItem
+              className="text-button-foreground hover:bg-button-hover-background rounded-xl py-3 px-4 cursor-pointer text-base"
+              data-ignore-card-click="true"
+              onSelect={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                onChangeOwner?.()
+              }}
+            >
+              <span className="inline-flex items-center gap-2">
+                <UserPen className="size-4 hover:text-foreground" />
+                Change Owner
+              </span>
+            </DropdownMenuItem>
+          ) : null}
+          {canDelete ? (
+            <DropdownMenuItem
+              className="text-button-foreground hover:bg-button-hover-background rounded-xl py-3 px-4 cursor-pointer text-base hover:bg-destructive/30 focus:bg-destructive/30"
+              data-ignore-card-click="true"
+              onSelect={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                handleDeleteClick()
+              }}
+              data-cy={buildDataCy("project-card-menu-delete")}
+            >
+              <span className="inline-flex items-center gap-2 text-destructive">
+                <Trash2 className="size-4 text-destructive" />
+                Delete Project
+              </span>
+            </DropdownMenuItem>
+          ) : null}
+          {canLeave ? (
+            <DropdownMenuItem
+              className="text-button-foreground hover:bg-button-hover-background rounded-xl py-3 px-4 cursor-pointer text-base"
+              data-ignore-card-click="true"
+              onSelect={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                onLeaveProject?.()
+              }}
+            >
+              <span className="inline-flex items-center gap-2">
+                <LogOut className="size-4 hover:text-foreground" />
+                Leave Project
+              </span>
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -260,9 +340,12 @@ export function ProjectCard({
       >
         <AlertDialogContent className="bg-background border-2 border-primary/30 rounded-[2rem] px-8 py-10 text-center shadow-xl">
           <AlertDialogTitle className="text-2xl font-semibold text-foreground">
-            Are you sure? <br/> You want to delete this project? <br/><br/> " {title} "
+            Are you sure? <br/> You want to delete this project? <br/><br/>
+            <span className="block break-words break-all px-2 text-primary">
+              "{title}"
+            </span>
           </AlertDialogTitle>
-          <AlertDialogFooter className="mt-8 flex w-full flex-row justify-between sm:!justify-between gap-6">
+          <AlertDialogFooter className="mt-8 flex w-full flex-row justify-end gap-4 sm:gap-6">
             <AlertDialogCancel
               className="rounded-full bg-secondary border-none px-8 py-3 text-base font-semibold text-secondary-foreground shadow-none transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
               onClick={handleNoConfirmDelete}

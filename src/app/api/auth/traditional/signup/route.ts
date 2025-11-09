@@ -3,6 +3,7 @@ import { z } from "zod"
 import bcrypt from "bcrypt"
 
 import { prisma } from "@/lib/prisma"
+import { AUTH_ERROR_MESSAGES } from "@/constants/authErrors"
 import { createClient } from "@/utils/supabase/server"
 import { getSupabaseServiceRoleClient } from "@/utils/supabase/service-role"
 
@@ -26,18 +27,44 @@ export async function POST(request: NextRequest) {
     }
     payload = parsed.data
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 })
+    return NextResponse.json({ error: AUTH_ERROR_MESSAGES.invalidJsonBody }, { status: 400 })
   }
 
   const { email, password, fullName } = payload
   const trimmedName = fullName.trim()
+  const trimmedEmail = email.trim()
+  const normalizedEmail = trimmedEmail.toLowerCase()
 
   try {
+    const existingProfile = await prisma.profile.findFirst({
+      where: {
+        email: {
+          equals: trimmedEmail,
+          mode: "insensitive",
+        },
+      },
+      select: { id: true, passwordHash: true },
+    })
+
+    if (existingProfile?.passwordHash) {
+      return NextResponse.json(
+        { error: AUTH_ERROR_MESSAGES.emailHasExistingPassword },
+        { status: 409 }
+      )
+    }
+
+    if (existingProfile && !existingProfile.passwordHash) {
+      return NextResponse.json(
+        { error: AUTH_ERROR_MESSAGES.emailRequiresSocialSignIn },
+        { status: 409 }
+      )
+    }
+
     const hash = await bcrypt.hash(password, 12)
 
     const existingSupabaseUser = await prisma.users.findFirst({
       where: {
-        OR: [{ email }, { email: email.toLowerCase() }],
+        OR: [{ email: trimmedEmail }, { email: normalizedEmail }],
       },
     })
 
@@ -53,6 +80,7 @@ export async function POST(request: NextRequest) {
       const { data: updatedUser, error: updateError } =
         await supabaseAdmin.auth.admin.updateUserById(existingSupabaseUser.id, {
           password,
+          email: trimmedEmail,
           email_confirm: true,
           user_metadata: {
             ...existingMetadata,
@@ -67,11 +95,11 @@ export async function POST(request: NextRequest) {
 
       authUser = updatedUser.user ?? {
         id: existingSupabaseUser.id,
-        email: existingSupabaseUser.email ?? email,
+        email: existingSupabaseUser.email ?? trimmedEmail,
       }
     } else {
       const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email,
+        email: trimmedEmail,
         password,
         email_confirm: true,
         user_metadata: {
@@ -86,33 +114,36 @@ export async function POST(request: NextRequest) {
       }
 
       if (!createdUser.user) {
-        return NextResponse.json({ error: "Failed to create user." }, { status: 500 })
+        return NextResponse.json(
+          { error: AUTH_ERROR_MESSAGES.unableToResolveUser },
+          { status: 500 }
+        )
       }
 
       authUser = createdUser.user
     }
 
     if (!authUser) {
-      return NextResponse.json({ error: "Unable to resolve user record." }, { status: 500 })
+      return NextResponse.json({ error: AUTH_ERROR_MESSAGES.unableToResolveUser }, { status: 500 })
     }
 
     await prisma.profile.upsert({
       where: { id: authUser.id },
       update: {
-        email,
+        email: trimmedEmail,
         fullName: trimmedName,
         passwordHash: hash,
       },
       create: {
         id: authUser.id,
-        email,
+        email: trimmedEmail,
         fullName: trimmedName,
         passwordHash: hash,
       },
     })
 
     const { data: sessionData, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
+      email: trimmedEmail,
       password,
     })
 
@@ -124,7 +155,7 @@ export async function POST(request: NextRequest) {
       {
         user: {
           id: authUser.id,
-          email: authUser.email ?? email,
+          email: authUser.email ?? trimmedEmail,
           emailConfirmed: true,
         },
         session: sessionData.session,
@@ -133,7 +164,7 @@ export async function POST(request: NextRequest) {
     )
   } catch (error) {
     const message =
-      error instanceof Error && error.message ? error.message : "Unable to complete signup."
+      error instanceof Error && error.message ? error.message : AUTH_ERROR_MESSAGES.unableToCompleteSignup
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
