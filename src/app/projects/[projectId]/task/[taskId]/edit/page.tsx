@@ -7,6 +7,7 @@ import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
 import { TaskForm, type TaskAssigneeOption, type TaskFormValues } from "@/components/tasks"
+import { DEFAULT_TASK_CARD_COLOR } from "@/constants/task-colors"
 import { useNotifications } from "@/components/notifications/Notification"
 
 type EditTaskPageProps = {
@@ -23,12 +24,12 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
   const [saving, setSaving] = React.useState(false)
   const [initialValues, setInitialValues] = React.useState<TaskFormValues | null>(null)
   const [memberOptions, setMemberOptions] = React.useState<TaskAssigneeOption[]>([])
-  const [loading, setLoading] = React.useState(true)
-  const [loadError, setLoadError] = React.useState<string | null>(null)
+  const [formLoading, setFormLoading] = React.useState(true)
+  const [formError, setFormError] = React.useState<string | null>(null)
 
-  const loadData = React.useCallback(async () => {
-    setLoading(true)
-    setLoadError(null)
+  const loadFormData = React.useCallback(async () => {
+    setFormLoading(true)
+    setFormError(null)
     try {
       const [taskResponse, membersResponse] = await Promise.all([
         fetch(`/api/projects/${projectId}/tasks/${taskId}`, { cache: "no-store" }),
@@ -48,8 +49,10 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
         detail: string | null
         status: TaskFormValues["status"]
         dueDate: string | null
+        startDate: string | null
         assignees: Array<{ id: string; username: string; fullName: string | null }>
         department: { id: string; name: string } | null
+        cardColor: string
       }
 
       const deadlineText = (() => {
@@ -61,13 +64,18 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
         const hasTime = date.getUTCHours() !== 0 || date.getUTCMinutes() !== 0
         return hasTime ? `${base} ${format(date, "HH:mm")}` : base
       })()
+      const startDateText = task.startDate
+        ? format(new Date(task.startDate), "dd/MM/yyyy")
+        : ""
 
       setInitialValues({
         title: task.title,
         detail: task.detail ?? "",
         assigneeIds: task.assignees.map((assignee) => assignee.id),
+        startDate: startDateText,
         deadline: deadlineText,
         status: task.status,
+        cardColor: task.cardColor ?? DEFAULT_TASK_CARD_COLOR,
       })
 
       const members = (await membersResponse.json()) as Array<{
@@ -96,15 +104,15 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
       )
     } catch (error) {
       console.error(error)
-      setLoadError(error instanceof Error ? error.message : "Failed to load task")
+      setFormError(error instanceof Error ? error.message : "Failed to load task")
     } finally {
-      setLoading(false)
+      setFormLoading(false)
     }
   }, [projectId, taskId])
 
   React.useEffect(() => {
-    loadData()
-  }, [loadData])
+    loadFormData()
+  }, [loadFormData])
 
   const handleSave = React.useCallback(
     async (values: TaskFormValues) => {
@@ -151,7 +159,7 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
   }, [projectId, router])
 
   return (
-    <div className="asap-scroll w-full overflow-y-auto px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
+    <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
       <div className="flex w-full max-w-7xl flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
           <Button
@@ -164,24 +172,26 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
             <ArrowLeft className="size-6" aria-hidden="true" />
           </Button>
         </div>
-        {loading ? (
+        {formLoading ? (
           <div className="mx-0 flex-1 rounded-[2rem] border-2 border-dashed border-primary/30 bg-white/60 px-6 py-10 text-center text-primary">
             Loading task…
           </div>
-        ) : loadError ? (
+        ) : formError ? (
           <div className="mx-0 flex-1 rounded-[2rem] border-2 border-destructive/30 bg-destructive/10 px-6 py-10 text-center text-destructive">
-            {loadError}
+            {formError}
           </div>
         ) : initialValues ? (
-          <TaskForm
-            className="mx-0 flex-1 lg:mt-10"
-            heading="Edit Task"
-            submitLabel={saving ? "Saving…" : "Save"}
-            initialValues={initialValues}
-            submitting={saving}
-            onSubmit={handleSave}
-            assigneeOptions={memberOptions}
-          />
+          <div className="mx-0 flex-1 lg:mt-10 mb-10 w-full">
+            <TaskForm
+              className="w-full"
+              heading="Edit Task"
+              submitLabel={saving ? "Saving…" : "Save"}
+              initialValues={initialValues}
+              submitting={saving}
+              onSubmit={handleSave}
+              assigneeOptions={memberOptions}
+            />
+          </div>
         ) : (
           <div className="mx-0 flex-1 rounded-[2rem] border-2 border-destructive/30 bg-destructive/10 px-6 py-10 text-center text-destructive">
             Task not found.

@@ -5,6 +5,7 @@ import { createClient } from "@/utils/supabase/server"
 import { prisma } from "@/lib/prisma"
 import { requireProjectMembership } from "@/server/projects/permissions"
 import { projectMembers, projectTaskAssignees, projectTasks } from "@/server/projects/db"
+import { getContrastingTextColor, sanitizeHexColor } from "@/utils/colors"
 
 type RouteParams = {
   params: {
@@ -15,6 +16,21 @@ type RouteParams = {
 
 const TASK_STATUS_VALUES = ["SUBMITTED", "IN_PROGRESS", "BLOCKED"] as const
 type TaskStatusEnum = (typeof TASK_STATUS_VALUES)[number]
+
+function parseCardColor(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined
+  }
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return undefined
+  }
+  return sanitizeHexColor(trimmed)
+}
+
+function resolveCardTextColor(cardColor: string) {
+  return getContrastingTextColor(cardColor)
+}
 
 type TaskWithRelations = NonNullable<Awaited<ReturnType<typeof loadTask>>>
 
@@ -64,6 +80,7 @@ function serializeTask(task: TaskWithRelations) {
     title: task.title,
     detail: task.detail,
     status: task.status,
+    startDate: task.startDate ? task.startDate.toISOString() : null,
     dueDate: task.dueDate ? task.dueDate.toISOString() : null,
     department: task.department
       ? {
@@ -229,7 +246,9 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     statusRaw && TASK_STATUS_VALUES.includes(statusRaw as TaskStatusEnum)
       ? (statusRaw as TaskStatusEnum)
       : undefined
+  const startDate = parseDeadlineInput(payload?.startDate)
   const dueDate = parseDeadlineInput(payload?.deadline)
+  const cardColor = parseCardColor(payload?.cardColor)
   const assigneeIds = Array.isArray(payload?.assigneeIds)
     ? payload.assigneeIds.filter((value: unknown): value is string => typeof value === "string")
     : undefined
@@ -244,8 +263,15 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
   if (status !== undefined) {
     updatePayload.status = status
   }
+  if (startDate !== undefined) {
+    updatePayload.startDate = startDate
+  }
   if (dueDate !== undefined) {
     updatePayload.dueDate = dueDate
+  }
+  if (cardColor !== undefined) {
+    updatePayload.cardColor = cardColor
+    updatePayload.cardTextColor = resolveCardTextColor(cardColor)
   }
   if (departmentId !== undefined) {
     if (departmentId === null) {

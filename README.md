@@ -1,5 +1,34 @@
 อัพเดทพวก
-- อัพเกือบทุกหน้า
+- เชื่อมต่อกับ Backend-Frontend ได้เกือบครบหมดมั้งนะ แต่มีบัคเล็กน้อยบางจุดพวก Frontend ยังแก้ไม่หมด กับ Task Info คิดว่าจะปรับเพิ่ม
+- แนะนำให้ clone git ใหม่เลยเพราะเปลี่ยนเยอะเกินมาก
+
+## วิธีสร้าง ดึง Project นี้มา
+
+1. ตั้ง Folder สักทีเปิด VScode ให้ไป Folder นั้นแล้วเปิด Terminal (VScode)
+
+2. พิมพ์คำสั่ง "git clone https://github.com/LUNATIX-04/Software-Engineering.git"
+
+3. จากนั้นให้ VScode กด Open Folder เข้าตัวที่ clone มาคือ Software-Engineering ที่โหลดมา 
+
+4. ถ้าไม่มี Bun ให้ติดตั้งก่อน ถ้ามีใช้คำสั่ง bun install
+
+5. จากนั้นพิมพ์ bun prisma generate
+
+6. ให้สร้างไฟล์ .env แล้วใส่ตามนี้เลย (สร้างให้อยู่ที่เดียวกับ src,public อื่นๆ หรือคืออยู่ใน Software Engineering เลย)
+
+DATABASE_URL="postgresql://postgres.xtvlrmbyndgxmoltprtp:u1Sknfrvtk30RBAN@aws-1-ap-southeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+
+DIRECT_URL="postgresql://postgres.xtvlrmbyndgxmoltprtp:u1Sknfrvtk30RBAN@aws-1-ap-southeast-1.pooler.supabase.com:5432/postgres"
+
+NEXT_PUBLIC_SUPABASE_URL="https://xtvlrmbyndgxmoltprtp.supabase.co"
+
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dmxybWJ5bmRneG1vbHRwcnRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5NDY0MzksImV4cCI6MjA3NTUyMjQzOX0.3S33QczAJxBZ6XJtXGFIdxP_k1G0Z9lJ2AfCU22cFas"
+
+SUPABASE_SERVICE_ROLE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh0dmxybWJ5bmRneG1vbHRwcnRwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTk0NjQzOSwiZXhwIjoyMDc1NTIyNDM5fQ.iIbPa8UXl3myp-2YmwwpVdFW8VlsRdlZm26lrVaNGFM"
+
+7. bun dev เข้า Web ใช้งานได้เลย พยายามเล่นแบบเต็มจอก่อนเพราะมีบาง UI น่าจะเละเทะเช่น Tasks
+
+8. อันนี้ไม่มีอะไรทดสอบ invite link เฉยๆ สามารถกดนี้ได้ http://localhost:3000/invite/ff4aba99-ee0e-4c8c-8b39-25ce84c8ae74 เข้ามาแล้วจะเจอ ใส่ username ของproject นี้ ถ้ากด join คือเข้า project เลย (ถ้าไม่เคยสมัครจะไปหน้า sign in) พอเข้ามาน่าจะเจอ Project "Apple" ลองเล่นดูได้
 
 ## เวลาก่อนทำงานให้ใช้ (ดึงงานล่าสุดมาใช้)
 
@@ -15,7 +44,7 @@ git reset --hard origin/E2E_Test
 
 bunx cypress open
 
-## ตอนแรกตั้ง prisma
+## ตอนแรกตั้ง prisma (หลังแก้ prisma อะไรก็ตามใช้คำสั่งนี้ไว้)
 
 bunx prisma generate
 

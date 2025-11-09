@@ -6,11 +6,16 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, PencilLine, Trash2 } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { MoreHorizontal, Palette, PencilLine, Trash2, Wand2 } from "lucide-react"
+import { HexColorPicker } from "react-colorful"
 
 import { cn } from "@/lib/utils"
+import { TOOLTIP_DELAY_DURATION_MS } from "@/constants/ui"
+import { DEFAULT_TASK_CARD_COLOR, QUICK_COLOR_OPTIONS } from "@/constants/task-colors"
 
 function hexToRgb(hex: string) {
   const normalized = hex.replace("#", "")
@@ -56,6 +61,44 @@ function isHexColorDark(hex: string) {
   return getRelativeLuminance(hex) < 0.5
 }
 
+function normalizeHexString(hex: string | null | undefined) {
+  if (!hex) return null
+  const value = hex.trim().replace("#", "")
+  if (value.length !== 6) {
+    return null
+  }
+  return `#${value.toLowerCase()}`
+}
+
+function getContrastRatio(hexA: string, hexB: string) {
+  const l1 = getRelativeLuminance(hexA)
+  const l2 = getRelativeLuminance(hexB)
+  const [lighter, darker] = l1 > l2 ? [l1, l2] : [l2, l1]
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
+const LIGHT_TEXT = "#FFFFFF"
+const DARK_TEXT = "#2F2766"
+const MIN_CONTRAST = 3
+
+function computeTextColor(backgroundHex: string, preferredHex?: string | null) {
+  const normalizedBg = normalizeHexString(backgroundHex)
+  const normalizedPreferred = normalizeHexString(preferredHex)
+
+  if (normalizedBg && normalizedPreferred) {
+    const ratio = getContrastRatio(normalizedBg, normalizedPreferred)
+    if (ratio >= MIN_CONTRAST) {
+      return normalizedPreferred
+    }
+  }
+
+  if (!normalizedBg) {
+    return normalizedPreferred ?? DARK_TEXT
+  }
+
+  return isHexColorDark(normalizedBg) ? LIGHT_TEXT : DARK_TEXT
+}
+
 type TaskCardDepartment = {
   id: string
   name: string
@@ -74,6 +117,9 @@ type TaskCardProps = {
   onDelete?: () => void
   className?: string
   departments?: TaskCardDepartment[]
+  cardColor: string
+  cardTextColor: string
+  onColorChange?: (color: string) => void
 }
 
 export function TaskCard({
@@ -87,11 +133,52 @@ export function TaskCard({
   onDelete,
   className,
   departments,
+  cardColor,
+  cardTextColor,
+  onColorChange,
 }: TaskCardProps) {
+  const normalizedCardColor = normalizeHexString(cardColor) ?? DEFAULT_TASK_CARD_COLOR
+
   const [menuOpen, setMenuOpen] = React.useState(false)
   const [isHovering, setIsHovering] = React.useState(false)
   const [menuTriggerHover, setMenuTriggerHover] = React.useState(false)
-  const [departmentListOpen, setDepartmentListOpen] = React.useState(false)
+  const [colorMode, setColorMode] = React.useState<"presets" | "custom">("presets")
+  const [customColor, setCustomColor] = React.useState(normalizedCardColor)
+  const colorChangeTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  React.useEffect(() => {
+    setCustomColor(normalizedCardColor)
+  }, [normalizedCardColor])
+
+  React.useEffect(() => {
+    return () => {
+      if (colorChangeTimeoutRef.current) {
+        clearTimeout(colorChangeTimeoutRef.current)
+      }
+    }
+  }, [])
+
+  const commitColorChange = React.useCallback(
+    (nextColor: string, options?: { immediate?: boolean }) => {
+      if (!onColorChange) {
+        return
+      }
+      const normalized = normalizeHexString(nextColor) ?? DEFAULT_TASK_CARD_COLOR
+      if (colorChangeTimeoutRef.current) {
+        clearTimeout(colorChangeTimeoutRef.current)
+        colorChangeTimeoutRef.current = null
+      }
+      if (options?.immediate) {
+        onColorChange(normalized)
+        return
+      }
+      colorChangeTimeoutRef.current = setTimeout(() => {
+        onColorChange(normalized)
+        colorChangeTimeoutRef.current = null
+      }, 200)
+    },
+    [onColorChange]
+  )
 
   const handleClick = React.useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
@@ -130,41 +217,14 @@ export function TaskCard({
   const hasDepartments = departmentDetails.length > 0
   const hasMultipleDepartments = departmentDetails.length > 1
   const primaryDepartment = hasDepartments ? departmentDetails[0] : null
+  const rightmostDepartment = hasDepartments
+    ? departmentDetails[departmentDetails.length - 1]
+    : null
 
-  const baseColor = primaryDepartment?.color ?? "#FFFFFF"
-  const backgroundPalette = hasDepartments
-    ? departmentDetails.map((dept) => dept.color)
-    : [baseColor]
-  const darkColorCount = backgroundPalette.filter((color) => isHexColorDark(color)).length
-  const isBackgroundDark = darkColorCount >= Math.ceil(backgroundPalette.length / 2)
-  const hoverColor = !hasMultipleDepartments
-    ? adjustHexBrightness(baseColor, isBackgroundDark ? 35 : -25)
-    : undefined
-  const gradientBackground = hasMultipleDepartments
-    ? `linear-gradient(135deg, ${departmentDetails
-        .map((dept, index) => {
-          const start = Math.round((index / departmentDetails.length) * 100)
-          const end = Math.round(((index + 1) / departmentDetails.length) * 100)
-          return `${dept.color} ${start}% ${end}%`
-        })
-        .join(", ")})`
-    : undefined
-  const textColor = hasMultipleDepartments
-    ? isBackgroundDark
-      ? "#FFFFFF"
-      : "#2F2766"
-    : primaryDepartment
-      ? primaryDepartment.textColor ?? (isHexColorDark(baseColor) ? "#FFFFFF" : "#2F2766")
-      : "#2F2766"
-  const borderColor = primaryDepartment
-    ? adjustHexBrightness(primaryDepartment.color, -35)
-    : "#CFC2F6"
-
-  React.useEffect(() => {
-    if (!hasMultipleDepartments) {
-      setDepartmentListOpen(false)
-    }
-  }, [hasMultipleDepartments])
+  const resolvedCardTextColor = computeTextColor(normalizedCardColor, cardTextColor)
+  const isBackgroundDark = isHexColorDark(normalizedCardColor)
+  const hoverColor = adjustHexBrightness(normalizedCardColor, isBackgroundDark ? 20 : -20)
+  const borderColor = adjustHexBrightness(normalizedCardColor, isBackgroundDark ? 10 : -20)
 
   const assigneeLabel = assignees.length > 0 ? assignees.join(", ") : "—"
 
@@ -185,25 +245,18 @@ export function TaskCard({
     [menuOpen]
   )
 
-  const shouldUseContrastMenuColor = hasDepartments && isBackgroundDark
   const menuButtonStyle =
-    !menuOpen && !menuTriggerHover && shouldUseContrastMenuColor ? { color: textColor } : undefined
+    !menuOpen && !menuTriggerHover ? { color: resolvedCardTextColor } : undefined
   const menuIconStyle =
-    !menuOpen && !menuTriggerHover && shouldUseContrastMenuColor ? { color: textColor } : undefined
+    !menuOpen && !menuTriggerHover ? { color: resolvedCardTextColor } : undefined
   const menuIconClassName = cn("size-5 transition-colors duration-200", menuOpen ? "text-primary" : "")
 
-  const cardStyle = hasDepartments
-    ? {
-        background: hasMultipleDepartments
-          ? gradientBackground
-          : isHovering && hoverColor
-            ? hoverColor
-            : baseColor,
-        color: textColor,
-        borderColor,
-        filter: hasMultipleDepartments && isHovering ? "brightness(1.05)" : undefined,
-      }
-    : undefined
+  const cardStyle = {
+    background: isHovering ? hoverColor : normalizedCardColor,
+    color: resolvedCardTextColor,
+    borderColor,
+    filter: isHovering ? "brightness(1.02)" : undefined,
+  }
 
   const cardClassName = React.useMemo(
     () =>
@@ -216,7 +269,7 @@ export function TaskCard({
     [className, hasDepartments, isHovering, menuOpen, onOpen]
   )
 
-  const textStyle = hasDepartments ? { color: textColor } : undefined
+  const textStyle = { color: resolvedCardTextColor }
 
   const departmentBadgeClassName = cn(
     "relative inline-flex items-center justify-center rounded-full border-2 px-4 py-2 text-xs font-semibold shadow-[0_3px_0_rgba(144,122,214,0.2)]",
@@ -226,13 +279,13 @@ export function TaskCard({
   const departmentBadgeStyle = hasDepartments
     ? hasMultipleDepartments
       ? {
-          backgroundColor: "rgba(255,255,255,0.25)",
-          color: textColor,
-          borderColor: "rgba(255,255,255,0.4)",
+          backgroundColor: "#FFFFFF",
+          color: "#1E1A37",
+          borderColor: "rgba(47,39,102,0.35)",
         }
       : {
-          backgroundColor: baseColor,
-          color: textColor,
+          backgroundColor: normalizedCardColor,
+          color: resolvedCardTextColor,
           borderColor,
         }
     : undefined
@@ -253,36 +306,40 @@ export function TaskCard({
           <h3 className="text-xl font-black">{title}</h3>
           <span className="text-sm font-medium">Deadline : {deadline}</span>
         </div>
-        <p className="text-sm font-medium text-current opacity-90">Assigned to : {assigneeLabel}</p>
+        <p className="text-sm text-current opacity-90">
+          <span>Assigned to :</span>{" "}
+          <span className="font-semibold">{assigneeLabel}</span>
+        </p>
       </div>
-      <div className="flex items-center gap-4 self-start sm:self-auto">
+      <div
+        className="flex items-center gap-4 self-start sm:self-auto"
+        style={{ color: resolvedCardTextColor }}
+      >
         {hasDepartments ? (
-          <div
-            className={departmentBadgeClassName}
-            style={{
-              minWidth: "9rem",
-              ...(departmentBadgeStyle ?? {}),
-            }}
-            onMouseEnter={() => {
-              if (hasMultipleDepartments) {
-                setDepartmentListOpen(true)
-              }
-            }}
-            onMouseLeave={() => {
-              if (hasMultipleDepartments) {
-                setDepartmentListOpen(false)
-              }
-            }}
-          >
-            <span>
-              {hasMultipleDepartments ? `${departmentDetails.length} Departments` : primaryDepartment?.name}
-            </span>
-            {hasMultipleDepartments ? (
-              <div
-                className={cn(
-                  "absolute left-0 top-full z-30 mt-2 w-60 rounded-3xl border border-primary/30 bg-white/95 px-4 py-3 text-left text-sm font-semibold text-[#2F2766] shadow-[0_16px_30px_rgba(39,36,66,0.2)] transition-all duration-150",
-                  departmentListOpen ? "pointer-events-auto opacity-100 translate-y-0" : "pointer-events-none opacity-0 -translate-y-2"
-                )}
+          hasMultipleDepartments ? (
+            <Tooltip delayDuration={TOOLTIP_DELAY_DURATION_MS}>
+              <TooltipTrigger asChild>
+                <div
+                  className={departmentBadgeClassName}
+                  style={{
+                    minWidth: "9rem",
+                    ...(departmentBadgeStyle ?? {}),
+                  }}
+                  onClick={(event) => event.stopPropagation()}
+                  onPointerDown={(event) => event.stopPropagation()}
+                >
+                  <span className="block max-w-[9rem] truncate">
+                    {`${departmentDetails.length} Departments`}
+                  </span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent
+                side="top"
+                sideOffset={8}
+                className="w-60 rounded-3xl border border-primary/30 bg-white/95 px-4 py-3 text-left text-sm font-semibold text-[#2F2766] shadow-[0_16px_30px_rgba(39,36,66,0.2)]"
+                style={{ backgroundColor: "#ffffff", color: "#2F2766" }}
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
               >
                 <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">
                   {departmentDetails.length} departments
@@ -291,16 +348,30 @@ export function TaskCard({
                   {departmentDetails.map((dept) => (
                     <li key={dept.id} className="flex items-center gap-2">
                       <span
-                        className="size-3 rounded-full border border-black/10"
+                        className="size-3 flex-shrink-0 rounded-full border border-black/10"
                         style={{ backgroundColor: dept.color }}
                       />
-                      <span>{dept.name}</span>
+                      <span className="block max-w-[10rem] truncate">{dept.name}</span>
                     </li>
                   ))}
                 </ul>
-              </div>
-            ) : null}
-          </div>
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <div
+              className={departmentBadgeClassName}
+              style={{
+                minWidth: "9rem",
+                ...(departmentBadgeStyle ?? {}),
+              }}
+              onClick={(event) => event.stopPropagation()}
+              onPointerDown={(event) => event.stopPropagation()}
+            >
+              <span className="block max-w-[9rem] truncate">
+                {primaryDepartment?.name}
+              </span>
+            </div>
+          )
         ) : null}
         <span className={statusChipClassName}>{statusLabel}</span>
         {onEdit || onDelete ? (
@@ -310,6 +381,7 @@ export function TaskCard({
               setMenuOpen(open)
               if (!open) {
                 setIsHovering(false)
+                setColorMode("presets")
               }
             }}
           >
@@ -332,7 +404,7 @@ export function TaskCard({
             <DropdownMenuContent
               align="end"
               sideOffset={-4}
-              className="w-48 rounded-2xl border-none bg-button-background p-2 text-base text-button-foreground shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
+              className="w-64 rounded-2xl border-none bg-button-background p-3 text-base text-button-foreground shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
               data-task-menu="true"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => event.stopPropagation()}
@@ -367,6 +439,94 @@ export function TaskCard({
                     Delete Task
                   </span>
                 </DropdownMenuItem>
+              ) : null}
+              {onColorChange ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <div
+                    data-task-menu="true"
+                    className="space-y-3 px-4 py-3 text-left text-sm"
+                    onPointerDown={(event) => event.stopPropagation()}
+                  >
+                    <div className="flex items-center justify-between text-[0.65rem] font-semibold uppercase tracking-wide text-primary/70">
+                      <span className="inline-flex items-center gap-1">
+                        {colorMode === "presets" ? (
+                          <Palette className="size-3.5" />
+                        ) : (
+                          <Wand2 className="size-3.5" />
+                        )}
+                        {colorMode === "presets" ? "Quick Colors" : "Custom Color"}
+                      </span>
+                      <button
+                        type="button"
+                        className="rounded-full border border-transparent px-3 py-1 text-[0.7rem] font-semibold text-primary transition hover:border-primary/30 hover:bg-primary/5"
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          setColorMode((mode) => (mode === "presets" ? "custom" : "presets"))
+                        }}
+                      >
+                        {colorMode === "presets" ? (
+                          <span className="inline-flex items-center gap-1">
+                            <Wand2 className="size-3.5" />
+                            Custom
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1">
+                            <Palette className="size-3.5" />
+                            Palette
+                          </span>
+                        )}
+                      </button>
+                    </div>
+                    {colorMode === "presets" ? (
+                      <div className="flex flex-wrap gap-2">
+                        {QUICK_COLOR_OPTIONS.map((option) => {
+                          const normalizedOption =
+                            normalizeHexString(option.value) ?? DEFAULT_TASK_CARD_COLOR
+                          const isSelected = normalizedOption === normalizedCardColor
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              data-task-menu="true"
+                              aria-pressed={isSelected}
+                              className={cn(
+                                "flex size-10 items-center justify-center rounded-2xl border-2 text-[0.65rem] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0",
+                                isSelected
+                                  ? "border-primary"
+                                  : "border-primary/20 hover:border-primary"
+                              )}
+                              style={{ backgroundColor: option.value }}
+                              onClick={(event) => {
+                                event.preventDefault()
+                                event.stopPropagation()
+                                setCustomColor(normalizedOption)
+                                commitColorChange(normalizedOption, { immediate: true })
+                              }}
+                              aria-label={`Select ${option.label}`}
+                            />
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="space-y-2 rounded-2xl border border-primary/20 bg-white/60 p-3">
+                        <div className="rounded-2xl bg-white p-2">
+                          <HexColorPicker
+                            color={customColor}
+                            onChange={(color) => {
+                              const normalizedValue =
+                                normalizeHexString(color) ?? DEFAULT_TASK_CARD_COLOR
+                              setCustomColor(normalizedValue)
+                              commitColorChange(normalizedValue)
+                            }}
+                            style={{ width: "100%", height: "160px" }}
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
               ) : null}
             </DropdownMenuContent>
           </DropdownMenu>

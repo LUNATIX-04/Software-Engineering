@@ -30,6 +30,7 @@ import {
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { TaskCard } from "@/components/tasks/TaskCard"
+import { getContrastingTextColor, sanitizeHexColor } from "@/utils/colors"
 
 type ProjectTaskPageProps = {
   params: Promise<{
@@ -68,6 +69,8 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const [pageHintVisible, setPageHintVisible] = useState(false)
   const paginationControlsRef = useRef<HTMLDivElement | null>(null)
   const pageHintTimeoutRef = useRef<number | null>(null)
+  const colorRollbackRef = useRef<Record<string, { cardColor: string; cardTextColor: string }>>({})
+  const latestColorRequestRef = useRef<Record<string, string>>({})
   const [pageSizeMenuOpen, setPageSizeMenuOpen] = useState(false)
   const [tasksLoading, setTasksLoading] = useState(true)
   const [tasksError, setTasksError] = useState<string | null>(null)
@@ -99,6 +102,69 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       return acc
     }, {})
   }, [remoteDepartments])
+
+  const handleTaskColorChange = useCallback(
+    async (taskId: string, color: string) => {
+      const normalizedColor = sanitizeHexColor(color)
+      const derivedTextColor = getContrastingTextColor(normalizedColor)
+      latestColorRequestRef.current[taskId] = normalizedColor
+
+      setTasks((prev) => {
+        const previousTask = prev.find((task) => task.id === taskId)
+        if (previousTask) {
+          colorRollbackRef.current[taskId] = {
+            cardColor: previousTask.cardColor,
+            cardTextColor: previousTask.cardTextColor,
+          }
+        }
+        return prev.map((task) =>
+          task.id === taskId
+            ? { ...task, cardColor: normalizedColor, cardTextColor: derivedTextColor }
+            : task
+        )
+      })
+
+      try {
+        const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ cardColor: normalizedColor }),
+        })
+        if (!response.ok) {
+          const message = await response.text()
+          throw new Error(message || "Failed to update task color")
+        }
+        const updatedTask = (await response.json()) as TaskRecord
+        if (latestColorRequestRef.current[taskId] !== normalizedColor) {
+          return
+        }
+        setTasks((prev) => prev.map((task) => (task.id === updatedTask.id ? updatedTask : task)))
+        delete colorRollbackRef.current[taskId]
+        delete latestColorRequestRef.current[taskId]
+      } catch (error) {
+        console.error(error)
+        if (latestColorRequestRef.current[taskId] !== normalizedColor) {
+          return
+        }
+        setTasks((prev) => {
+          const rollback = colorRollbackRef.current[taskId]
+          if (!rollback) {
+            return prev
+          }
+          return prev.map((task) =>
+            task.id === taskId
+              ? { ...task, cardColor: rollback.cardColor, cardTextColor: rollback.cardTextColor }
+              : task
+          )
+        })
+        delete colorRollbackRef.current[taskId]
+        delete latestColorRequestRef.current[taskId]
+      }
+    },
+    [projectId]
+  )
 
   type TaskDepartmentDetail = {
     id: string
@@ -188,8 +254,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
         const matchesMyTask =
           !myTaskOnly ||
           (membershipId
-            ? task.assignees.some((assignee) => assignee.id === membershipId) ||
-              task.createdBy.id === membershipId
+            ? task.assignees.some((assignee) => assignee.id === membershipId)
             : false)
         if (!matchesMyTask) {
           return false
@@ -634,7 +699,12 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                         <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
                           Departments
                         </span>
-                        <span className="text-sm font-semibold text-[#2F2766]">{filterSummaryText}</span>
+                        <span
+                          className="text-sm font-semibold text-[#2F2766] max-w-[12rem] truncate"
+                          title={filterSummaryText}
+                        >
+                          {filterSummaryText}
+                        </span>
                       </span>
                     </span>
                     <span className="ml-4 inline-flex items-center gap-2">
@@ -803,8 +873,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
           >
             <div
               className={cn(
-                "projects-scroll [scrollbar-gutter:stable] flex flex-col space-y-3 px-0.5 py-4",
-                paginatedTasks.length > 0 ? "h-full" : "h-auto"
+                "projects-scroll [scrollbar-gutter:stable] flex flex-col space-y-3 px-0.5 py-4 pb-0"
               )}
               style={{ maxHeight: cardListMaxHeight }}
             >
@@ -819,36 +888,39 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
               </div>
             ) : null}
             {paginatedTasks.map((task) => (
-              <TaskCard
-                key={task.id}
-                title={task.title}
-                deadline={task.dueDate ? format(new Date(task.dueDate), "dd/MM/yyyy") : "—"}
-                assignees={
-                  task.assignees.length > 0
-                    ? task.assignees.map(
-                        (assignee) => assignee.username || assignee.fullName || "Member"
-                      )
-                    : []
-                }
-                statusLabel={TASK_STATUS_LABEL[task.status]}
-                statusClassName={TASK_STATUS_STYLE[task.status]}
-                departments={
-                  taskDepartmentMeta[task.id]?.departments ??
-                  (task.department
-                    ? [
-                        {
-                          id: task.department.id,
-                          name: task.department.name,
-                          color: task.department.color,
-                          textColor: task.department.textColor,
-                        },
-                      ]
-                    : [])
-                }
-                onOpen={() => handleOpenTask(task.id)}
-                onEdit={() => handleEditTask(task.id)}
-                onDelete={() => handleDeleteTaskRequest(task)}
-              />
+            <TaskCard
+              key={task.id}
+              title={task.title}
+              deadline={task.dueDate ? format(new Date(task.dueDate), "dd/MM/yyyy") : "—"}
+              assignees={
+                task.assignees.length > 0
+                  ? task.assignees.map(
+                      (assignee) => assignee.username || assignee.fullName || "Member"
+                    )
+                  : []
+              }
+              statusLabel={TASK_STATUS_LABEL[task.status]}
+              statusClassName={TASK_STATUS_STYLE[task.status]}
+              departments={
+                taskDepartmentMeta[task.id]?.departments ??
+                (task.department
+                  ? [
+                      {
+                        id: task.department.id,
+                        name: task.department.name,
+                        color: task.department.color,
+                        textColor: task.department.textColor,
+                      },
+                    ]
+                  : [])
+              }
+              cardColor={task.cardColor}
+              cardTextColor={task.cardTextColor}
+              onColorChange={(color) => handleTaskColorChange(task.id, color)}
+              onOpen={() => handleOpenTask(task.id)}
+              onEdit={() => handleEditTask(task.id)}
+              onDelete={() => handleDeleteTaskRequest(task)}
+            />
             ))}
 
             {paginatedTasks.length === 0 ? (
@@ -882,7 +954,10 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                               setPage((prev) => Math.max(1, prev - 1))
                             }}
                             disabled={page === 1}
-                            className="size-10 select-none rounded-full border border-transparent text-lg text-primary/70 transition-colors hover:border-transparent hover:!bg-transparent hover:text-primary focus:outline-none focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-0 active:border-transparent active:bg-transparent"
+                            className={cn(
+                              "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
+                              page === 1 && "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
+                            )}
                           >
                             &#9664;
                           </Button>
@@ -934,7 +1009,11 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                               setPage((prev) => Math.min(totalPages, prev + 1))
                             }}
                             disabled={page === totalPages}
-                            className="size-10 select-none rounded-full border border-transparent text-lg text-primary/70 transition-colors hover:border-transparent hover:!bg-transparent hover:text-primary focus:outline-none focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-0 active:border-transparent active:bg-transparent"
+                            className={cn(
+                              "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
+                              page === totalPages &&
+                                "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
+                            )}
                           >
                             &#9654;
                           </Button>

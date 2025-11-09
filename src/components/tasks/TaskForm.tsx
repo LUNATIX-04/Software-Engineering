@@ -6,35 +6,45 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { TASK_STATUS_LABEL, type TaskStatus } from "@/app/projects/[projectId]/task/data"
 import {
+  CalendarDays,
   Check,
   ChevronDown,
   ChevronRight,
   GripVertical,
-  Info,
+  Palette,
   Plus,
   Search,
+  Wand2,
   X,
 } from "lucide-react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { TOOLTIP_DELAY_DURATION_MS } from "@/constants/ui"
 import { format } from "date-fns"
 import { usePreferences } from "@/contexts/preferences"
 import type { DepartmentLayoutOption } from "@/types/preferences"
 import { cn } from "@/lib/utils"
 import { getContrastingTextColor, sanitizeHexColor } from "@/utils/colors"
 import { Calendar } from "../ui/calendar"
+import { HexColorPicker } from "react-colorful"
+import { DEFAULT_TASK_CARD_COLOR, QUICK_COLOR_OPTIONS } from "@/constants/task-colors"
+import { ScrollArea, ScrollBar, type ScrollAreaViewportElement } from "@/components/ui/scroll-area"
+import type { DateRange } from "react-day-picker"
 
 type TaskFormValues = {
   title: string
   detail: string
   assigneeIds: string[]
+  startDate: string
   deadline: string
   status: TaskStatus
+  cardColor: string
 }
 
 type TaskAssigneeOption = {
@@ -209,8 +219,40 @@ export function TaskForm({
   className,
   assigneeOptions,
 }: TaskFormProps) {
+  const todayStart = React.useMemo(() => {
+    const date = new Date()
+    date.setHours(0, 0, 0, 0)
+    return date
+  }, [])
+  const clampCalendarDate = React.useCallback((value: Date) => {
+    const normalized = new Date(value)
+    normalized.setHours(0, 0, 0, 0)
+    return normalized
+  }, [])
+  const defaultStartDateTime = React.useMemo(() => new Date(), [])
+  const defaultDeadlineDateTime = React.useMemo(() => {
+    const next = new Date(defaultStartDateTime)
+    next.setDate(next.getDate() + 1)
+    next.setHours(0, 0, 0, 0)
+    return next
+  }, [defaultStartDateTime])
+
+  const initialDeadlineParts = React.useMemo(
+    () => getDeadlineParts(initialValues.deadline),
+    [initialValues.deadline]
+  )
+  const initialStartParts = React.useMemo(
+    () => getDeadlineParts(initialValues.startDate),
+    [initialValues.startDate]
+  )
+
   const [title, setTitle] = React.useState(initialValues.title ?? "")
   const [detail, setDetail] = React.useState(initialValues.detail ?? "")
+  const [cardColor, setCardColor] = React.useState(() =>
+    sanitizeHexColor(initialValues.cardColor ?? DEFAULT_TASK_CARD_COLOR)
+  )
+  const [colorMenuOpen, setColorMenuOpen] = React.useState(false)
+  const [colorMode, setColorMode] = React.useState<"presets" | "custom">("presets")
   const { profile } = usePreferences()
   const assigneeLayout: DepartmentLayoutOption = profile?.departmentLayout ?? "fullWidth"
 
@@ -222,26 +264,83 @@ export function TaskForm({
   const [assigneeDepartmentFilters, setAssigneeDepartmentFilters] = React.useState<string[]>([])
   const [assigneeRoleFilters, setAssigneeRoleFilters] = React.useState<string[]>([])
   const [priorityRoleFilterActive, setPriorityRoleFilterActive] = React.useState(false)
+  const fallbackStartDate = React.useMemo(
+    () => clampCalendarDate(defaultStartDateTime),
+    [clampCalendarDate, defaultStartDateTime]
+  )
+  const initialStartDate = clampCalendarDate(initialStartParts.parsed ?? fallbackStartDate)
+  const [startDateTime, setStartDateTime] = React.useState<Date | null>(() => {
+    if (initialStartParts.parsed) {
+      return new Date(initialStartParts.parsed)
+    }
+    if (initialValues.startDate.trim()) {
+      const fallback = new Date(initialStartDate)
+      const parsed = parseTime(initialStartParts.timeText ?? "")
+      fallback.setHours(parsed?.hours ?? 0, parsed?.minutes ?? 0, 0, 0)
+      return fallback
+    }
+    return new Date(defaultStartDateTime)
+  })
   const [deadline, setDeadline] = React.useState<Date | null>(() => {
-    const parts = getDeadlineParts(initialValues.deadline)
-    return parts.parsed
+    if (initialDeadlineParts.parsed) {
+      return new Date(initialDeadlineParts.parsed)
+    }
+    if (initialValues.deadline.trim()) {
+      const fallback = new Date(initialStartDate)
+      fallback.setHours(0, 0, 0, 0)
+      return fallback
+    }
+    return new Date(defaultDeadlineDateTime)
+  })
+  const [calendarRange, setCalendarRange] = React.useState<DateRange | undefined>(() => {
+    const fallbackEndDate = initialValues.deadline.trim() ? initialStartDate : defaultDeadlineDateTime
+    const endDate = clampCalendarDate(initialDeadlineParts.parsed ?? fallbackEndDate)
+    return { from: initialStartDate, to: endDate }
   })
   const [calendarMonth, setCalendarMonth] = React.useState<Date>(() => {
-    const parts = getDeadlineParts(initialValues.deadline)
-    return parts.parsed ?? new Date()
+    return initialStartParts.parsed ?? new Date(defaultStartDateTime)
+  })
+  const [startDateText, setStartDateText] = React.useState(() => {
+    if (initialStartParts.dateText) {
+      return initialStartParts.dateText
+    }
+    if (initialValues.startDate.trim()) {
+      return format(initialStartDate, "dd/MM/yyyy")
+    }
+    return format(defaultStartDateTime, "dd/MM/yyyy")
   })
   const [deadlineDateText, setDeadlineDateText] = React.useState(() => {
-    const parts = getDeadlineParts(initialValues.deadline)
-    return parts.dateText
+    if (initialDeadlineParts.dateText) {
+      return initialDeadlineParts.dateText
+    }
+    if (initialValues.deadline.trim()) {
+      return format(initialStartDate, "dd/MM/yyyy")
+    }
+    return format(defaultDeadlineDateTime, "dd/MM/yyyy")
+  })
+  const [startTimeText, setStartTimeText] = React.useState(() => {
+    if (initialStartParts.timeText) {
+      return initialStartParts.timeText
+    }
+    if (initialValues.startDate.trim()) {
+      return "00:00"
+    }
+    return format(defaultStartDateTime, "HH:mm")
   })
   const [deadlineTimeText, setDeadlineTimeText] = React.useState(() => {
-    const parts = getDeadlineParts(initialValues.deadline)
-    return parts.timeText
+    if (initialDeadlineParts.timeText) {
+      return initialDeadlineParts.timeText
+    }
+    if (initialValues.deadline.trim()) {
+      return "00:00"
+    }
+    return format(defaultDeadlineDateTime, "HH:mm")
   })
   const [status, setStatus] = React.useState<TaskStatus>(initialValues.status)
   const [draggingIndex, setDraggingIndex] = React.useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null)
   const draggedAssigneeIndexRef = React.useRef<number | null>(null)
+  const calendarSelectedRange = calendarRange
   type AssigneeMeta = TaskAssigneeOption & {
     roleLabel: string | null
     displayLabel: string
@@ -453,58 +552,191 @@ export function TaskForm({
     setDraggingIndex(null)
     draggedAssigneeIndexRef.current = null
   }
-  const handleCalendarSelect = (date?: Date | null) => {
-    if (!date) {
+  const handleCalendarSelect = (range?: DateRange) => {
+    if (!range?.from) {
+      setCalendarRange(undefined)
+      setStartDateTime(null)
+      setStartDateText("")
+      setStartTimeText("")
       setDeadline(null)
       setDeadlineDateText("")
       setDeadlineTimeText("")
+      setCalendarMonth(new Date(todayStart))
       return
     }
-    const next = new Date(date)
-    const existingTime = parseTime(deadlineTimeText)
-    if (existingTime) {
-      next.setHours(existingTime.hours, existingTime.minutes, 0, 0)
+    let boundedFrom = clampCalendarDate(range.from)
+    let boundedTo = range.to ? clampCalendarDate(range.to) : boundedFrom
+    if (boundedTo < boundedFrom) {
+      boundedTo = boundedFrom
+    }
+
+    const startTimeParsed = parseTime(startTimeText) ?? { hours: 0, minutes: 0 }
+    const nextStartDate = new Date(boundedFrom)
+    nextStartDate.setHours(startTimeParsed.hours, startTimeParsed.minutes, 0, 0)
+    setStartDateTime(nextStartDate)
+    setStartDateText(format(boundedFrom, "dd/MM/yyyy"))
+    if (!startTimeText) {
+      setStartTimeText(format(nextStartDate, "HH:mm"))
+    }
+
+    const deadlineTimeParsed = parseTime(deadlineTimeText)
+    const nextEndDate = new Date(boundedTo)
+    if (deadlineTimeParsed) {
+      nextEndDate.setHours(deadlineTimeParsed.hours, deadlineTimeParsed.minutes, 0, 0)
+    } else if (deadline) {
+      nextEndDate.setHours(deadline.getHours(), deadline.getMinutes(), 0, 0)
     } else {
-      next.setHours(0, 0, 0, 0)
+      nextEndDate.setHours(0, 0, 0, 0)
     }
-    setDeadline(next)
-    setCalendarMonth(next)
-    setDeadlineDateText(format(next, "dd/MM/yyyy"))
-    if (existingTime) {
-      setDeadlineTimeText(format(next, "HH:mm"))
+
+    if (nextEndDate < nextStartDate) {
+      nextEndDate.setTime(nextStartDate.getTime())
+      boundedTo = boundedFrom
     }
+
+    setDeadline(nextEndDate)
+    setCalendarMonth(boundedFrom)
+    setDeadlineDateText(format(boundedTo, "dd/MM/yyyy"))
+    if (!deadlineTimeText) {
+      setDeadlineTimeText(format(nextEndDate, "HH:mm"))
+    }
+    setCalendarRange({ from: boundedFrom, to: boundedTo })
   }
 
-  const handleDeadlineTimeChange = (value: string) => {
-    if (!deadlineDateText.trim()) {
-      setDeadlineTimeText(value)
-      setDeadline(null)
-      return
-    }
-    if (!value) {
-      setDeadlineTimeText("")
-      const parsedDateOnly = parseDeadline(deadlineDateText)
-      if (parsedDateOnly) {
-        parsedDateOnly.setHours(0, 0, 0, 0)
-        setDeadline(parsedDateOnly)
-        setCalendarMonth(parsedDateOnly)
-        setDeadlineDateText(format(parsedDateOnly, "dd/MM/yyyy"))
-      } else {
-        setDeadline(null)
-      }
-      return
-    }
-    const parsed = parseDeadline(composeDeadlineInput(deadlineDateText, value))
-    if (parsed) {
-      setDeadline(parsed)
-      setCalendarMonth(parsed)
-      setDeadlineDateText(format(parsed, "dd/MM/yyyy"))
-      setDeadlineTimeText(format(parsed, "HH:mm"))
-    } else {
-      setDeadline(null)
-      setDeadlineTimeText(value)
-    }
+  const handleResetDeadline = () => {
+    const now = new Date()
+    const resetStart = clampCalendarDate(now)
+    const resetEnd = new Date(resetStart)
+    resetEnd.setDate(resetEnd.getDate() + 1)
+    resetEnd.setHours(0, 0, 0, 0)
+
+    setCalendarRange({ from: resetStart, to: clampCalendarDate(resetEnd) })
+    setCalendarMonth(resetStart)
+
+    setStartDateTime(new Date(now))
+    setStartDateText(format(now, "dd/MM/yyyy"))
+    setStartTimeText(format(now, "HH:mm"))
+
+    setDeadline(new Date(resetEnd))
+    setDeadlineDateText(format(resetEnd, "dd/MM/yyyy"))
+    setDeadlineTimeText(format(resetEnd, "HH:mm"))
+    scrollTimePanels(
+      now.getHours(),
+      now.getMinutes(),
+      resetEnd.getHours(),
+      resetEnd.getMinutes()
+    )
   }
+
+  const timeOptions = React.useMemo(
+    () => ({
+      hours: Array.from({ length: 24 }, (_, index) => index),
+      minutes: Array.from({ length: 60 }, (_, index) => index),
+    }),
+    []
+  )
+
+  const startHourViewportRef = React.useRef<ScrollAreaViewportElement | null>(null)
+  const startMinuteViewportRef = React.useRef<ScrollAreaViewportElement | null>(null)
+  const endHourViewportRef = React.useRef<ScrollAreaViewportElement | null>(null)
+  const endMinuteViewportRef = React.useRef<ScrollAreaViewportElement | null>(null)
+
+  const scrollToTarget = React.useCallback(
+    (viewport: ScrollAreaViewportElement | null, selector: string) => {
+      if (!viewport) {
+        return
+      }
+      const target = viewport.querySelector(`[data-scroll-target="${selector}"]`) as
+        | HTMLElement
+        | null
+      if (target) {
+        target.scrollIntoView({ block: "center" })
+      }
+    },
+    []
+  )
+
+  const scrollTimePanels = React.useCallback(
+    (startHour: number, startMinute: number, endHour: number, endMinute: number) => {
+      requestAnimationFrame(() => {
+        scrollToTarget(startHourViewportRef.current, `start-hour-${startHour}`)
+        scrollToTarget(startMinuteViewportRef.current, `start-minute-${startMinute}`)
+        scrollToTarget(endHourViewportRef.current, `end-hour-${endHour}`)
+        scrollToTarget(endMinuteViewportRef.current, `end-minute-${endMinute}`)
+      })
+    },
+    [scrollToTarget]
+  )
+
+  const parsedStartTime = React.useMemo(() => {
+    const parsed = parseTime(startTimeText)
+    if (!calendarRange?.from || parsed === null) {
+      return null
+    }
+    return parsed
+  }, [calendarRange?.from, startTimeText])
+
+  const parsedDeadlineTime = React.useMemo(() => {
+    const parsed = parseTime(deadlineTimeText)
+    if (!calendarRange?.to || parsed === null) {
+      return null
+    }
+    return parsed
+  }, [calendarRange?.to, deadlineTimeText])
+
+  const handleTimeSlotSelect = React.useCallback(
+    (type: "hour" | "minute", value: number, target: "start" | "end") => {
+      if (target === "start") {
+        const currentParsed = parsedStartTime ?? { hours: 0, minutes: 0 }
+        const nextHours = type === "hour" ? value : currentParsed.hours
+        const nextMinutes = type === "minute" ? value : currentParsed.minutes
+        const baseDate = startDateTime
+          ? new Date(startDateTime)
+          : calendarRange?.from
+            ? new Date(calendarRange.from)
+            : new Date(todayStart)
+        baseDate.setHours(nextHours, nextMinutes, 0, 0)
+
+        setStartDateTime(baseDate)
+        setStartTimeText(`${String(nextHours).padStart(2, "0")}:${String(nextMinutes).padStart(2, "0")}`)
+        const fromDate = clampCalendarDate(baseDate)
+        let toDate = calendarRange?.to ? clampCalendarDate(calendarRange.to) : fromDate
+        if (toDate < fromDate) {
+          toDate = fromDate
+          const adjustedDeadline = new Date(baseDate)
+          setDeadline(adjustedDeadline)
+          setDeadlineDateText(format(fromDate, "dd/MM/yyyy"))
+          setDeadlineTimeText(format(adjustedDeadline, "HH:mm"))
+        }
+        setStartDateText(format(fromDate, "dd/MM/yyyy"))
+        setCalendarRange({ from: fromDate, to: toDate })
+        setCalendarMonth(fromDate)
+        return
+      }
+
+      const currentParsed = parsedDeadlineTime ?? { hours: 0, minutes: 0 }
+      const nextHours = type === "hour" ? value : currentParsed.hours
+      const nextMinutes = type === "minute" ? value : currentParsed.minutes
+      const baseDate =
+        (deadline ? new Date(deadline) : undefined) ??
+        (calendarRange?.to ? new Date(calendarRange.to) : undefined) ??
+        (calendarRange?.from ? new Date(calendarRange.from) : undefined) ??
+        new Date(todayStart)
+      baseDate.setHours(nextHours, nextMinutes, 0, 0)
+
+      setDeadline(baseDate)
+      setDeadlineTimeText(`${String(nextHours).padStart(2, "0")}:${String(nextMinutes).padStart(2, "0")}`)
+      const toDate = clampCalendarDate(baseDate)
+      const fromDate = calendarRange?.from ? clampCalendarDate(calendarRange.from) : toDate
+      if (toDate < fromDate) {
+        setCalendarRange({ from: fromDate, to: fromDate })
+      } else {
+        setCalendarRange({ from: fromDate, to: toDate })
+      }
+      setDeadlineDateText(format(toDate, "dd/MM/yyyy"))
+    },
+    [calendarRange, deadline, parsedDeadlineTime, parsedStartTime, startDateTime, todayStart]
+  )
 
   const handleAssigneeDragEnd = () => {
     setDragOverIndex(null)
@@ -526,44 +758,136 @@ export function TaskForm({
       ? "mt-3 flex flex-col gap-3"
       : "mt-3 flex flex-wrap gap-3"
 
-  const [infoPopoverId, setInfoPopoverId] = React.useState<string | null>(null)
-  const closeInfoPopover = () => setInfoPopoverId(null)
-
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const normalizedAssignees = assigneeIds.filter(
       (item, index, array) => item && array.indexOf(item) === index
     )
-    const deadlineValue = deadline
-      ? (() => {
-          const formattedDate = format(deadline, "dd/MM/yyyy")
-          const hasTime = Boolean(deadlineTimeText.trim())
-          const formattedTime = hasTime ? format(deadline, "HH:mm") : ""
-          return [formattedDate, formattedTime].filter(Boolean).join(" ")
-        })()
-      : [deadlineDateText.trim(), deadlineTimeText.trim()].filter(Boolean).join(" ")
+    const startDateValue =
+      calendarRange?.from && startDateText
+        ? `${startDateText.trim()} ${(startTimeText.trim() || "00:00")}`
+        : ""
+    const deadlineValue =
+      calendarRange?.to && deadlineDateText
+        ? `${deadlineDateText.trim()} ${(deadlineTimeText.trim() || "00:00")}`
+        : ""
     onSubmit({
       title: title.trim(),
       detail: detail.trim(),
       assigneeIds: normalizedAssignees,
+      startDate: startDateValue,
       deadline: deadlineValue,
       status,
+      cardColor,
     })
   }
 
-  const formattedDeadlineLabel = deadline
-    ? format(deadline, "EEE, dd MMM yyyy")
-    : "No deadline set"
+  const formattedDeadlineLabel =
+    calendarRange?.to && deadlineDateText
+      ? `${format(calendarRange.to, "EEE, dd MMM yyyy")} • ${(deadlineTimeText.trim() || "00:00")}`
+      : "No deadline set"
+  const formattedStartLabel =
+    calendarRange?.from && startDateText
+      ? `${format(calendarRange.from, "EEE, dd MMM yyyy")} • ${(startTimeText.trim() || "00:00")}`
+      : "No start date set"
+  const TIME_SCROLLER_HEIGHT_CLASS = "h-[8rem]"
 
   return (
-    <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.95fr)] lg:gap-16">
+    <div className="grid items-start gap-10 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-12">
       <form
         onSubmit={handleSubmit}
-        className="flex flex-col gap-7 rounded-[3.5rem] border-2 border-primary/30 bg-card-project px-[clamp(2.5rem,4vw,3.75rem)] pb-12 pt-8 shadow-[0_2px_6px_rgba(0,0,0,0.12)]"
+        className="flex flex-col gap-7 rounded-[3.5rem] border-2 border-primary/30 bg-card-project px-[clamp(2.5rem,4vw,3.75rem)] pb-12 pt-8 shadow-[0_2px_6px_rgba(0,0,0,0.12)] lg:-ml-4 2xl:-ml-6"
       >
-        <h1 className="text-3xl font-bold text-[#2F2766]">
-          {heading}
-        </h1>
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-3xl font-bold text-[#2F2766]">{heading}</h1>
+          <DropdownMenu
+            open={colorMenuOpen}
+            onOpenChange={(open) => {
+              setColorMenuOpen(open)
+              if (!open) {
+                setColorMode("presets")
+              }
+            }}
+          >
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex items-center justify-between gap-3 rounded-[1.5rem] border border-primary/30 bg-white/90 px-4 py-2 text-sm font-semibold text-primary shadow-[0_6px_0_rgba(144,122,214,0.15)] transition hover:border-primary hover:bg-primary/10 focus-visible:outline-none"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Palette className="size-4" />
+                  Select Color
+                </span>
+                <span
+                  className="size-6 rounded-full border-2 border-primary/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]"
+                  style={{ backgroundColor: cardColor || DEFAULT_TASK_CARD_COLOR }}
+                />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="end"
+              sideOffset={6}
+              className="w-64 max-h-[24rem] overflow-y-auto rounded-3xl border border-primary/30 bg-white p-4 text-sm font-semibold text-primary shadow-[0_16px_30px_rgba(72,68,110,0.2)]"
+            >
+              <div className="mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-primary/70">
+                <span className="inline-flex items-center gap-1">
+                  {colorMode === "presets" ? (
+                    <Palette className="size-3.5" />
+                  ) : (
+                    <Wand2 className="size-3.5" />
+                  )}
+                  {colorMode === "presets" ? "Quick Colors" : "Custom Color"}
+                </span>
+                <button
+                  type="button"
+                  className="rounded-full border border-transparent px-3 py-1 text-[0.7rem] font-semibold text-primary transition hover:border-primary/30 hover:bg-primary/5"
+                  onClick={() =>
+                    setColorMode((mode) => (mode === "presets" ? "custom" : "presets"))
+                  }
+                >
+                  {colorMode === "presets" ? (
+                    <span className="inline-flex items-center gap-1">
+                      <Wand2 className="size-3.5" />
+                      Custom
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1">
+                      <Palette className="size-3.5" />
+                      Palette
+                    </span>
+                  )}
+                </button>
+              </div>
+              {colorMode === "presets" ? (
+                <div className="flex flex-wrap gap-2">
+                  {QUICK_COLOR_OPTIONS.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className="flex size-10 items-center justify-center rounded-2xl border-2 border-primary/20 text-[0.65rem] font-semibold transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0"
+                      style={{ backgroundColor: option.value }}
+                      onClick={() => {
+                        setCardColor(sanitizeHexColor(option.value))
+                        setColorMenuOpen(false)
+                      }}
+                      aria-label={`Select ${option.label}`}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="max-h-[18rem] space-y-2 overflow-auto rounded-2xl border border-primary/20 bg-white/60 p-3">
+                  <div className="rounded-2xl bg-white p-2">
+                    <HexColorPicker
+                      color={cardColor || DEFAULT_TASK_CARD_COLOR}
+                      onChange={(color) => setCardColor(sanitizeHexColor(color))}
+                      style={{ width: "100%", height: "160px" }}
+                    />
+                  </div>
+                </div>
+              )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
         <Input
           value={title}
@@ -571,8 +895,7 @@ export function TaskForm({
           placeholder="Task Title"
           aria-label="Task Title"
           className="h-12 rounded-full border-2 border-primary/40 bg-white px-5 text-base font-semibold text-[#2F2766] placeholder:text-[#2F2766]/70 focus:border-primary focus:outline-none"
-          required
-        />
+          required />
 
         <div className="group/textarea overflow-hidden rounded-[1.25rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.25)]">
           <Textarea
@@ -580,8 +903,7 @@ export function TaskForm({
             onChange={(event) => setDetail(event.target.value)}
             placeholder="Add detail"
             aria-label="Task detail"
-            className="project-detail-scroll min-h-[10rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-6 py-2 text-base text-[#2F2766] placeholder:text-primary/60 shadow-none focus-visible:outline-none focus-visible:ring-0"
-          />
+            className="project-detail-scroll min-h-[10rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-6 py-2 text-base text-[#2F2766] placeholder:text-primary/60 shadow-none focus-visible:outline-none focus-visible:ring-0" />
         </div>
 
         <div className="space-y-4 text-[#2F2766]">
@@ -597,18 +919,23 @@ export function TaskForm({
                   return
                 }
                 setAssigneePickerOpen(open)
-              }}
+              } }
             >
               <PopoverTrigger asChild>
                 <button
                   type="button"
                   disabled={assigneeOptions.length === 0}
-                  className="flex w-full max-w-sm items-center justify-between rounded-full border-2 border-primary/40 bg-white px-6 py-3 text-base font-semibold text-primary shadow-[0_3px_0_rgba(144,122,214,0.2)] transition hover:border-primary hover:bg-primary hover:text-white focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+                  className="group flex w-full max-w-sm select-none items-center justify-between rounded-full border-2 border-primary/40 bg-white px-6 py-3 text-base font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-white focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <span className="inline-flex items-center gap-2">
                     <Plus className="size-5" />
-                    Add Member
-                  </span>
+                    <span className="flex items-center gap-2">
+                      Add Member
+                      <span className="inline-flex min-w-[1.5rem] justify-center rounded-full border border-primary bg-white px-2 py-0.5 text-xs font-bold text-primary group-hover:border-white group-hover:bg-white group-hover:text-primary">
+                        {assigneeIds.length}
+                      </span>
+                    </span>
+                    </span>
                   <ChevronRight className="size-4" />
                 </button>
               </PopoverTrigger>
@@ -626,8 +953,7 @@ export function TaskForm({
                         value={assigneeSearch}
                         onChange={(event) => setAssigneeSearch(event.target.value)}
                         placeholder="Search member"
-                        className="h-11 w-full rounded-full border-2 border-primary/30 bg-white pl-10 pr-4 text-sm font-medium text-[#2F2766] placeholder:text-primary/60 focus:border-primary focus:outline-none"
-                      />
+                        className="h-11 w-full rounded-full border-2 border-primary/30 bg-white pl-10 pr-4 text-sm font-medium text-[#2F2766] placeholder:text-primary/60 focus:border-primary focus:outline-none" />
                     </div>
                     {availableDepartmentFilters.length > 0 || availableRoleFilters.length > 0 ? (
                       <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-primary/60">
@@ -638,21 +964,21 @@ export function TaskForm({
                               {availableDepartmentFilters.map((dept) => {
                                 const active = assigneeDepartmentFilters.includes(dept)
                                 return (
-                              <button
-                                type="button"
-                                key={dept}
-                                onClick={() => toggleDepartmentFilter(dept)}
-                                className={cn(
-                                  "rounded-full border px-3 py-1 text-xs transition focus:outline-none",
-                                  active
-                                    ? "border-primary bg-primary text-white"
-                                    : "border-primary/30 bg-white text-primary hover:border-primary"
-                                )}
-                              >
-                                <span className="block max-w-[7rem] truncate text-left">
-                                  {dept}
-                                </span>
-                              </button>
+                                  <button
+                                    type="button"
+                                    key={dept}
+                                    onClick={() => toggleDepartmentFilter(dept)}
+                                    className={cn(
+                                      "rounded-full border px-3 py-1 text-xs transition focus:outline-none",
+                                      active
+                                        ? "border-primary bg-primary text-white"
+                                        : "border-primary/30 bg-white text-primary hover:border-primary"
+                                    )}
+                                  >
+                                    <span className="block max-w-[7rem] truncate text-left">
+                                      {dept}
+                                    </span>
+                                  </button>
                                 )
                               })}
                             </div>
@@ -706,7 +1032,7 @@ export function TaskForm({
                         ) : null}
                       </div>
                     ) : null}
-                    <div className="asap-scroll [scrollbar-gutter:stable] max-h-64 space-y-1 overflow-y-auto pr-1">
+                    <div className="asap-scroll [scrollbar-gutter:stable] max-h-64 space-y-1 overflow-y-auto overflow-x-scroll pr-1">
                       {filteredAssigneeOptions.length > 0 ? (
                         filteredAssigneeOptions.map((option) => {
                           const isSelected = assigneeIds.includes(option.id)
@@ -714,11 +1040,9 @@ export function TaskForm({
                             <button
                               type="button"
                               key={option.id}
-                              onClick={() =>
-                                isSelected
-                                  ? handleRemoveAssignee(option.id)
-                                  : handleSelectAssignee(option.id)
-                              }
+                              onClick={() => isSelected
+                                ? handleRemoveAssignee(option.id)
+                                : handleSelectAssignee(option.id)}
                               className={cn(
                                 "flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition",
                                 isSelected
@@ -730,8 +1054,7 @@ export function TaskForm({
                                 <span className="flex items-center gap-2">
                                   <span
                                     className="size-3 rounded-full border border-black/10"
-                                    style={{ backgroundColor: option.chipBackground }}
-                                  />
+                                    style={{ backgroundColor: option.chipBackground }} />
                                   <span>{option.displayLabel}</span>
                                 </span>
                                 {option.departmentName ? (
@@ -762,7 +1085,7 @@ export function TaskForm({
               </p>
             ) : null}
           </div>
-          <div className={assigneeContainerClass}>
+      <div className={assigneeContainerClass}>
             {assigneeIds.length > 0 ? (
               assigneeIds.map((item, index) => {
                 const meta = assigneeMetaLookup[item]
@@ -770,7 +1093,6 @@ export function TaskForm({
                 const isDragging = draggingIndex === index
                 const chipClassName = [
                   assigneeChipClass,
-                  "shadow-[0_4px_0_rgba(144,122,214,0.2)]",
                   isDragOver ? "ring-2 ring-primary/40" : "",
                   isDragging ? "cursor-grabbing opacity-80" : "",
                 ]
@@ -778,97 +1100,69 @@ export function TaskForm({
                   .join(" ")
                 const chipStyle = meta
                   ? {
-                      backgroundColor: meta.chipBackground,
-                      color: meta.chipTextColor,
-                      borderColor: meta.chipBorderColor,
-                    }
+                    backgroundColor: meta.chipBackground,
+                    color: meta.chipTextColor,
+                    borderColor: meta.chipBorderColor,
+                  }
                   : undefined
 
                 return (
-                  <span
-                    key={item}
-                    className={chipClassName}
-                    style={chipStyle}
-                    draggable
-                    aria-grabbed={isDragging}
-                    onDragStart={(event) => handleAssigneeDragStart(event, index)}
-                    onDragOver={(event) => handleAssigneeDragOver(event, index)}
-                    onDrop={(event) => handleAssigneeDrop(event, index)}
-                    onDragEnd={handleAssigneeDragEnd}
-                  >
-                <span className="inline-flex items-center gap-2">
-                  <GripVertical
-                    className={cn(
-                      "size-4 text-current",
-                      assigneeLayout === "fullWidth" ? "" : "opacity-70"
-                    )}
-                    aria-hidden
-                  />
-                    <span className="max-w-[12rem] truncate">{meta?.displayLabel ?? "Unknown member"}</span>
-                  </span>
-                    <div className="flex items-center gap-2">
-                      <Popover
-                        open={infoPopoverId === item}
-                        onOpenChange={(open) => setInfoPopoverId(open ? item : null)}
+                  <Tooltip key={item} delayDuration={TOOLTIP_DELAY_DURATION_MS}>
+                    <TooltipTrigger asChild>
+                      <span
+                        className={chipClassName}
+                        style={chipStyle}
+                        draggable
+                        aria-grabbed={isDragging}
+                        onDragStart={(event) => handleAssigneeDragStart(event, index)}
+                        onDragOver={(event) => handleAssigneeDragOver(event, index)}
+                        onDrop={(event) => handleAssigneeDrop(event, index)}
+                        onDragEnd={handleAssigneeDragEnd}
                       >
-                        <PopoverTrigger asChild>
+                        <span className="inline-flex items-center gap-2">
+                          <GripVertical
+                            className={cn(
+                              "size-4 text-current",
+                              assigneeLayout === "fullWidth" ? "" : "opacity-70"
+                            )}
+                            aria-hidden
+                          />
+                          <span className="max-w-[12rem] truncate">
+                            {meta?.displayLabel ?? "Unknown member"}
+                          </span>
+                        </span>
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={(event) => event.stopPropagation()}
-                            className="grid size-6 place-items-center rounded-full bg-primary/10 text-primary transition hover:bg-primary/20 focus:outline-none"
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              handleRemoveAssignee(item)
+                            }}
+                            className={`${chipActionButtonClass} rounded-full`}
+                            aria-label={`Remove ${meta?.displayLabel ?? "member"}`}
                           >
-                            <Info className="size-4" />
+                            <X className="size-4" />
                           </button>
-                        </PopoverTrigger>
-                        <PopoverContent
-                          align="start"
-                          sideOffset={8}
-                          className="w-52 rounded-3xl border border-primary/40 bg-white p-4 text-sm text-[#2F2766] shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
-                        >
-                          <div className="flex items-center justify-between gap-2 pb-2">
-                            <span className="text-xs font-semibold uppercase tracking-wide text-primary/60">
-                              Member details
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(event) => {
-                                event.stopPropagation()
-                                closeInfoPopover()
-                              }}
-                              className="rounded-full p-1 text-primary/60 transition hover:text-primary hover:bg-primary/5 focus:outline-none"
-                              aria-label="Close info"
-                            >
-                              <X className="size-4" />
-                            </button>
-                          </div>
-                          <div className="space-y-1 text-xs text-[#2F2766]">
-                            <p className="text-sm font-semibold text-[#2F2766]">
-                              {meta?.username ?? meta?.label ?? "Unknown member"}
-                            </p>
-                            <p className="text-[0.7rem] text-primary/70">
-                              Role: {meta?.roleLabel ?? meta?.role ?? "Member"}
-                            </p>
-                            {meta?.departmentName ? (
-                              <p className="text-[0.7rem] text-primary/70">
-                                Department: {meta.departmentName}
-                              </p>
-                            ) : null}
-                          </div>
-                        </PopoverContent>
-                      </Popover>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation()
-                          handleRemoveAssignee(item)
-                        }}
-                        className={`${chipActionButtonClass} rounded-full`}
-                        aria-label={`Remove ${meta?.displayLabel ?? "member"}`}
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </div>
-                  </span>
+                        </div>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent
+                      align="start"
+                      sideOffset={8}
+                      className="w-56 rounded-3xl border border-primary/40 bg-white/95 p-4 text-sm font-semibold text-[#2F2766] shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
+                      style={{ backgroundColor: "#ffffff", color: "#2F2766" }}
+                    >
+                      <p className="text-base font-bold text-[#2F2766]">
+                        {meta?.username ?? meta?.label ?? "Unknown member"}
+                      </p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">
+                        {meta?.roleLabel ?? meta?.role ?? "Member"}
+                      </p>
+                      {meta?.departmentName ? (
+                        <p className="text-xs text-primary/70">Department: {meta.departmentName}</p>
+                      ) : null}
+                    </TooltipContent>
+                  </Tooltip>
                 )
               })
             ) : (
@@ -878,7 +1172,6 @@ export function TaskForm({
             )}
           </div>
         </div>
-
         {showStatus ? (
           <div className="space-y-4 text-[#2F2766]">
             <span className="text-lg font-semibold">Task Status :</span>
@@ -915,7 +1208,7 @@ export function TaskForm({
           </div>
         ) : null}
 
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-end">
           <Button
             type="submit"
             disabled={submitting}
@@ -926,48 +1219,207 @@ export function TaskForm({
         </div>
       </form>
 
-      <aside className="flex w-full flex-col gap-6 pr-6 md:pr-10">
-        <div className="flex w-full max-w-sm flex-col gap-4 rounded-[3rem] border-2 border-primary/40 bg-white/90 px-6 py-6 shadow-[0_20px_0_rgba(144,122,214,0.2)]">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">Deadline</p>
-              <p className="text-lg font-semibold text-[#2F2766]">{formattedDeadlineLabel}</p>
+      <div className="mt-0 flex w-full flex-col gap-10 pr-6 md:pr-3"> {/*Calendar Set*/}
+        <div className="flex w-full max-w-full flex-col gap-6 rounded-[3rem] border-2 border-primary/40 bg-white/90 px-6 py-6 shadow-[0_6px_0_rgba(144,122,214,0.2)]">
+          <div className="rounded-[2rem] border border-primary/20 bg-white/80 p-5">
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-start">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">
+                  Startline
+                </p>
+                <p className="text-base font-semibold text-[#2F2766]">{formattedStartLabel}</p>
+              </div>
+              <div className="space-y-2 md:text-right">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">
+                    Deadline
+                  </p>
+                  <p className="text-base font-semibold text-[#2F2766]">{formattedDeadlineLabel}</p>
+                </div>
+              </div>
             </div>
-            <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
-              Future dates only
-            </span>
           </div>
-          <Calendar
-            mode="single"
-            selected={deadline ?? undefined}
-            month={calendarMonth}
-            onSelect={handleCalendarSelect}
-            onMonthChange={setCalendarMonth}
-            captionLayout="dropdown"
-            fromYear={2000}
-            toYear={2100}
-            fixedWeeks
-            initialFocus
-            disablePast
-          />
+          <div className="flex flex-wrap items-center gap-3 justify-between">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="inline-flex select-none items-center gap-2 rounded-full border border-primary/30 px-4 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary transition hover:border-primary hover:bg-primary/10"
+              >
+                <CalendarDays className="size-4" />
+                Full Calendar
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={handleResetDeadline}
+              className="inline-flex select-none items-center rounded-full border border-primary/30 px-4 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary transition hover:border-primary hover:bg-primary/10"
+            >
+              Reset date &amp; time
+            </button>
+          </div>
+          <div className="relative flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,0.35fr)_minmax(0,1fr)_minmax(0,0.35fr)] lg:items-start">
+            <div className="order-2 flex w-full max-w-[9rem] flex-col gap-4 text-primary lg:order-1 lg:self-stretch">
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">
+                Startline
+              </p>
+              <div>
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
+                  Hours
+                </p>
+              <ScrollArea
+                className={cn(
+                  "asap-scroll mt-2 w-full rounded-[1rem] border border-primary/20 bg-white/90 shadow-[0_4px_0_rgba(144,122,214,0.15)] overflow-x-scroll",
+                  TIME_SCROLLER_HEIGHT_CLASS
+                )}
+                viewportRef={startHourViewportRef}
+              >
+                  <div className="flex flex-col gap-2 p-1 pr-1">
+                    {timeOptions.hours.map((hour) => (
+                    <Button
+                        key={hour}
+                        type="button"
+                        data-scroll-target={`start-hour-${hour}`}
+                        variant={parsedStartTime?.hours === hour ? "default" : "ghost"}
+                        className={cn(
+                          "w-full rounded-full border border-primary/20 text-sm font-semibold",
+                          parsedStartTime?.hours === hour
+                            ? "bg-primary text-primary-foreground"
+                            : "text-primary hover:bg-primary/10"
+                        )}
+                        onClick={() => handleTimeSlotSelect("hour", hour, "start")}
+                      >
+                        {hour.toString().padStart(2, "0")}
+                      </Button>
+                    ))}
+                  </div>
+                  <ScrollBar orientation="vertical" />
+                </ScrollArea>
+              </div>
+              <div>
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
+                  Minutes
+                </p>
+              <ScrollArea
+                className={cn(
+                  "asap-scroll mt-2 w-full rounded-[1rem] border border-primary/20 bg-white/90 shadow-[0_4px_0_rgba(144,122,214,0.15)] overflow-x-scroll",
+                  TIME_SCROLLER_HEIGHT_CLASS
+                )}
+                viewportRef={startMinuteViewportRef}
+              >
+                  <div className="flex flex-col gap-2 p-1 pr-1">
+                    {timeOptions.minutes.map((minute) => (
+                      <Button
+                        key={minute}
+                        type="button"
+                        data-scroll-target={`start-minute-${minute}`}
+                        variant={parsedStartTime?.minutes === minute ? "default" : "ghost"}
+                        className={cn(
+                          "w-full rounded-full border border-primary/20 text-sm font-semibold",
+                          parsedStartTime?.minutes === minute
+                            ? "bg-primary text-primary-foreground"
+                            : "text-primary hover:bg-primary/10"
+                        )}
+                        onClick={() => handleTimeSlotSelect("minute", minute, "start")}
+                      >
+                        {minute.toString().padStart(2, "0")}
+                      </Button>
+                    ))}
+                  </div>
+                  <ScrollBar orientation="vertical" />
+                </ScrollArea>
+              </div>
+            </div>
+            <Calendar
+              className="order-1 w-full rounded-[1.5rem] min-h-[22rem] lg:order-2"
+              classNames={{
+                day: "relative w-full h-full p-0 text-center [&:last-child[data-selected=true]_button]:rounded-r-md group/day aspect-square select-none text-primary data-[outside=true]:text-primary/40",
+              }}
+              mode="range"
+              selected={calendarSelectedRange}
+              month={calendarMonth}
+              onSelect={handleCalendarSelect}
+              onMonthChange={setCalendarMonth}
+              captionLayout="dropdown"
+              fromYear={todayStart.getFullYear()}
+              toYear={2100}
+              fixedWeeks
+              initialFocus
+              fromDate={todayStart}
+            />
+            <div className="order-3 flex w-full max-w-[9rem] flex-col gap-4 text-primary lg:self-stretch">
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">
+                Deadline
+              </p>
+              <div>
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
+                  Hours
+                </p>
+              <ScrollArea
+                className={cn(
+                  "asap-scroll mt-2 w-full rounded-[1rem] border border-primary/20 bg-white/90 shadow-[0_4px_0_rgba(144,122,214,0.15)] overflow-x-scroll",
+                  TIME_SCROLLER_HEIGHT_CLASS
+                )}
+                viewportRef={endHourViewportRef}
+              >
+                  <div className="flex flex-col gap-2 p-1 pr-1">
+                    {timeOptions.hours.map((hour) => (
+                      <Button
+                        key={hour}
+                        type="button"
+                        data-scroll-target={`end-hour-${hour}`}
+                        variant={parsedDeadlineTime?.hours === hour ? "default" : "ghost"}
+                        className={cn(
+                          "w-full rounded-full border border-primary/20 text-sm font-semibold",
+                          parsedDeadlineTime?.hours === hour
+                            ? "bg-primary text-primary-foreground"
+                            : "text-primary hover:bg-primary/10"
+                        )}
+                        onClick={() => handleTimeSlotSelect("hour", hour, "end")}
+                      >
+                        {hour.toString().padStart(2, "0")}
+                      </Button>
+                    ))}
+                  </div>
+                  <ScrollBar orientation="vertical" />
+                </ScrollArea>
+              </div>
+              <div>
+                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
+                  Minutes
+                </p>
+              <ScrollArea
+                className={cn(
+                  "asap-scroll mt-2 w-full rounded-[1rem] border border-primary/20 bg-white/90 shadow-[0_4px_0_rgba(144,122,214,0.15)] overflow-x-scroll",
+                  TIME_SCROLLER_HEIGHT_CLASS
+                )}
+                viewportRef={endMinuteViewportRef}
+              >
+                  <div className="flex flex-col gap-2 p-2 pr-3">
+                    {timeOptions.minutes.map((minute) => (
+                      <Button
+                        key={minute}
+                        type="button"
+                        data-scroll-target={`end-minute-${minute}`}
+                        variant={parsedDeadlineTime?.minutes === minute ? "default" : "ghost"}
+                        className={cn(
+                          "w-full rounded-full border border-primary/20 text-sm font-semibold",
+                          parsedDeadlineTime?.minutes === minute
+                            ? "bg-primary text-primary-foreground"
+                            : "text-primary hover:bg-primary/10"
+                        )}
+                        onClick={() => handleTimeSlotSelect("minute", minute, "end")}
+                      >
+                        {minute.toString().padStart(2, "0")}
+                      </Button>
+                    ))}
+                  </div>
+                  <ScrollBar orientation="vertical" />
+                </ScrollArea>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex w-full max-w-sm flex-col gap-2 rounded-[3rem] border-2 border-primary/40 bg-white/90 px-6 py-4 shadow-[0_20px_0_rgba(144,122,214,0.2)]">
-          <label className="text-xs font-semibold uppercase tracking-wide text-primary/60" htmlFor="deadline-time-input">
-            Time
-          </label>
-          <Input
-            id="deadline-time-input"
-            type="time"
-            step={60}
-            value={deadlineTimeText}
-            onChange={(event) => handleDeadlineTimeChange(event.target.value)}
-            className="h-12 rounded-full border-2 border-primary/40 bg-white px-4 text-sm font-semibold text-[#2F2766] placeholder:text-primary/60 focus:border-primary focus:outline-none"
-          />
-          <p className="text-[0.7rem] text-primary/70">
-            Leave blank for midnight. Time can be updated any time.
-          </p>
-        </div>
-      </aside>
+      </div>
     </div>
   )
 }

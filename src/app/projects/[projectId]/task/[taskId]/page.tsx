@@ -65,6 +65,17 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
   const selectedStatusLabel = React.useMemo(() => TASK_STATUS_LABEL[status] ?? status, [status])
 
+  const formatDateTime = useCallback((value: string | null) => {
+    if (!value) {
+      return "—"
+    }
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) {
+      return "—"
+    }
+    return format(date, "dd/MM/yyyy HH:mm")
+  }, [])
+
   const handleSave = async () => {
     if (!task) {
       return
@@ -95,6 +106,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         title: "Task updated",
         description: "Changes saved successfully.",
       })
+      router.push(`/projects/${projectId}/task`)
     } catch (err) {
       console.error(err)
       notify({
@@ -133,8 +145,12 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       </div>
     )
   }
+  const assignDateLabel = formatDateTime(task.createdAt)
+  const startlineDateLabel = formatDateTime(task.startDate)
+  const deadlineDateLabel = formatDateTime(task.dueDate)
+
   return (
-    <div className="mx-auto overflow-hidden w-full px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
+    <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3 pb-10">
       <div className="flex w-full max-w-7xl flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
           <Button
@@ -148,15 +164,13 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         </div>
 
         <div className="mx-auto mt-20 flex w-full max-w-4xl flex-1 flex-col gap-10 px-[clamp(1.5rem,3.4vw,3.85rem)] lg:max-w-5xl">
-          {/* ✅ ปรับโครงสร้างให้ป้ายม่วงอยู่ข้างหลังกล่องขาว */}
           <div className="relative mt-3 w-full max-w-3xl self-center">
-          {/* กล่องม่วง (Task 2) */}
           <div
             className="absolute -top-11 left-0 z-0
                       flex min-h-[8rem] min-w-[16rem] items-center justify-center
                       rounded-[2.5rem] border-2 border-primary/40 bg-[#E9E0FF]
                       px-6 py-4 text-xl font-bold text-[#2F2766]
-                      shadow-[0_10px_0_rgba(144,122,214,0.15)]"
+                      shadow-[0_6px_0_rgba(144,122,214,0.15)]"
           >
             <span className="-translate-y-10 transform">{task.title}</span>
           </div>
@@ -166,7 +180,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             className="relative z-10 flex w-full flex-col gap-8
                       rounded-[3.5rem] border-2 border-primary/40 bg-white/95
                       px-[clamp(1.5rem,3.2vw,3rem)] pb-10 pt-8
-                      shadow-[0_16px_0_rgba(144,122,214,0.15)]"
+                      shadow-[0_6px_0_rgba(144,122,214,0.15)]"
           >
             <div className="space-y-3 w-full max-w-2xl self-center">
               <h2 className="text-lg font-semibold text-[#2F2766] pl-8">Task Description</h2>
@@ -188,10 +202,14 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                 </span>
               </p>
               <p className="text-base font-semibold pl-4">
+                Assign Date : <span className="font-normal">{assignDateLabel}</span>
+              </p>
+              <p className="text-base font-semibold pl-4">
+                Startline Date : <span className="font-normal">{startlineDateLabel}</span>
+              </p>
+              <p className="text-base font-semibold pl-4">
                 Deadline Date :{" "}
-                <span className="font-normal">
-                  {task.dueDate ? format(new Date(task.dueDate), "dd/MM/yyyy") : "—"}
-                </span>
+                <span className="font-normal">{deadlineDateLabel}</span>
               </p>
 
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">

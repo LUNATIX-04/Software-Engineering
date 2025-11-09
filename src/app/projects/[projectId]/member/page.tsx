@@ -1231,7 +1231,10 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                       setPage((prev) => Math.max(1, prev - 1))
                     }}
                     disabled={page === 1}
-                    className="size-10 select-none rounded-full border border-transparent text-lg text-primary/70 transition-colors hover:border-transparent hover:!bg-transparent hover:text-primary focus:outline-none focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-0 active:border-transparent active:bg-transparent"
+                    className={cn(
+                      "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
+                      page === 1 && "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
+                    )}
                   >
                     &#9664;
                   </Button>
@@ -1283,7 +1286,11 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                       setPage((prev) => Math.min(totalPages, prev + 1))
                     }}
                     disabled={page === totalPages}
-                    className="size-10 select-none rounded-full border border-transparent text-lg text-primary/70 transition-colors hover:border-transparent hover:!bg-transparent hover:text-primary focus:outline-none focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-0 active:border-transparent active:bg-transparent"
+                    className={cn(
+                      "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
+                      page === totalPages &&
+                        "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
+                    )}
                   >
                     &#9654;
                   </Button>

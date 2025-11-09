@@ -3,17 +3,28 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
+import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
 import { TaskForm, type TaskAssigneeOption, type TaskFormValues } from "@/components/tasks"
+import { DEFAULT_TASK_CARD_COLOR } from "@/constants/task-colors"
 import { useNotifications } from "@/components/notifications/Notification"
+
+const now = new Date()
+const defaultStartDateText = format(now, "dd/MM/yyyy HH:mm")
+const tomorrowStart = new Date(now)
+tomorrowStart.setDate(tomorrowStart.getDate() + 1)
+tomorrowStart.setHours(0, 0, 0, 0)
+const defaultDeadlineText = format(tomorrowStart, "dd/MM/yyyy HH:mm")
 
 const DEFAULT_VALUES: TaskFormValues = {
   title: "",
   detail: "",
   assigneeIds: [],
-  deadline: "",
+  startDate: defaultStartDateText,
+  deadline: defaultDeadlineText,
   status: "IN_PROGRESS",
+  cardColor: DEFAULT_TASK_CARD_COLOR,
 }
 
 type CreateTaskPageProps = {
@@ -146,10 +157,10 @@ export default function CreateTaskPage({ params }: CreateTaskPageProps) {
             {formError}
           </div>
         ) : (
-          <div className="mx-0 flex-1 lg:mt-10 mb-10">
+          <div className="mx-0 flex-1 lg:mt-10 ml-0 lg:ml-13 mb-10">
             <TaskForm
               className="w-full"
-              heading="Create New Task"
+              heading="Create Task"
               submitLabel={submitting ? "Creating…" : "Create"}
               initialValues={DEFAULT_VALUES}
               submitting={submitting}

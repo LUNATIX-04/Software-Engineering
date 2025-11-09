@@ -176,6 +176,9 @@ export function MemberCard({
                         color: departmentStyle?.text ?? DEFAULT_DEPARTMENT_TEXT_COLOR,
                       }
                 }
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
               >
                 <span className="max-w-[10rem] truncate">{department}</span>
                 <ChevronDown className="size-4" />
@@ -184,13 +187,19 @@ export function MemberCard({
             <DropdownMenuContent
               align="end"
               className="w-44 select-none rounded-3xl border border-primary/40 bg-white px-2 py-2 text-sm font-semibold text-[#2F2766] shadow-[0_10px_30px_rgba(72,68,110,0.2)]"
+              onClick={(event) => event.stopPropagation()}
+              onPointerDown={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
             >
               {availableDepartments.map((option) => {
                 const isActive = option === department
                 return (
                   <DropdownMenuItem
                     key={option}
-                    onSelect={() => onDepartmentSelect(option)}
+                    onSelect={(event) => {
+                      event.stopPropagation()
+                      onDepartmentSelect(option)
+                    }}
                     className={cn(
                       "flex select-none items-center justify-between rounded-2xl px-3 py-2 hover:bg-primary/10 hover:text-primary focus:bg-primary/10",
                       option === ADD_DEPARTMENT_LABEL

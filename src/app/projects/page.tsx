@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Check, PlusCircle, Search } from "lucide-react"
+import { Check, PlusCircle, Search, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -11,15 +11,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { CreateProjectCard, ProjectCard } from "@/components/projects"
 import {
   deleteProject,
   fetchProjects,
+  fetchProjectMembers,
   leaveProject,
   markProjectUsage,
+  updateProjectOwners,
+  type ProjectMemberDetail,
   type ProjectRecord,
   type ProjectRole,
 } from "@/utils/projects/api"
+import { useNotifications } from "@/components/notifications/Notification"
 import { cn } from "@/lib/utils"
 
 const BASE_PAGE_SIZE_OPTIONS = [3, 9, 18, 36, 64, 96, 136, 172]
@@ -40,6 +45,15 @@ export default function ProjectsPage() {
   const paginationControlsRef = useRef<HTMLDivElement | null>(null)
   const pageHintTimeoutRef = useRef<number | null>(null)
   const router = useRouter()
+  const { notify } = useNotifications()
+  const [ownerDialogProjectId, setOwnerDialogProjectId] = useState<string | null>(null)
+  const [ownerCandidates, setOwnerCandidates] = useState<ProjectMemberDetail[]>([])
+  const [ownerSelection, setOwnerSelection] = useState<Set<string>>(new Set())
+  const [ownersLoading, setOwnersLoading] = useState(false)
+  const [ownersSaving, setOwnersSaving] = useState(false)
+  const [ownerError, setOwnerError] = useState<string | null>(null)
+  const [ownerSearch, setOwnerSearch] = useState("")
+  const [selectedOwnersSearch, setSelectedOwnersSearch] = useState("")
 
   const loadProjects = useCallback(async () => {
     setProjectsLoading(true)
@@ -243,6 +257,108 @@ export default function ProjectsPage() {
 
   const containerMinHeight = "calc(100dvh - 100rem)"
   const cardListMaxHeight = "calc(100dvh - 18rem)"
+  const ownerDialogProject = useMemo(
+    () => projects.find((project) => project.id === ownerDialogProjectId) ?? null,
+    [ownerDialogProjectId, projects]
+  )
+  const ownerDialogOpen = Boolean(ownerDialogProjectId)
+  const selectedOwners = useMemo(
+    () => ownerCandidates.filter((candidate) => ownerSelection.has(candidate.id)),
+    [ownerCandidates, ownerSelection]
+  )
+  const filteredOwnerCandidates = useMemo(() => {
+    const term = ownerSearch.trim().toLowerCase()
+    if (!term) return ownerCandidates
+    return ownerCandidates.filter((candidate) =>
+      candidate.username.toLowerCase().includes(term)
+    )
+  }, [ownerCandidates, ownerSearch])
+  const filteredSelectedOwners = useMemo(() => {
+    const term = selectedOwnersSearch.trim().toLowerCase()
+    if (!term) return selectedOwners
+    return selectedOwners.filter((owner) =>
+      owner.username.toLowerCase().includes(term)
+    )
+  }, [selectedOwners, selectedOwnersSearch])
+
+  const refreshOwnerCandidates = useCallback(
+    async (projectId: string) => {
+      setOwnersLoading(true)
+      setOwnerError(null)
+      try {
+        const members = await fetchProjectMembers(projectId)
+        setOwnerCandidates(members)
+        const owners = new Set(
+          members.filter((member) => member.role === "OWNER").map((member) => member.id)
+        )
+        setOwnerSelection(owners)
+      } catch (error) {
+        const raw =
+          error instanceof Error ? error.message : "Unable to load project members."
+        setOwnerError(raw)
+      } finally {
+        setOwnersLoading(false)
+      }
+    },
+    []
+  )
+
+  useEffect(() => {
+    if (ownerDialogProjectId) {
+      setOwnerSearch("")
+      setSelectedOwnersSearch("")
+      refreshOwnerCandidates(ownerDialogProjectId)
+    } else {
+      setOwnerCandidates([])
+      setOwnerSelection(new Set())
+      setOwnerSearch("")
+      setSelectedOwnersSearch("")
+      setOwnerError(null)
+    }
+  }, [ownerDialogProjectId, refreshOwnerCandidates])
+
+  const toggleOwnerSelection = useCallback((memberId: string) => {
+    setOwnerSelection((prev) => {
+      const next = new Set(prev)
+      if (next.has(memberId)) {
+        next.delete(memberId)
+      } else {
+        next.add(memberId)
+      }
+      return next
+    })
+  }, [])
+
+  const handleSaveOwners = useCallback(async () => {
+    if (!ownerDialogProjectId) return
+    if (ownerSelection.size === 0) {
+      setOwnerError("Select at least one owner.")
+      return
+    }
+    setOwnersSaving(true)
+    setOwnerError(null)
+    try {
+      await updateProjectOwners(ownerDialogProjectId, Array.from(ownerSelection))
+      notify({
+        title: "Owners updated",
+        description: "Project ownership has been updated.",
+        variant: "success",
+      })
+      setOwnerDialogProjectId(null)
+      await loadProjects()
+    } catch (error) {
+      console.error("Failed to update owners", error)
+      const raw =
+        error instanceof Error ? error.message : "Unable to update project owners right now."
+      setOwnerError(raw)
+    } finally {
+      setOwnersSaving(false)
+    }
+  }, [loadProjects, notify, ownerDialogProjectId, ownerSelection])
+
+  const openOwnerDialog = useCallback((projectId: string) => {
+    setOwnerDialogProjectId(projectId)
+  }, [])
 
   return (
     <div
@@ -374,6 +490,7 @@ export default function ProjectsPage() {
                       : undefined
                   }
                   onDelete={isOwner ? () => handleDelete(project.id) : undefined}
+                  onChangeOwner={canChangeOwner ? () => openOwnerDialog(project.id) : undefined}
                   onLeaveProject={async () => {
                     try {
                       setLeaveError(null)
@@ -421,7 +538,10 @@ export default function ProjectsPage() {
                 setPage((prev) => Math.max(1, prev - 1))
               }}
               disabled={page === 1}
-              className="size-10 select-none rounded-full border border-transparent text-lg text-primary/70 transition-colors hover:border-transparent hover:!bg-transparent hover:text-primary focus:outline-none focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-0 active:border-transparent active:bg-transparent"
+              className={cn(
+                "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
+                page === 1 && "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
+              )}
             >
               &#9664;
             </Button>
@@ -473,13 +593,158 @@ export default function ProjectsPage() {
                 setPage((prev) => Math.min(totalPages, prev + 1))
               }}
               disabled={page === totalPages}
-              className="size-10 select-none rounded-full border border-transparent text-lg text-primary/70 transition-colors hover:border-transparent hover:!bg-transparent hover:text-primary focus:outline-none focus-visible:outline-none focus-visible:border-transparent focus-visible:ring-0 active:border-transparent active:bg-transparent"
+              className={cn(
+                "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
+                page === totalPages &&
+                  "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
+              )}
             >
               &#9654;
             </Button>
           </div>
         ) : null}
       </div>
+      <Dialog
+        open={ownerDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOwnerDialogProjectId(null)
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl rounded-[2rem] border-2 border-primary/30 bg-white px-8 py-8 shadow-xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-[#2F2766]">
+              Change Project Owners
+              {ownerDialogProject ? (
+                <span className="mt-1 block text-xl font-semibold text-primary">
+                  {ownerDialogProject.title}
+                </span>
+              ) : null}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6">
+            <p className="text-sm text-muted-foreground">
+              Select one or more members to act as project owners.
+            </p>
+            {ownerError ? (
+              <p className="text-sm font-semibold text-destructive">{ownerError}</p>
+            ) : null}
+            <div className="space-y-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
+                  Selected owners
+                </p>
+                <div className="relative w-full max-w-xs">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary/50" />
+                  <input
+                    type="text"
+                    value={selectedOwnersSearch}
+                    onChange={(event) => setSelectedOwnersSearch(event.target.value)}
+                    placeholder="Search username"
+                    className="w-full rounded-full border-2 border-primary/25 bg-white py-2 pl-9 pr-3 text-sm font-semibold text-[#2F2766] placeholder:text-primary/40 focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+              {selectedOwners.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-primary/30 bg-white px-4 py-5 text-sm text-muted-foreground">
+                  Choose members from the list below to make them owners.
+                </div>
+              ) : (
+                <div className="rounded-3xl border border-primary/30 bg-white px-4 py-3">
+                  <div className="asap-scroll max-h-32 overflow-y-auto pr-2 [scrollbar-gutter:stable] space-y-2">
+                    {filteredSelectedOwners.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-primary/30 bg-white px-4 py-5 text-sm text-muted-foreground">
+                        No selected owners match your search.
+                      </div>
+                    ) : (
+                      filteredSelectedOwners.map((owner) => (
+                        <button
+                          key={owner.id}
+                          type="button"
+                          onClick={() => toggleOwnerSelection(owner.id)}
+                          className="flex w-full items-center justify-between rounded-2xl border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:border-primary"
+                        >
+                          <span className="truncate">{owner.username}</span>
+                          <X className="size-4 shrink-0" />
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="space-y-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
+                  All members
+                </p>
+                <div className="relative w-full max-w-xs">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary/50" />
+                  <input
+                    type="text"
+                    value={ownerSearch}
+                    onChange={(event) => setOwnerSearch(event.target.value)}
+                    placeholder="Search username"
+                    className="w-full rounded-full border-2 border-primary/25 bg-white py-2 pl-9 pr-3 text-sm font-semibold text-[#2F2766] placeholder:text-primary/40 focus:border-primary focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div className="asap-scroll [scrollbar-gutter:stable] max-h-40 space-y-3 overflow-y-auto pr-1">
+                {ownersLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading project members…</p>
+                ) : ownerCandidates.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    This project does not have any members yet.
+                  </p>
+                ) : filteredOwnerCandidates.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No members match your search.</p>
+                ) : (
+                  filteredOwnerCandidates.map((candidate) => {
+                    const isSelected = ownerSelection.has(candidate.id)
+                    return (
+                      <button
+                        key={candidate.id}
+                        type="button"
+                        onClick={() => toggleOwnerSelection(candidate.id)}
+                        className={cn(
+                          "flex w-full items-center justify-between rounded-2xl border border-primary/20 bg-white px-4 py-3 text-left text-sm font-semibold text-[#2F2766] transition hover:border-primary hover:bg-primary/5",
+                          isSelected && "border-primary bg-primary/10"
+                        )}
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-semibold">{candidate.username}</span>
+                          <span className="text-xs text-muted-foreground">{candidate.role}</span>
+                        </div>
+                        {isSelected ? <Check className="size-4 text-primary" /> : null}
+                      </button>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="rounded-full px-6 py-2 text-sm font-semibold"
+                onClick={() => setOwnerDialogProjectId(null)}
+                disabled={ownersSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                disabled={ownersSaving || ownerSelection.size === 0}
+                onClick={handleSaveOwners}
+              >
+                {ownersSaving ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

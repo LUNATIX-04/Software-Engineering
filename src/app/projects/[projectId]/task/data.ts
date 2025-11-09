@@ -19,6 +19,7 @@ export type TaskRecord = {
   title: string
   detail: string | null
   status: TaskStatus
+  startDate: string | null
   dueDate: string | null
   department: TaskDepartment | null
   assignees: TaskAssignee[]
@@ -30,6 +31,8 @@ export type TaskRecord = {
   }
   createdAt: string
   updatedAt: string
+  cardColor: string
+  cardTextColor: string
 }
 
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
@@ -39,9 +42,12 @@ export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
 }
 
 export const TASK_STATUS_STYLE: Record<TaskStatus, string> = {
-  SUBMITTED: "bg-[#D7C7FF] text-[#392069]",
-  IN_PROGRESS: "bg-white text-[#392069]",
-  BLOCKED: "bg-[#FFE2E2] text-[#392069]",
+  SUBMITTED:
+    "bg-[var(--task-status-submitted-bg)] text-[var(--task-status-submitted-text)]",
+  IN_PROGRESS:
+    "bg-[var(--task-status-in-progress-bg)] text-[var(--task-status-in-progress-text)]",
+  BLOCKED:
+    "bg-[var(--task-status-blocked-bg)] text-[var(--task-status-blocked-text)]",
 }
 
 export const DEFAULT_TASKS: TaskRecord[] = []

@@ -4,6 +4,8 @@ import { createClient } from "@/utils/supabase/server"
 import { prisma } from "@/lib/prisma"
 import { requireProjectMembership } from "@/server/projects/permissions"
 import { projectMembers, projectTaskAssignees, projectTasks } from "@/server/projects/db"
+import { getContrastingTextColor, sanitizeHexColor } from "@/utils/colors"
+import { DEFAULT_TASK_CARD_COLOR } from "@/constants/task-colors"
 
 type RouteParams = {
   params: {
@@ -13,6 +15,21 @@ type RouteParams = {
 
 const TASK_STATUS_VALUES = ["SUBMITTED", "IN_PROGRESS", "BLOCKED"] as const
 type TaskStatusEnum = (typeof TASK_STATUS_VALUES)[number]
+
+function parseCardColor(value: unknown): string | undefined {
+  if (typeof value !== "string") {
+    return undefined
+  }
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return undefined
+  }
+  return sanitizeHexColor(trimmed)
+}
+
+function resolveCardTextColor(cardColor: string) {
+  return getContrastingTextColor(cardColor)
+}
 
 function clampNumber(value: number, min: number, max: number) {
   if (!Number.isFinite(value)) {
@@ -79,7 +96,10 @@ function serializeTask(task: TaskWithRelations) {
     title: task.title,
     detail: task.detail,
     status: task.status,
+    startDate: task.startDate ? task.startDate.toISOString() : null,
     dueDate: task.dueDate ? task.dueDate.toISOString() : null,
+    cardColor: task.cardColor,
+    cardTextColor: task.cardTextColor,
     department: task.department
       ? {
           id: task.department.id,
@@ -211,7 +231,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   const status = TASK_STATUS_VALUES.includes(statusRaw as TaskStatusEnum)
     ? (statusRaw as TaskStatusEnum)
     : "SUBMITTED"
+  const startDate = parseDeadlineInput(payload?.startDate)
   const dueDate = parseDeadlineInput(payload?.deadline)
+  const cardColor = parseCardColor(payload?.cardColor) ?? DEFAULT_TASK_CARD_COLOR
+  const cardTextColor = resolveCardTextColor(cardColor)
 
   if (!title) {
     return NextResponse.json({ error: "Title is required" }, { status: 400 })
@@ -251,7 +274,10 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
         title,
         detail,
         status,
+        startDate,
         dueDate,
+        cardColor,
+        cardTextColor,
       },
     })
 
@@ -288,17 +314,17 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
               },
             },
           },
-        },
-        createdBy: {
-          select: {
-            id: true,
-            username: true,
-            profile: {
-              select: { fullName: true },
-            },
-          },
+    },
+    createdBy: {
+      select: {
+        id: true,
+        username: true,
+        profile: {
+          select: { fullName: true },
         },
       },
+    },
+  },
     })
   })
 
