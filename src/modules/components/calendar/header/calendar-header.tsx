@@ -58,7 +58,7 @@ export function CalendarHeader() {
             </Button>
           ) : null}
         </div>
-        <Settings />
+        {/*<Settings />*/}
       </motion.div>
     </div>
   )

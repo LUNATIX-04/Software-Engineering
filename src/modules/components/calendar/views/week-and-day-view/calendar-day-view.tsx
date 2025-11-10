@@ -78,17 +78,16 @@ export function CalendarDayView({ singleDayEvents, multiDayEvents }: IProps) {
 	const groupedEvents = groupEvents(dayEvents);
 
 	return (
-		<div className="flex">
-			<div className="flex flex-1 flex-col">
+		<div className="flex w-full flex-col gap-4 lg:flex-row">
+			<div className="flex w-full flex-1 flex-col gap-3 rounded-3xl border border-primary/40 bg-background">
 				<div>
 					<DayViewMultiDayEventsRow
 						selectedDate={selectedDate}
 						multiDayEvents={multiDayEvents}
 					/>
 
-					{/* Day header */}
 					<div className="relative z-20 flex border-b">
-						<div className="w-18"></div>
+						<div className="w-18" />
 						<span className="flex-1 border-l py-2 text-center text-xs font-medium text-t-quaternary">
 							{format(selectedDate, "EE")}{" "}
 							<span className="font-semibold text-t-secondary">
@@ -98,12 +97,15 @@ export function CalendarDayView({ singleDayEvents, multiDayEvents }: IProps) {
 					</div>
 				</div>
 
-				<ScrollArea className="h-[800px]" type="always" ref={scrollAreaRef}>
-					<div className="flex">
-						{/* Hours column */}
-						<div className="relative w-18">
+				<ScrollArea
+					className="flex h-[700px] flex-1 overflow-hidden rounded-b-3xl"
+					type="always"
+					ref={scrollAreaRef}
+				>
+					<div className="flex w-full">
+						<div className="relative w-18 border-r border-primary/20 bg-background/70">
 							{hours.map((hour, index) => (
-								<div key={hour} className="relative" style={{ height: "96px" }}>
+								<div key={hour} className="relative h-[96px]">
 									<div className="absolute -top-3 right-2 flex h-6 items-center">
 										{index !== 0 && (
 											<span className="text-xs text-t-quaternary">
@@ -118,17 +120,15 @@ export function CalendarDayView({ singleDayEvents, multiDayEvents }: IProps) {
 							))}
 						</div>
 
-						{/* Day grid */}
-						<div className="relative flex-1 border-l">
+						<div className="relative flex-1 border-l border-primary/20 bg-white">
 							<div className="relative">
 								{hours.map((hour, index) => (
 									<div
 										key={hour}
-										className="relative"
-										style={{ height: "96px" }}
+										className="relative h-[96px]"
 									>
 										{index !== 0 && (
-											<div className="pointer-events-none absolute inset-x-0 top-0 border-b"></div>
+											<div className="pointer-events-none absolute inset-x-0 top-0 border-b" />
 										)}
 
 										<DroppableArea
@@ -140,7 +140,7 @@ export function CalendarDayView({ singleDayEvents, multiDayEvents }: IProps) {
 											<div className="absolute inset-0 cursor-pointer transition-colors hover:bg-secondary" />
 										</DroppableArea>
 
-										<div className="pointer-events-none absolute inset-x-0 top-1/2 border-b border-dashed border-b-tertiary"></div>
+										<div className="pointer-events-none absolute inset-x-0 top-1/2 border-b border-dashed border-b-tertiary" />
 
 										<DroppableArea
 											date={selectedDate}

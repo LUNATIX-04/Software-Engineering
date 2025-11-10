@@ -97,6 +97,7 @@ type TaskCardProps = {
   cardTextColor: string
   onColorChange?: (color: string) => void
   taskId?: string
+  showActions?: boolean
 }
 
 export function TaskCard({
@@ -114,6 +115,7 @@ export function TaskCard({
   cardTextColor,
   onColorChange,
   taskId,
+  showActions = true,
 }: TaskCardProps) {
   const normalizedCardColor = normalizeHexString(cardColor) ?? DEFAULT_TASK_CARD_COLOR
 
@@ -377,7 +379,7 @@ export function TaskCard({
           )
         ) : null}
         <span className={statusChipClassName}>{statusLabel}</span>
-        {onEdit || onDelete ? (
+        {(showActions ?? true) && (onEdit || onDelete || onColorChange) ? (
           <DropdownMenu
             modal={false}
             onOpenChange={(open) => {

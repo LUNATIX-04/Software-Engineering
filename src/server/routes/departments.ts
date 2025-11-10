@@ -80,6 +80,8 @@ export function registerDepartmentRoutes(app: Elysia) {
       },
     })
 
+    await syncProjectDepartmentNames(params.projectId)
+
     return new Response(JSON.stringify(department), { status: 201 })
   })
 
@@ -226,6 +228,8 @@ export function registerDepartmentRoutes(app: Elysia) {
       data: updates,
     })
 
+    await syncProjectDepartmentNames(params.projectId)
+
     return new Response(JSON.stringify(updated))
   })
 
@@ -258,8 +262,24 @@ export function registerDepartmentRoutes(app: Elysia) {
     }
 
     await prisma.projectDepartment.delete({ where: { id: department.id } })
+    await syncProjectDepartmentNames(params.projectId)
     return new Response(JSON.stringify({ success: true }))
   })
 
   return app
+}
+
+async function syncProjectDepartmentNames(projectId: string) {
+  const departments = await prisma.projectDepartment.findMany({
+    where: { projectId },
+    orderBy: { order: "asc" },
+    select: { name: true },
+  })
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: {
+      departments: departments.map((dept) => dept.name),
+    },
+  })
 }

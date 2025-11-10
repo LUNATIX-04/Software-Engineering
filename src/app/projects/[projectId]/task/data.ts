@@ -54,6 +54,8 @@ export type TaskSubmission = {
   } | null
   createdAt: string
   updatedAt: string
+  acknowledgedAt: string | null
+  ownerAcknowledgedAt: string | null
 }
 
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {

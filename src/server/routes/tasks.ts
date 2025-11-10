@@ -180,6 +180,8 @@ function serializeTask(task: TaskWithRelations) {
               : null,
             createdAt: task.submissions[0].createdAt.toISOString(),
             updatedAt: task.submissions[0].updatedAt.toISOString(),
+            acknowledgedAt: task.submissions[0].acknowledgedAt?.toISOString() ?? null,
+            ownerAcknowledgedAt: task.submissions[0].ownerAcknowledgedAt?.toISOString() ?? null,
           }
         : null,
   }
@@ -192,6 +194,8 @@ function serializeSubmission(submission: NonNullable<ReturnType<typeof fetchSubm
     description: submission.description,
     reviewerComment: submission.reviewerComment,
     attachments: submission.attachmentMetadata ?? null,
+    acknowledgedAt: submission.acknowledgedAt?.toISOString() ?? null,
+    ownerAcknowledgedAt: submission.ownerAcknowledgedAt?.toISOString() ?? null,
     submittedBy: {
       id: submission.submittedBy.id,
       username: submission.submittedBy.username,
@@ -595,6 +599,7 @@ export function registerTaskRoutes(app: Elysia) {
         status: "SUBMITTED",
         description,
         attachmentMetadata: attachments.length > 0 ? attachments : null,
+        ownerAcknowledgedAt: null,
       },
       include: {
         submittedBy: { select: { id: true, username: true, role: true } },
@@ -642,8 +647,75 @@ export function registerTaskRoutes(app: Elysia) {
         description,
         reviewerComment,
         status: status ?? submission.status,
+        acknowledgedAt: null,
         attachmentMetadata:
           attachments !== undefined ? (attachments.length > 0 ? attachments : null) : submission.attachmentMetadata,
+      },
+      include: {
+        submittedBy: { select: { id: true, username: true, role: true } },
+        reviewer: { select: { id: true, username: true, role: true } },
+      },
+    })
+
+    return new Response(JSON.stringify({ submission: serializeSubmission(updatedSubmission) }))
+  })
+
+  app.post("/projects/:projectId/tasks/:taskId/submission/acknowledge", async ({ params }) => {
+    const membership = await getProjectMembership(params.projectId)
+    if (!membership) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+    }
+
+    const assignee = await projectTaskAssignees.findFirst({
+      where: { taskId: params.taskId, memberId: membership.id },
+    })
+    if (!assignee && membership.role === PROJECT_ROLE.MEMBER) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 })
+    }
+
+    const submission = await projectTaskSubmissions.findFirst({
+      where: { taskId: params.taskId },
+    })
+    if (!submission) {
+      return new Response(JSON.stringify({ error: "Submission not found" }), { status: 404 })
+    }
+
+    const updatedSubmission = await projectTaskSubmissions.update({
+      where: { id: submission.id },
+      data: {
+        acknowledgedAt: submission.updatedAt,
+      },
+      include: {
+        submittedBy: { select: { id: true, username: true, role: true } },
+        reviewer: { select: { id: true, username: true, role: true } },
+      },
+    })
+
+    return new Response(JSON.stringify({ submission: serializeSubmission(updatedSubmission) }))
+  })
+
+  app.post("/projects/:projectId/tasks/:taskId/submission/owner-acknowledge", async ({ params }) => {
+    const membership = await getProjectMembership(params.projectId)
+    if (!membership) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+    }
+    const isTaskOwner = membership.role === PROJECT_ROLE.OWNER
+    const isHeader = membership.role === PROJECT_ROLE.HEADER
+    if (!isTaskOwner && !isHeader) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 })
+    }
+
+    const submission = await projectTaskSubmissions.findFirst({
+      where: { taskId: params.taskId },
+    })
+    if (!submission) {
+      return new Response(JSON.stringify({ error: "Submission not found" }), { status: 404 })
+    }
+
+    const updatedSubmission = await projectTaskSubmissions.update({
+      where: { id: submission.id },
+      data: {
+        ownerAcknowledgedAt: new Date(),
       },
       include: {
         submittedBy: { select: { id: true, username: true, role: true } },

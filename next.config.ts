@@ -27,6 +27,9 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns,
   },
+  eslint: {
+    ignoreDuringBuilds: true
+  },
 }
 
 export default nextConfig

@@ -19,6 +19,9 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -33,11 +36,13 @@ import { TaskCard } from "@/components/tasks/TaskCard"
 import { getContrastingTextColor, sanitizeHexColor } from "@/utils/colors"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import type { ProjectDepartmentRecord } from "@/utils/projects/departments"
+import type { ProjectMembershipSummary } from "@/utils/projects/api"
 import {
   loadProjectDepartments,
   loadProjectMembership,
   loadProjectTasks,
 } from "@/utils/projects/prefetch"
+import { PROJECT_ROLE } from "@/types/projects"
 
 type ProjectTaskPageProps = {
   params: Promise<{
@@ -55,6 +60,8 @@ type RemoteDepartment = {
   order: number
   head: string | null
 }
+
+type TaskScope = "all" | "assignee" | "assigner"
 
 const normalizeDepartments = (departments: ProjectDepartmentRecord[]): RemoteDepartment[] =>
   departments.map((dept) => ({
@@ -74,7 +81,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const [tasks, setTasks] = useState<TaskRecord[]>([])
   const [search, setSearch] = useState("")
   const [activeDepartmentFilters, setActiveDepartmentFilters] = useState<string[]>([])
-  const [myTaskOnly, setMyTaskOnly] = useState(false)
+  const [taskScope, setTaskScope] = useState<TaskScope>("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [pendingDeleteTask, setPendingDeleteTask] = useState<TaskRecord | null>(null)
@@ -121,9 +128,11 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const [remoteDepartments, setRemoteDepartments] = useState<RemoteDepartment[]>([])
   const [departmentsLoading, setDepartmentsLoading] = useState(true)
   const [departmentsError, setDepartmentsError] = useState<string | null>(null)
-  const [membershipId, setMembershipId] = useState<string | null>(null)
+  const [membership, setMembership] = useState<ProjectMembershipSummary | null>(null)
   const [membershipLoading, setMembershipLoading] = useState(true)
   const [departmentFilterMenuOpen, setDepartmentFilterMenuOpen] = useState(false)
+  const membershipId = membership?.id ?? null
+  const canManageTasks = Boolean(membership && membership.role !== PROJECT_ROLE.MEMBER)
 
   const departmentOptions = useMemo(() => {
     const sorted = [...remoteDepartments].sort(
@@ -228,16 +237,48 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       return { bucket: 2, value: Math.abs(diff) }
     }
 
+    const matchesRoleScope = (task: TaskRecord) => {
+      if (!membership) {
+        return true
+      }
+      if (membership.role === PROJECT_ROLE.OWNER) {
+        return true
+      }
+      const isAssignee = membershipId
+        ? task.assignees.some((assignee) => assignee.id === membershipId)
+        : false
+      if (membership.role === PROJECT_ROLE.HEADER) {
+        return isAssignee || task.createdBy.id === membershipId
+      }
+      if (membership.role === PROJECT_ROLE.MEMBER) {
+        if (!isAssignee) {
+          return false
+        }
+        return (
+          task.createdBy.role === PROJECT_ROLE.OWNER ||
+          task.createdBy.role === PROJECT_ROLE.HEADER
+        )
+      }
+      return true
+    }
+
+    const matchesTaskScope = (task: TaskRecord) => {
+      if (taskScope === "all" || !membershipId) {
+        return true
+      }
+      const isAssignee = task.assignees.some((assignee) => assignee.id === membershipId)
+      const isAssigner = task.createdBy.id === membershipId
+      return taskScope === "assignee" ? isAssignee : isAssigner
+    }
+
     return tasks
       .filter((task) => {
         const meta = taskDepartmentMeta[task.id]
         const assigneeCounts = meta?.assigneeCounts ?? {}
-        const matchesMyTask =
-          !myTaskOnly ||
-          (membershipId
-            ? task.assignees.some((assignee) => assignee.id === membershipId)
-            : false)
-        if (!matchesMyTask) {
+        if (!matchesRoleScope(task)) {
+          return false
+        }
+        if (!matchesTaskScope(task)) {
           return false
         }
         const matchesDepartment =
@@ -275,11 +316,12 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   }, [
     activeDepartmentFilters,
     departmentByName,
+    membership,
     membershipId,
-    myTaskOnly,
     search,
     taskDepartmentMeta,
     tasks,
+    taskScope,
   ])
 
   const totalPages = useMemo(() => {
@@ -373,10 +415,10 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     setMembershipLoading(true)
     try {
       const data = await loadProjectMembership(projectId)
-      setMembershipId(data?.id ?? null)
+      setMembership(data ?? null)
     } catch (error) {
       console.error(error)
-      setMembershipId(null)
+      setMembership(null)
     } finally {
       setMembershipLoading(false)
     }
@@ -417,10 +459,10 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   }, [fetchDepartments, fetchMembership, fetchTasks, projectId])
 
   useEffect(() => {
-    if (!membershipId && myTaskOnly) {
-      setMyTaskOnly(false)
+    if (!membershipId && taskScope !== "all") {
+      setTaskScope("all")
     }
-  }, [membershipId, myTaskOnly])
+  }, [membershipId, taskScope])
 
   const handleTaskColorChange = useCallback(
     async (taskId: string, color: string) => {
@@ -589,39 +631,32 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   React.useEffect(() => {
     setPage(1)
     setPageInput("1")
-  }, [activeDepartmentFilters, myTaskOnly, search])
+  }, [activeDepartmentFilters, taskScope, search])
 
-  const handleToggleDepartmentFilter = useCallback(
-    (departmentName: string, enabled: boolean) => {
-      if (myTaskOnly) {
-        return
-      }
-      setActiveDepartmentFilters((prev) => {
-        if (enabled) {
-          if (prev.includes(departmentName)) {
-            return prev
-          }
-          return [...prev, departmentName]
+  const handleToggleDepartmentFilter = useCallback((departmentName: string, enabled: boolean) => {
+    setActiveDepartmentFilters((prev) => {
+      if (enabled) {
+        if (prev.includes(departmentName)) {
+          return prev
         }
-        return prev.filter((name) => name !== departmentName)
-      })
-    },
-    [myTaskOnly]
-  )
+        return [...prev, departmentName]
+      }
+      return prev.filter((name) => name !== departmentName)
+    })
+  }, [])
 
-  const handleResetDepartmentFilters = useCallback(() => {
-    if (myTaskOnly) {
-      return
-    }
+  const handleResetFilters = useCallback(() => {
     setActiveDepartmentFilters([])
-  }, [myTaskOnly])
+    setTaskScope("all")
+  }, [])
 
-  const handleToggleMyTaskFilter = useCallback(
-    (next: boolean) => {
-      if (!membershipId) {
+  const isTaskScopeSelectionDisabled = membershipLoading || !membershipId
+  const handleTaskScopeChange = useCallback(
+    (nextScope: TaskScope) => {
+      if (nextScope !== "all" && !membershipId) {
         return
       }
-      setMyTaskOnly(next)
+      setTaskScope(nextScope)
     },
     [membershipId]
   )
@@ -714,16 +749,25 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const containerMinHeight = "calc(100dvh - 8rem)"
   const cardListMaxHeight = "calc(100dvh - 22rem)"
 
-  const filterActive = myTaskOnly || activeDepartmentFilters.length > 0
-  const filterSummaryText = myTaskOnly
-    ? "My Tasks"
-    : activeDepartmentFilters.length === 0
+  const scopeLabel =
+    taskScope === "assignee"
+      ? "My Tasks"
+      : taskScope === "assigner"
+        ? "Assigned Tasks"
+        : null
+  const departmentSummary =
+    activeDepartmentFilters.length === 0
       ? ALL_DEPARTMENTS_LABEL
       : activeDepartmentFilters.length <= 2
         ? activeDepartmentFilters.join(", ")
         : `${activeDepartmentFilters.length} selected`
-  const filterBadgeCount = !myTaskOnly && activeDepartmentFilters.length > 0 ? activeDepartmentFilters.length : null
-  const isMyTaskToggleDisabled = membershipLoading || !membershipId
+  const filterActive = scopeLabel !== null || activeDepartmentFilters.length > 0
+  const filterSummaryText = scopeLabel ?? departmentSummary
+  const filterSummaryTitle = scopeLabel
+    ? `${scopeLabel}${activeDepartmentFilters.length > 0 ? ` • ${departmentSummary}` : ""}`
+    : departmentSummary
+  const filterBadgeCount =
+    activeDepartmentFilters.length > 0 ? activeDepartmentFilters.length : null
 
   return (
     <div className="mx-auto overflow-hidden w-full px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
@@ -763,6 +807,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                         ? "border-primary bg-primary/10 text-[#2F2766]"
                         : "border-primary/30 bg-white text-primary hover:border-primary hover:bg-primary/5"
                     )}
+                    title={filterSummaryTitle}
                   >
                     <span className="flex items-center gap-3">
                       <Filter className="size-4 text-primary" aria-hidden="true" />
@@ -812,15 +857,11 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                       <DropdownMenuCheckboxItem
                         key={dept}
                         checked={activeDepartmentFilters.includes(dept)}
-                        disabled={myTaskOnly}
                         onCheckedChange={(checked) =>
                           handleToggleDepartmentFilter(dept, Boolean(checked))
                         }
                         onSelect={(event) => event.preventDefault()}
-                        className={cn(
-                          "rounded-2xl px-3 py-2 pr-10 text-foreground focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3",
-                          myTaskOnly && "pointer-events-none opacity-50"
-                        )}
+                        className="rounded-2xl px-3 py-2 pr-10 text-foreground focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
                       >
                         <span className="inline-flex items-center gap-2">
                           <span
@@ -840,28 +881,41 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                     ) : null}
                   </div>
                   <DropdownMenuSeparator className="my-2 bg-primary/20" />
-                  <DropdownMenuCheckboxItem
-                    checked={myTaskOnly}
-                    disabled={isMyTaskToggleDisabled}
-                    onCheckedChange={(checked) => handleToggleMyTaskFilter(Boolean(checked))}
-                    onSelect={(event) => event.preventDefault()}
-                    className={cn(
-                      "rounded-2xl px-3 py-2 pr-10 focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3",
-                      isMyTaskToggleDisabled && "pointer-events-none opacity-50"
-                    )}
+                  <DropdownMenuLabel className="px-3 pt-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
+                    Task scope
+                  </DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={taskScope}
+                    onValueChange={(value) => handleTaskScopeChange(value as TaskScope)}
                   >
-                    My Tasks
-                  </DropdownMenuCheckboxItem>
+                    <DropdownMenuRadioItem
+                      value="all"
+                      className="rounded-2xl px-3 py-2 pr-10 focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
+                    >
+                      All tasks
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem
+                      value="assignee"
+                      disabled={isTaskScopeSelectionDisabled}
+                      className="rounded-2xl px-3 py-2 pr-10 focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
+                    >
+                      My Tasks (Assignee)
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem
+                      value="assigner"
+                      disabled={isTaskScopeSelectionDisabled}
+                      className="rounded-2xl px-3 py-2 pr-10 focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
+                    >
+                      Assigned Tasks (Assigner)
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
                   <DropdownMenuSeparator className="my-2 bg-primary/20" />
                   <DropdownMenuItem
                     onSelect={(event) => {
                       event.preventDefault()
-                      handleResetDepartmentFilters()
+                      handleResetFilters()
                     }}
-                    className={cn(
-                      "rounded-2xl px-3 py-2 text-primary/70 focus:bg-primary/10 focus:text-primary",
-                      myTaskOnly && "pointer-events-none opacity-50"
-                    )}
+                    className="rounded-2xl px-3 py-2 text-primary/70 focus:bg-primary/10 focus:text-primary"
                   >
                     Reset filters
                   </DropdownMenuItem>
@@ -923,15 +977,17 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                   {filteredTasks.length > 0 ? `${filteredTasks.length} tasks` : ""}
                 </div>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => router.push(`/projects/${projectId}/task/create`)}
-                className="inline-flex h-12 w-full select-none items-center justify-center gap-2 rounded-full border-primary/40 bg-white px-6 text-base font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-primary-foreground sm:w-auto"
-              >
-                <PlusCircle className="size-5" aria-hidden="true" />
-                Create Task
-              </Button>
+              {canManageTasks && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push(`/projects/${projectId}/task/create`)}
+                  className="inline-flex h-12 w-full select-none items-center justify-center gap-2 rounded-full border-primary/40 bg-white px-6 text-base font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-primary-foreground sm:w-auto"
+                >
+                  <PlusCircle className="size-5" aria-hidden="true" />
+                  Create Task
+                </Button>
+              )}
             </div>
           </header>
 
@@ -995,6 +1051,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
               onOpen={() => handleOpenTask(task.id)}
               onEdit={() => handleEditTask(task.id)}
               onDelete={() => handleDeleteTaskRequest(task)}
+              showActions={canManageTasks}
             />
             ))}
 
