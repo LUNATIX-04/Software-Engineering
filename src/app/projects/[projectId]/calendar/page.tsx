@@ -1,5 +1,4 @@
 "use client"
-
 import * as React from "react"
 import {
   addMonths,
@@ -14,6 +13,10 @@ import { Button } from "@/components/ui/button"
 import { DEFAULT_TASK_CARD_COLOR } from "@/constants/task-colors"
 import { cn } from "@/lib/utils"
 import { TASK_STATUS_LABEL, type TaskRecord } from "../task/data"
+import {
+  getCachedProjectTasks,
+  loadProjectTasks,
+} from "@/utils/projects/prefetch"
 
 type ProjectCalendarPageProps = {
   params: Promise<{
@@ -134,8 +137,9 @@ export default function ProjectCalendarPage({ params }: ProjectCalendarPageProps
   const { projectId } = React.use(params)
   const router = useRouter()
 
-  const [tasks, setTasks] = React.useState<TaskRecord[]>([])
-  const [taskLoading, setTaskLoading] = React.useState(true)
+  const cachedTasks = getCachedProjectTasks(projectId)
+  const [tasks, setTasks] = React.useState<TaskRecord[]>(cachedTasks ?? [])
+  const [taskLoading, setTaskLoading] = React.useState(cachedTasks === undefined)
   const [taskError, setTaskError] = React.useState<string | null>(null)
   const [referenceDate, setReferenceDate] = React.useState(() => {
     const now = new Date()
@@ -143,28 +147,31 @@ export default function ProjectCalendarPage({ params }: ProjectCalendarPageProps
   })
 
   const loadTasks = React.useCallback(async () => {
+    const cached = getCachedProjectTasks(projectId)
+    const shouldShowLoading = cached === undefined
+    if (shouldShowLoading) {
+      setTaskLoading(true)
+    }
     try {
       setTaskError(null)
-      setTaskLoading(true)
-      const response = await fetch(`/api/projects/${projectId}/tasks`, {
-        cache: "no-store",
-      })
-      if (!response.ok) {
-        throw new Error(response.status === 404 ? "Tasks not found" : "Unable to load tasks")
-      }
-      const data = (await response.json()) as TaskRecord[]
+      const data = await loadProjectTasks(projectId)
       setTasks(data)
     } catch (error) {
       console.error(error)
       setTaskError(error instanceof Error ? error.message : "Unable to load tasks")
     } finally {
-      setTaskLoading(false)
+      if (shouldShowLoading) {
+        setTaskLoading(false)
+      }
     }
   }, [projectId])
 
   React.useEffect(() => {
+    const cached = getCachedProjectTasks(projectId)
+    setTasks(cached ?? [])
+    setTaskLoading(cached === undefined)
     loadTasks()
-  }, [loadTasks])
+  }, [projectId, loadTasks])
 
   const multiDaySpans = React.useMemo(() => {
     return tasks

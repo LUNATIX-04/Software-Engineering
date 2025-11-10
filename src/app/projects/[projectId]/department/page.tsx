@@ -60,17 +60,22 @@ import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import {
   createProjectDepartment,
   deleteProjectDepartment,
-  fetchProjectDepartments,
   type ProjectDepartmentRecord,
   updateProjectDepartment,
 } from "@/utils/projects/departments"
 import {
-  fetchProjectMembers,
-  fetchProjectMembership,
   updateProjectMember,
   type ProjectMemberDetail,
   type ProjectMembershipSummary,
 } from "@/utils/projects/api"
+import {
+  getCachedProjectDepartments,
+  getCachedProjectMembers,
+  getCachedProjectMembership,
+  loadProjectDepartments,
+  loadProjectMembers,
+  loadProjectMembership,
+} from "@/utils/projects/prefetch"
 import { generatePastelColor, getContrastingTextColor } from "@/utils/colors"
 import { PROJECT_ROLE } from "@/types/projects"
 import { cn } from "@/lib/utils"
@@ -114,13 +119,20 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
   const { projectId } = React.use(params)
   const router = useRouter()
   const { notify } = useNotifications()
-  const [membership, setMembership] = useState<ProjectMembershipSummary | null>(null)
-  const [membershipLoading, setMembershipLoading] = useState(true)
-  const [members, setMembers] = useState<ProjectMemberDetail[]>([])
+  const cachedDepartments = getCachedProjectDepartments(projectId)
+  const cachedMembers = getCachedProjectMembers(projectId)
+  const cachedMembership = getCachedProjectMembership(projectId)
+  const [membership, setMembership] = useState<ProjectMembershipSummary | null>(
+    cachedMembership ?? null
+  )
+  const [membershipLoading, setMembershipLoading] = useState(
+    cachedMembership === undefined
+  )
+  const [members, setMembers] = useState<ProjectMemberDetail[]>(cachedMembers ?? [])
   const [membersError, setMembersError] = useState<string | null>(null)
 
-  const [departments, setDepartments] = useState<ProjectDepartmentRecord[]>([])
-  const [loading, setLoading] = useState(true)
+  const [departments, setDepartments] = useState<ProjectDepartmentRecord[]>(cachedDepartments ?? [])
+  const [loading, setLoading] = useState(cachedDepartments === undefined)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [creating, setCreating] = useState(false)
@@ -147,10 +159,13 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
   )
 
   const loadDepartments = useCallback(async () => {
-    setLoading(true)
+    const shouldShowLoading = getCachedProjectDepartments(projectId) === undefined
+    if (shouldShowLoading) {
+      setLoading(true)
+    }
     setLoadError(null)
     try {
-      const data = await fetchProjectDepartments(projectId)
+      const data = await loadProjectDepartments(projectId)
       setDepartments(sortedDepartments(data))
     } catch (error) {
       console.error("Failed to load departments", error)
@@ -163,7 +178,9 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
         variant: "destructive",
       })
     } finally {
-      setLoading(false)
+      if (shouldShowLoading) {
+        setLoading(false)
+      }
     }
   }, [notify, projectId, sortedDepartments])
 
@@ -173,7 +190,7 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
     }
     setMembersError(null)
     try {
-      const data = await fetchProjectMembers(projectId)
+      const data = await loadProjectMembers(projectId)
       setMembers(data)
     } catch (error) {
       console.error("Failed to load project members", error)
@@ -182,12 +199,17 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
   }, [projectId])
 
   useEffect(() => {
+    const cached = getCachedProjectDepartments(projectId)
+    setDepartments(cached ? sortedDepartments(cached) : [])
+    setLoading(cached === undefined)
     loadDepartments()
-  }, [loadDepartments])
+  }, [projectId, loadDepartments])
 
   useEffect(() => {
+    const cached = getCachedProjectMembers(projectId)
+    setMembers(cached ?? [])
     loadMembers()
-  }, [loadMembers])
+  }, [projectId, loadMembers])
 
   useEffect(() => {
     let active = true
@@ -196,8 +218,11 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
       setMembershipLoading(false)
       return
     }
-    setMembershipLoading(true)
-    fetchProjectMembership(projectId)
+    const cached = getCachedProjectMembership(projectId)
+    const shouldShowLoading = cached === undefined
+    setMembership(cached ?? null)
+    setMembershipLoading(shouldShowLoading)
+    loadProjectMembership(projectId)
       .then((data) => {
         if (!active) {
           return
@@ -211,7 +236,10 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
         }
       })
       .finally(() => {
-        if (active) {
+        if (!active) {
+          return
+        }
+        if (shouldShowLoading) {
           setMembershipLoading(false)
         }
       })

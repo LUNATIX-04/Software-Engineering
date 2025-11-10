@@ -36,6 +36,7 @@ export type ProjectCardProps = {
   onDelete?: () => Promise<void> | void
   onChangeOwner?: () => void
   onLeaveProject?: () => void
+  onPointerEnter?: () => void
   canEdit?: boolean
   canDelete?: boolean
   canChangeOwner?: boolean
@@ -55,6 +56,7 @@ export function ProjectCard({
   onDelete,
   onChangeOwner,
   onLeaveProject,
+  onPointerEnter,
   canEdit = false,
   canDelete = false,
   canChangeOwner = false,
@@ -180,7 +182,10 @@ export function ProjectCard({
           onOpenProject()
         }
       }}
-      onMouseEnter={() => setIsHovering(true)}
+      onMouseEnter={() => {
+        setIsHovering(true)
+        onPointerEnter?.()
+      }}
       onMouseLeave={() => setIsHovering(false)}
       onClick={(event) => {
         if (!onOpenProject) return

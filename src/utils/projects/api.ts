@@ -1,5 +1,4 @@
-"use client"
-
+import type { TaskRecord } from "@/app/projects/[projectId]/task/data"
 import type { ProjectMemberStatus, ProjectRole } from "@/types/projects"
 export type { ProjectRole }
 
@@ -239,6 +238,14 @@ export async function fetchProjectMembers(projectId: string) {
     cache: "no-store",
   })
   return handleJsonResponse<ProjectMemberDetail[]>(response)
+}
+
+export async function fetchProjectTasks(projectId: string) {
+  const response = await fetch(`/api/projects/${projectId}/tasks`, {
+    method: "GET",
+    cache: "no-store",
+  })
+  return handleJsonResponse<TaskRecord[]>(response)
 }
 
 export async function updateProjectMember(

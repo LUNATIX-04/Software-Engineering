@@ -4,7 +4,7 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { TASK_STATUS_LABEL, type TaskStatus } from "@/app/projects/[projectId]/task/data"
+import { TASK_STATUS_LABEL, TASK_STATUS_STYLE, type TaskStatus } from "@/app/projects/[projectId]/task/data"
 import {
   CalendarDays,
   Check,
@@ -207,6 +207,21 @@ function getDeadlineParts(value: string | null | undefined) {
     dateText: datePart ?? "",
     timeText: timePart.join(" "),
   }
+}
+
+const TASK_STATUS_COLORS: Record<TaskStatus, { background: string; text: string }> = {
+  SUBMITTED: {
+    background: "var(--task-status-submitted-bg)",
+    text: "var(--task-status-submitted-text)",
+  },
+  IN_PROGRESS: {
+    background: "var(--task-status-in-progress-bg)",
+    text: "var(--task-status-in-progress-text)",
+  },
+  BLOCKED: {
+    background: "var(--task-status-blocked-bg)",
+    text: "var(--task-status-blocked-text)",
+  },
 }
 
 export function TaskForm({
@@ -1176,29 +1191,46 @@ export function TaskForm({
           <div className="space-y-4 text-[#2F2766]">
             <span className="text-lg font-semibold">Task Status :</span>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="mt-3 flex h-12 w-full items-center justify-between rounded-full border-2 border-primary/40 bg-white pl-12 pr-6 has-[>svg]:pl-6 has-[>svg]:pr-6 text-base font-semibold text-[#2F2766] shadow-[0_6px_0_rgba(144,122,214,0.2)] transition hover:bg-white focus-visible:border-primary focus-visible:outline-none"
-                >
-                  <span>{TASK_STATUS_LABEL[status]}</span>
-                  <ChevronDown className="size-4 text-primary" />
-                </Button>
-              </DropdownMenuTrigger>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className={cn(
+                      "mt-3 flex h-12 w-full items-center justify-between rounded-full border-2 pl-12 pr-6 text-base font-semibold shadow-[0_6px_0_rgba(144,122,214,0.2)] transition focus-visible:border-primary focus-visible:outline-none has-[>svg]:pl-6 has-[>svg]:pr-6",
+                      "border-transparent hover:opacity-90",
+                      TASK_STATUS_STYLE[status]
+                    )}
+                  >
+                    <span className="flex items-center gap-3">
+                      <span
+                        className="h-3 w-3 rounded-full border border-primary/30"
+                        style={{ backgroundColor: TASK_STATUS_COLORS[status].background }}
+                      />
+                      <span>{TASK_STATUS_LABEL[status]}</span>
+                    </span>
+                    <ChevronDown className="size-4 text-current" />
+                  </Button>
+                </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="start"
                 className="w-52 rounded-3xl border border-primary/40 bg-white px-2 py-2 text-sm font-semibold text-[#2F2766] shadow-[0_10px_30px_rgba(72,68,110,0.2)]"
               >
                 {Object.entries(TASK_STATUS_LABEL).map(([value, label]) => {
                   const isActive = value === status
+                  const colors = TASK_STATUS_COLORS[value as TaskStatus]
                   return (
                     <DropdownMenuItem
                       key={value}
                       onSelect={() => setStatus(value as TaskStatus)}
                       className="flex items-center justify-between rounded-2xl pl-5 pr-3 py-2 focus:bg-primary/10 focus:text-primary"
                     >
-                      <span>{label}</span>
+                      <span className="flex items-center gap-3">
+                        <span
+                          className="h-3 w-3 rounded-full border border-primary/30"
+                          style={{ backgroundColor: colors.background }}
+                        />
+                        <span className={cn(isActive ? "text-primary" : "text-foreground/70")}>{label}</span>
+                      </span>
                       {isActive ? <Check className="size-4 text-primary" /> : null}
                     </DropdownMenuItem>
                   )

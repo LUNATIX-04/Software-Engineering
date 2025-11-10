@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { TaskForm, type TaskAssigneeOption, type TaskFormValues } from "@/components/tasks"
 import { DEFAULT_TASK_CARD_COLOR } from "@/constants/task-colors"
 import { useNotifications } from "@/components/notifications/Notification"
+import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 
 type EditTaskPageProps = {
   params: Promise<{
@@ -135,6 +136,11 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
           title: "Task updated",
           description: "Your changes have been saved.",
         })
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent(PROJECT_REFRESH_EVENT, { detail: { projectId } })
+          )
+        }
         router.push(`/projects/${projectId}/task`)
       } catch (error) {
         console.error(error)

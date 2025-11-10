@@ -702,3 +702,25 @@
   overflow-y: auto;
 }
 }
+
+.prefetch-progress-track {
+  position: relative;
+  overflow: hidden;
+}
+
+.prefetch-progress-track::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(79, 61, 152, 0.65) 50%, transparent 100%);
+  animation: asap-prefetch-progress 1.4s ease-in-out infinite;
+}
+
+@keyframes asap-prefetch-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}

@@ -122,6 +122,30 @@ function serializeTask(task: TaskWithRelations) {
     },
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
+    submission:
+      task.submissions && task.submissions.length > 0
+        ? {
+            id: task.submissions[0].id,
+            status: task.submissions[0].status,
+            description: task.submissions[0].description,
+            reviewerComment: task.submissions[0].reviewerComment,
+            attachments: task.submissions[0].attachmentMetadata ?? null,
+            submittedBy: {
+              id: task.submissions[0].submittedBy.id,
+              username: task.submissions[0].submittedBy.username,
+              role: task.submissions[0].submittedBy.role,
+            },
+            reviewer: task.submissions[0].reviewer
+              ? {
+                  id: task.submissions[0].reviewer.id,
+                  username: task.submissions[0].reviewer.username,
+                  role: task.submissions[0].reviewer.role,
+                }
+              : null,
+            createdAt: task.submissions[0].createdAt.toISOString(),
+            updatedAt: task.submissions[0].updatedAt.toISOString(),
+          }
+        : null,
   }
 }
 
@@ -137,33 +161,53 @@ function fetchTasks(projectId: string) {
           textColor: true,
         },
       },
-      assignees: {
-        include: {
-          member: {
-            select: {
-              id: true,
-              username: true,
-              departmentId: true,
-              profile: {
-                select: {
-                  fullName: true,
-                },
+    assignees: {
+      include: {
+        member: {
+          select: {
+            id: true,
+            username: true,
+            departmentId: true,
+            profile: {
+              select: {
+                fullName: true,
               },
             },
           },
         },
       },
-      createdBy: {
-        select: {
-          id: true,
-          username: true,
-          profile: {
-            select: { fullName: true },
+    },
+    createdBy: {
+      select: {
+        id: true,
+        username: true,
+        profile: {
+          select: { fullName: true },
+        },
+        role: true,
+      },
+    },
+    submissions: {
+      orderBy: { createdAt: "desc" },
+      take: 1,
+      include: {
+        submittedBy: {
+          select: {
+            id: true,
+            username: true,
+            role: true,
           },
-          role: true,
+        },
+        reviewer: {
+          select: {
+            id: true,
+            username: true,
+            role: true,
+          },
         },
       },
     },
+  },
     orderBy: [
       { createdAt: "desc" },
       { title: "asc" },

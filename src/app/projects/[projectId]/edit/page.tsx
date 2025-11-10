@@ -8,8 +8,13 @@ import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ProjectForm, type ProjectFormValues } from "@/components/projects/ProjectForm"
 import { usePreferences } from "@/contexts/preferences"
-import { fetchProjectById, updateProject, type ProjectRecord } from "@/utils/projects/api"
+import { type ProjectRecord, updateProject } from "@/utils/projects/api"
+import {
+  getCachedProjectRecord,
+  loadProjectRecord,
+} from "@/utils/projects/prefetch"
 import { uploadProjectImage } from "@/utils/projects/media"
+import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 
 type EditProjectPageProps = {
   params: Promise<{
@@ -23,18 +28,21 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
   const handleNavigateBack = useCallback(() => router.push("/projects"), [router])
   const { profile } = usePreferences()
   const preferredDepartmentLayout = profile?.departmentLayout ?? "fullWidth"
-  const [project, setProject] = useState<ProjectRecord | null>(null)
-  const [loading, setLoading] = useState(true)
+  const cachedProject = getCachedProjectRecord(projectId)
+  const [project, setProject] = useState<ProjectRecord | null>(cachedProject ?? null)
+  const [loading, setLoading] = useState(cachedProject === undefined)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
-    setLoading(true)
+    const cached = getCachedProjectRecord(projectId)
+    setProject(cached ?? null)
+    setLoading(cached === undefined)
     setLoadError(null)
 
-    fetchProjectById(projectId)
+    loadProjectRecord(projectId)
       .then((data) => {
         if (!active) return
         if (!data) {
@@ -99,13 +107,18 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
           }
         }
 
-        await updateProject(projectId, {
-          title,
-          description: values.detail.trim() || null,
-          departments,
-          imageUrl,
-        })
-        router.push("/projects")
+      await updateProject(projectId, {
+        title,
+        description: values.detail.trim() || null,
+        departments,
+        imageUrl,
+      })
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(PROJECT_REFRESH_EVENT, { detail: { projectId } })
+        )
+      }
+      router.push("/projects")
       } catch (error) {
         console.error("Failed to update project", error)
         const raw =

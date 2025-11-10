@@ -31,6 +31,16 @@ import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { TaskCard } from "@/components/tasks/TaskCard"
 import { getContrastingTextColor, sanitizeHexColor } from "@/utils/colors"
+import { PROJECT_REFRESH_EVENT } from "@/constants/events"
+import type { ProjectDepartmentRecord } from "@/utils/projects/departments"
+import {
+  getCachedProjectDepartments,
+  getCachedProjectMembership,
+  getCachedProjectTasks,
+  loadProjectDepartments,
+  loadProjectMembership,
+  loadProjectTasks,
+} from "@/utils/projects/prefetch"
 
 type ProjectTaskPageProps = {
   params: Promise<{
@@ -46,14 +56,28 @@ type RemoteDepartment = {
   color: string
   textColor: string
   order: number
+  head: string | null
 }
+
+const normalizeDepartments = (departments: ProjectDepartmentRecord[]): RemoteDepartment[] =>
+  departments.map((dept) => ({
+    id: dept.id,
+    name: dept.name,
+    color: dept.color,
+    textColor: dept.textColor,
+    order: dept.order,
+    head: dept.head ?? null,
+  }))
 
 const ALL_DEPARTMENTS_LABEL = "All Departments"
 
 export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const { projectId } = React.use(params)
   const router = useRouter()
-  const [tasks, setTasks] = useState<TaskRecord[]>([])
+  const cachedTaskRecords = getCachedProjectTasks(projectId)
+  const cachedDepartmentRecords = getCachedProjectDepartments(projectId)
+  const cachedMembership = getCachedProjectMembership(projectId)
+  const [tasks, setTasks] = useState<TaskRecord[]>(cachedTaskRecords ?? [])
   const [search, setSearch] = useState("")
   const [activeDepartmentFilters, setActiveDepartmentFilters] = useState<string[]>([])
   const [myTaskOnly, setMyTaskOnly] = useState(false)
@@ -72,13 +96,21 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const colorRollbackRef = useRef<Record<string, { cardColor: string; cardTextColor: string }>>({})
   const latestColorRequestRef = useRef<Record<string, string>>({})
   const [pageSizeMenuOpen, setPageSizeMenuOpen] = useState(false)
-  const [tasksLoading, setTasksLoading] = useState(true)
+  const [tasksLoading, setTasksLoading] = useState(cachedTaskRecords === undefined)
   const [tasksError, setTasksError] = useState<string | null>(null)
-  const [remoteDepartments, setRemoteDepartments] = useState<RemoteDepartment[]>([])
-  const [departmentsLoading, setDepartmentsLoading] = useState(false)
+  const [remoteDepartments, setRemoteDepartments] = useState<RemoteDepartment[]>(
+    cachedDepartmentRecords ? normalizeDepartments(cachedDepartmentRecords) : []
+  )
+  const [departmentsLoading, setDepartmentsLoading] = useState(
+    cachedDepartmentRecords === undefined
+  )
   const [departmentsError, setDepartmentsError] = useState<string | null>(null)
-  const [membershipId, setMembershipId] = useState<string | null>(null)
-  const [membershipLoading, setMembershipLoading] = useState(true)
+  const [membershipId, setMembershipId] = useState<string | null>(
+    cachedMembership?.id ?? null
+  )
+  const [membershipLoading, setMembershipLoading] = useState(
+    cachedMembership === undefined
+  )
   const [departmentFilterMenuOpen, setDepartmentFilterMenuOpen] = useState(false)
 
   const departmentOptions = useMemo(() => {
@@ -355,28 +387,21 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     if (!projectId) {
       return
     }
+    const shouldShowLoading = getCachedProjectDepartments(projectId) === undefined
+    if (shouldShowLoading) {
+      setDepartmentsLoading(true)
+    }
     try {
       setDepartmentsError(null)
-      setDepartmentsLoading(true)
-      const response = await fetch(`/api/projects/${projectId}/departments`, { cache: "no-store" })
-      if (!response.ok) {
-        throw new Error(response.status === 404 ? "Not found" : "Failed to load departments")
-      }
-      const data = (await response.json()) as RemoteDepartment[]
-      setRemoteDepartments(
-        data.map((dept) => ({
-          id: dept.id,
-          name: dept.name,
-          color: dept.color,
-          textColor: dept.textColor,
-          order: dept.order,
-        }))
-      )
+      const data = await loadProjectDepartments(projectId)
+      setRemoteDepartments(normalizeDepartments(data))
     } catch (error) {
       console.error(error)
       setDepartmentsError("Unable to load departments")
     } finally {
-      setDepartmentsLoading(false)
+      if (shouldShowLoading) {
+        setDepartmentsLoading(false)
+      }
     }
   }, [projectId])
 
@@ -384,20 +409,21 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     if (!projectId) {
       return
     }
+    const shouldShowLoading = getCachedProjectTasks(projectId) === undefined
+    if (shouldShowLoading) {
+      setTasksLoading(true)
+    }
     try {
       setTasksError(null)
-      setTasksLoading(true)
-      const response = await fetch(`/api/projects/${projectId}/tasks`, { cache: "no-store" })
-      if (!response.ok) {
-        throw new Error(response.status === 404 ? "Not found" : "Failed to load tasks")
-      }
-      const data = (await response.json()) as TaskRecord[]
+      const data = await loadProjectTasks(projectId)
       setTasks(data)
     } catch (error) {
       console.error(error)
       setTasksError(error instanceof Error ? error.message : "Unable to load tasks")
     } finally {
-      setTasksLoading(false)
+      if (shouldShowLoading) {
+        setTasksLoading(false)
+      }
     }
   }, [projectId])
 
@@ -405,34 +431,43 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     if (!projectId) {
       return
     }
-    try {
+    const shouldShowLoading = getCachedProjectMembership(projectId) === undefined
+    if (shouldShowLoading) {
       setMembershipLoading(true)
-      const response = await fetch(`/api/projects/${projectId}/membership`, { cache: "no-store" })
-      if (!response.ok) {
-        setMembershipId(null)
-        return
-      }
-      const data = (await response.json()) as { id?: string | null }
+    }
+    try {
+      const data = await loadProjectMembership(projectId)
       setMembershipId(data?.id ?? null)
     } catch (error) {
       console.error(error)
       setMembershipId(null)
     } finally {
-      setMembershipLoading(false)
+      if (shouldShowLoading) {
+        setMembershipLoading(false)
+      }
     }
   }, [projectId])
 
   useEffect(() => {
+    const cached = getCachedProjectDepartments(projectId)
+    setRemoteDepartments(cached ? normalizeDepartments(cached) : [])
+    setDepartmentsLoading(cached === undefined)
     fetchDepartments()
-  }, [fetchDepartments])
+  }, [projectId, fetchDepartments])
 
   useEffect(() => {
+    const cached = getCachedProjectTasks(projectId)
+    setTasks(cached ?? [])
+    setTasksLoading(cached === undefined)
     fetchTasks()
-  }, [fetchTasks])
+  }, [projectId, fetchTasks])
 
   useEffect(() => {
+    const cached = getCachedProjectMembership(projectId)
+    setMembershipId(cached?.id ?? null)
+    setMembershipLoading(cached === undefined)
     fetchMembership()
-  }, [fetchMembership])
+  }, [projectId, fetchMembership])
 
   useEffect(() => {
     if (!membershipId && myTaskOnly) {
@@ -608,6 +643,11 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
         throw new Error(message)
       }
       setTasks((prev) => prev.filter((task) => task.id !== pendingDeleteTask.id))
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(PROJECT_REFRESH_EVENT, { detail: { projectId } })
+        )
+      }
       closeDeleteDialog()
     } catch (error) {
       console.error("Failed to delete task", error)

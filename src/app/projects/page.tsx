@@ -24,6 +24,7 @@ import {
   type ProjectRecord,
   type ProjectRole,
 } from "@/utils/projects/api"
+import { prefetchProjectBundle } from "@/utils/projects/prefetch"
 import { useNotifications } from "@/components/notifications/Notification"
 import { cn } from "@/lib/utils"
 
@@ -44,6 +45,7 @@ export default function ProjectsPage() {
   const [pageSizeMenuOpen, setPageSizeMenuOpen] = useState(false)
   const paginationControlsRef = useRef<HTMLDivElement | null>(null)
   const pageHintTimeoutRef = useRef<number | null>(null)
+  const prefetchedProjectIdsRef = useRef<Set<string>>(new Set())
   const router = useRouter()
   const { notify } = useNotifications()
   const [ownerDialogProjectId, setOwnerDialogProjectId] = useState<string | null>(null)
@@ -85,6 +87,23 @@ export default function ProjectsPage() {
     [router]
   )
 
+  const handleProjectCardPointerEnter = useCallback(
+    (projectId: string) => {
+      if (!projectId) {
+        return
+      }
+      prefetchProjectBundle(projectId)
+      const basePath = `/projects/${projectId}`
+      void router.prefetch(basePath)
+      void router.prefetch(`${basePath}/task`)
+      void router.prefetch(`${basePath}/calendar`)
+      void router.prefetch(`${basePath}/department`)
+      void router.prefetch(`${basePath}/member`)
+      void router.prefetch(`${basePath}/edit`)
+    },
+    [router]
+  )
+
   const filteredProjects = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase()
     const source = projects ?? []
@@ -109,6 +128,17 @@ export default function ProjectsPage() {
   useEffect(() => {
     setPage(1)
   }, [searchQuery, projects])
+
+  useEffect(() => {
+    const cacheSet = prefetchedProjectIdsRef.current
+    projects.forEach((project) => {
+      if (cacheSet.has(project.id)) {
+        return
+      }
+      cacheSet.add(project.id)
+      prefetchProjectBundle(project.id).catch(() => undefined)
+    })
+  }, [projects])
 
   const totalPages = useMemo(() => {
     if (filteredProjects.length === 0) {
@@ -508,6 +538,7 @@ export default function ProjectsPage() {
                   canLeave
                   isOwnerCard={isOwner}
                   dataCyIndex={index}
+                  onPointerEnter={() => handleProjectCardPointerEnter(project.id)}
                 />
               )
             })}

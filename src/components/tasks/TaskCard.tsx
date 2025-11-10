@@ -448,7 +448,7 @@ export function TaskCard({
                     className="space-y-3 px-4 py-3 text-left text-sm"
                     onPointerDown={(event) => event.stopPropagation()}
                   >
-                    <div className="flex items-center justify-between text-[0.65rem] font-semibold uppercase tracking-wide text-primary/70">
+                    <div className="flex items-center justify-between text-[0.65rem] font-semibold uppercase tracking-wide text-button-foreground">
                       <span className="inline-flex items-center gap-1">
                         {colorMode === "presets" ? (
                           <Palette className="size-3.5" />
@@ -459,7 +459,7 @@ export function TaskCard({
                       </span>
                       <button
                         type="button"
-                        className="rounded-full border border-transparent px-3 py-1 text-[0.7rem] font-semibold text-primary transition hover:border-primary/30 hover:bg-primary/5"
+                        className="rounded-full border border-transparent px-3 py-1 text-[0.7rem] font-semibold text-button-foreground transition hover:border-primary/30 hover:bg-primary/5"
                         onClick={(event) => {
                           event.preventDefault()
                           event.stopPropagation()

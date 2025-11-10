@@ -33,6 +33,27 @@ export type TaskRecord = {
   updatedAt: string
   cardColor: string
   cardTextColor: string
+  submission: TaskSubmission | null
+}
+
+export type TaskSubmission = {
+  id: string
+  status: "SUBMITTED" | "REVISION_REQUESTED" | "APPROVED"
+  description: string | null
+  reviewerComment: string | null
+  attachments: Array<{ name: string; url: string }> | null
+  submittedBy: {
+    id: string
+    username: string
+    role: string
+  }
+  reviewer: {
+    id: string
+    username: string
+    role: string
+  } | null
+  createdAt: string
+  updatedAt: string
 }
 
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { TaskForm, type TaskAssigneeOption, type TaskFormValues } from "@/components/tasks"
 import { DEFAULT_TASK_CARD_COLOR } from "@/constants/task-colors"
 import { useNotifications } from "@/components/notifications/Notification"
+import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 
 const now = new Date()
 const defaultStartDateText = format(now, "dd/MM/yyyy HH:mm")
@@ -113,6 +114,11 @@ export default function CreateTaskPage({ params }: CreateTaskPageProps) {
           typeof payload?.error === "string" ? payload.error : "Failed to create task"
         throw new Error(message)
       }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(PROJECT_REFRESH_EVENT, { detail: { projectId } })
+        )
+      }
       router.push(`/projects/${projectId}/task`)
     } catch (error) {
       console.error(error)
@@ -164,7 +170,6 @@ export default function CreateTaskPage({ params }: CreateTaskPageProps) {
               submitLabel={submitting ? "Creating…" : "Create"}
               initialValues={DEFAULT_VALUES}
               submitting={submitting}
-              showStatus={false}
               onSubmit={handleSubmit}
               assigneeOptions={memberOptions}
             />

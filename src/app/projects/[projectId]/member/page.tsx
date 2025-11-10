@@ -48,8 +48,6 @@ import {
 } from "@/constants/departments"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import {
-  fetchProjectMembers,
-  fetchProjectMembership,
   kickProjectMember,
   updateProjectMember,
   changeProjectUsername,
@@ -57,7 +55,16 @@ import {
   type ProjectMembershipSummary,
 } from "@/utils/projects/api"
 import { isRemovalError } from "@/utils/projects/removal"
+import type { ProjectDepartmentRecord } from "@/utils/projects/departments"
 import { updateProjectDepartment } from "@/utils/projects/departments"
+import {
+  getCachedProjectDepartments,
+  getCachedProjectMembers,
+  getCachedProjectMembership,
+  loadProjectDepartments,
+  loadProjectMembers,
+  loadProjectMembership,
+} from "@/utils/projects/prefetch"
 import { PROJECT_ROLE } from "@/types/projects"
 
 type MemberRecord = {
@@ -84,6 +91,16 @@ type RemoteDepartment = {
   head: string | null
 }
 
+const normalizeMemberDepartments = (departments: ProjectDepartmentRecord[]): RemoteDepartment[] =>
+  departments.map((dept) => ({
+    id: dept.id,
+    name: dept.name,
+    color: dept.color,
+    textColor: dept.textColor,
+    order: dept.order,
+    head: dept.head ?? null,
+  }))
+
 const BASE_PAGE_SIZE_OPTIONS = [3, 9, 18, 36, 64, 96, 136, 172]
 const ROLE_LABEL_MAP = {
   OWNER: "Project Owner",
@@ -91,6 +108,21 @@ const ROLE_LABEL_MAP = {
   MEMBER: "Member",
 } as const satisfies Record<ProjectMemberDetail["role"], MemberRole>
 const AVAILABLE_ROLES: MemberRole[] = ["Project Owner", "Header", "Member"]
+
+const normalizeMembers = (members: ProjectMemberDetail[]): MemberRecord[] =>
+  members.map((member) => ({
+    id: member.id,
+    name: member.username,
+    email: member.email,
+    role: ROLE_LABEL_MAP[member.role] ?? "Member",
+    rawRole: member.role,
+    department: member.department?.name ?? ADD_DEPARTMENT_LABEL,
+    departmentId: member.department?.id ?? null,
+    avatarUrl: member.avatarUrl,
+    bio: member.bio,
+    fullName: member.fullName,
+    lastSeenAt: member.lastSeenAt,
+  }))
 
 type ProjectMemberPageProps = {
   params: Promise<{
@@ -102,17 +134,30 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   const { projectId } = React.use(params)
   const router = useRouter()
   const { notify } = useNotifications()
-  const [membership, setMembership] = useState<ProjectMembershipSummary | null>(null)
-  const [membershipLoading, setMembershipLoading] = useState(true)
-  const [members, setMembers] = useState<MemberRecord[]>([])
-  const [membersLoading, setMembersLoading] = useState(true)
+  const cachedDepartments = getCachedProjectDepartments(projectId)
+  const cachedMembers = getCachedProjectMembers(projectId)
+  const cachedMembership = getCachedProjectMembership(projectId)
+  const [membership, setMembership] = useState<ProjectMembershipSummary | null>(
+    cachedMembership ?? null
+  )
+  const [membershipLoading, setMembershipLoading] = useState(
+    cachedMembership === undefined
+  )
+  const [members, setMembers] = useState<MemberRecord[]>(
+    cachedMembers ? normalizeMembers(cachedMembers) : []
+  )
+  const [membersLoading, setMembersLoading] = useState(cachedMembers === undefined)
   const [membersError, setMembersError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
   const [filterActionOpen, setFilterActionOpen] = useState(false)
   const [activeDepartments, setActiveDepartments] = useState<SelectableMemberDepartment[]>([])
   const [activeRoles, setActiveRoles] = useState<MemberRole[]>([])
-  const [remoteDepartments, setRemoteDepartments] = useState<RemoteDepartment[]>([])
-  const [departmentsLoading, setDepartmentsLoading] = useState(false)
+  const [remoteDepartments, setRemoteDepartments] = useState<RemoteDepartment[]>(
+    cachedDepartments ? normalizeMemberDepartments(cachedDepartments) : []
+  )
+  const [departmentsLoading, setDepartmentsLoading] = useState(
+    cachedDepartments === undefined
+  )
   const [departmentsError, setDepartmentsError] = useState<string | null>(null)
   const redirectToProjects = useCallback(() => {
     notify({
@@ -186,22 +231,17 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     if (!projectId) {
       return
     }
+    const shouldShowLoading = getCachedProjectDepartments(projectId) === undefined
+    if (shouldShowLoading) {
+      setDepartmentsLoading(true)
+    }
     try {
       setDepartmentsError(null)
-      setDepartmentsLoading(true)
-      const response = await fetch(`/api/projects/${projectId}/departments`, { cache: "no-store" })
-      if (!response.ok) {
-        throw new Error(response.status === 404 ? "Not found" : "Failed to load departments")
-      }
-      const data = (await response.json()) as Array<RemoteDepartment & { head?: string | null }>
-      setRemoteDepartments(
-        data
-          .map((dept) => ({
-            ...dept,
-            head: dept.head ?? null,
-          }))
-          .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+      const response = await loadProjectDepartments(projectId)
+      const normalized = normalizeMemberDepartments(response).sort(
+        (a, b) => a.order - b.order || a.name.localeCompare(b.name)
       )
+      setRemoteDepartments(normalized)
     } catch (error) {
       console.error(error)
       if (isRemovalError(error)) {
@@ -210,7 +250,9 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       }
       setDepartmentsError("Unable to load project departments")
     } finally {
-      setDepartmentsLoading(false)
+      if (shouldShowLoading) {
+        setDepartmentsLoading(false)
+      }
     }
   }, [projectId, redirectToProjects])
 
@@ -221,20 +263,8 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     setMembersLoading(true)
     setMembersError(null)
     try {
-      const remoteMembers = await fetchProjectMembers(projectId)
-      const normalized: MemberRecord[] = remoteMembers.map((member) => ({
-        id: member.id,
-        name: member.username,
-        email: member.email,
-        role: ROLE_LABEL_MAP[member.role] ?? "Member",
-        rawRole: member.role,
-        department: member.department?.name ?? ADD_DEPARTMENT_LABEL,
-        departmentId: member.department?.id ?? null,
-        avatarUrl: member.avatarUrl,
-        bio: member.bio,
-        fullName: member.fullName,
-        lastSeenAt: member.lastSeenAt,
-      }))
+      const remoteMembers = await loadProjectMembers(projectId)
+      const normalized = normalizeMembers(remoteMembers)
       setMembers(normalized)
     } catch (error) {
       console.error("Failed to load members", error)
@@ -249,8 +279,11 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   }, [projectId, redirectToProjects])
 
   useEffect(() => {
+    const cached = getCachedProjectMembers(projectId)
+    setMembers(cached ? normalizeMembers(cached) : [])
+    setMembersLoading(cached === undefined)
     loadMembers()
-  }, [loadMembers])
+  }, [projectId, loadMembers])
 
   useEffect(() => {
     let active = true
@@ -259,8 +292,11 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       setMembershipLoading(false)
       return
     }
-    setMembershipLoading(true)
-    fetchProjectMembership(projectId)
+    const cached = getCachedProjectMembership(projectId)
+    const shouldShowLoading = cached === undefined
+    setMembership(cached ?? null)
+    setMembershipLoading(shouldShowLoading)
+    loadProjectMembership(projectId)
       .then((data) => {
         if (!active) {
           return
@@ -277,7 +313,10 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
         }
       })
       .finally(() => {
-        if (active) {
+        if (!active) {
+          return
+        }
+        if (shouldShowLoading) {
           setMembershipLoading(false)
         }
       })
@@ -358,8 +397,16 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   }, [search, activeDepartments, activeRoles])
 
   useEffect(() => {
+    const cached = getCachedProjectDepartments(projectId)
+    const normalized = cached
+      ? normalizeMemberDepartments(cached).sort(
+          (a, b) => a.order - b.order || a.name.localeCompare(b.name)
+        )
+      : []
+    setRemoteDepartments(normalized)
+    setDepartmentsLoading(cached === undefined)
     fetchDepartments()
-  }, [fetchDepartments])
+  }, [projectId, fetchDepartments])
 
   useEffect(() => {
     if (typeof window === "undefined") {
