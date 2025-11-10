@@ -34,9 +34,6 @@ import { getContrastingTextColor, sanitizeHexColor } from "@/utils/colors"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import type { ProjectDepartmentRecord } from "@/utils/projects/departments"
 import {
-  getCachedProjectDepartments,
-  getCachedProjectMembership,
-  getCachedProjectTasks,
   loadProjectDepartments,
   loadProjectMembership,
   loadProjectTasks,
@@ -74,10 +71,7 @@ const ALL_DEPARTMENTS_LABEL = "All Departments"
 export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const { projectId } = React.use(params)
   const router = useRouter()
-  const cachedTaskRecords = getCachedProjectTasks(projectId)
-  const cachedDepartmentRecords = getCachedProjectDepartments(projectId)
-  const cachedMembership = getCachedProjectMembership(projectId)
-  const [tasks, setTasks] = useState<TaskRecord[]>(cachedTaskRecords ?? [])
+  const [tasks, setTasks] = useState<TaskRecord[]>([])
   const [search, setSearch] = useState("")
   const [activeDepartmentFilters, setActiveDepartmentFilters] = useState<string[]>([])
   const [myTaskOnly, setMyTaskOnly] = useState(false)
@@ -95,22 +89,40 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const pageHintTimeoutRef = useRef<number | null>(null)
   const colorRollbackRef = useRef<Record<string, { cardColor: string; cardTextColor: string }>>({})
   const latestColorRequestRef = useRef<Record<string, string>>({})
+  const pendingColorOverridesRef = useRef<Record<string, { cardColor: string; cardTextColor: string }>>({})
+
+  const applyPendingCardColorOverrides = useCallback((taskList: TaskRecord[]) => {
+    const overrides = pendingColorOverridesRef.current
+    if (taskList.length === 0 || Object.keys(overrides).length === 0) {
+      return taskList
+    }
+    return taskList.map((task) => {
+      const override = overrides[task.id]
+      if (!override) {
+        return task
+      }
+      if (
+        task.cardColor === override.cardColor &&
+        task.cardTextColor === override.cardTextColor
+      ) {
+        delete overrides[task.id]
+        return task
+      }
+      return {
+        ...task,
+        cardColor: override.cardColor,
+        cardTextColor: override.cardTextColor,
+      }
+    })
+  }, [])
   const [pageSizeMenuOpen, setPageSizeMenuOpen] = useState(false)
-  const [tasksLoading, setTasksLoading] = useState(cachedTaskRecords === undefined)
+  const [tasksLoading, setTasksLoading] = useState(true)
   const [tasksError, setTasksError] = useState<string | null>(null)
-  const [remoteDepartments, setRemoteDepartments] = useState<RemoteDepartment[]>(
-    cachedDepartmentRecords ? normalizeDepartments(cachedDepartmentRecords) : []
-  )
-  const [departmentsLoading, setDepartmentsLoading] = useState(
-    cachedDepartmentRecords === undefined
-  )
+  const [remoteDepartments, setRemoteDepartments] = useState<RemoteDepartment[]>([])
+  const [departmentsLoading, setDepartmentsLoading] = useState(true)
   const [departmentsError, setDepartmentsError] = useState<string | null>(null)
-  const [membershipId, setMembershipId] = useState<string | null>(
-    cachedMembership?.id ?? null
-  )
-  const [membershipLoading, setMembershipLoading] = useState(
-    cachedMembership === undefined
-  )
+  const [membershipId, setMembershipId] = useState<string | null>(null)
+  const [membershipLoading, setMembershipLoading] = useState(true)
   const [departmentFilterMenuOpen, setDepartmentFilterMenuOpen] = useState(false)
 
   const departmentOptions = useMemo(() => {
@@ -134,69 +146,6 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       return acc
     }, {})
   }, [remoteDepartments])
-
-  const handleTaskColorChange = useCallback(
-    async (taskId: string, color: string) => {
-      const normalizedColor = sanitizeHexColor(color)
-      const derivedTextColor = getContrastingTextColor(normalizedColor)
-      latestColorRequestRef.current[taskId] = normalizedColor
-
-      setTasks((prev) => {
-        const previousTask = prev.find((task) => task.id === taskId)
-        if (previousTask) {
-          colorRollbackRef.current[taskId] = {
-            cardColor: previousTask.cardColor,
-            cardTextColor: previousTask.cardTextColor,
-          }
-        }
-        return prev.map((task) =>
-          task.id === taskId
-            ? { ...task, cardColor: normalizedColor, cardTextColor: derivedTextColor }
-            : task
-        )
-      })
-
-      try {
-        const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ cardColor: normalizedColor }),
-        })
-        if (!response.ok) {
-          const message = await response.text()
-          throw new Error(message || "Failed to update task color")
-        }
-        const updatedTask = (await response.json()) as TaskRecord
-        if (latestColorRequestRef.current[taskId] !== normalizedColor) {
-          return
-        }
-        setTasks((prev) => prev.map((task) => (task.id === updatedTask.id ? updatedTask : task)))
-        delete colorRollbackRef.current[taskId]
-        delete latestColorRequestRef.current[taskId]
-      } catch (error) {
-        console.error(error)
-        if (latestColorRequestRef.current[taskId] !== normalizedColor) {
-          return
-        }
-        setTasks((prev) => {
-          const rollback = colorRollbackRef.current[taskId]
-          if (!rollback) {
-            return prev
-          }
-          return prev.map((task) =>
-            task.id === taskId
-              ? { ...task, cardColor: rollback.cardColor, cardTextColor: rollback.cardTextColor }
-              : task
-          )
-        })
-        delete colorRollbackRef.current[taskId]
-        delete latestColorRequestRef.current[taskId]
-      }
-    },
-    [projectId]
-  )
 
   type TaskDepartmentDetail = {
     id: string
@@ -387,10 +336,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     if (!projectId) {
       return
     }
-    const shouldShowLoading = getCachedProjectDepartments(projectId) === undefined
-    if (shouldShowLoading) {
-      setDepartmentsLoading(true)
-    }
+    setDepartmentsLoading(true)
     try {
       setDepartmentsError(null)
       const data = await loadProjectDepartments(projectId)
@@ -399,9 +345,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       console.error(error)
       setDepartmentsError("Unable to load departments")
     } finally {
-      if (shouldShowLoading) {
-        setDepartmentsLoading(false)
-      }
+      setDepartmentsLoading(false)
     }
   }, [projectId])
 
@@ -409,32 +353,24 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     if (!projectId) {
       return
     }
-    const shouldShowLoading = getCachedProjectTasks(projectId) === undefined
-    if (shouldShowLoading) {
-      setTasksLoading(true)
-    }
+    setTasksLoading(true)
     try {
       setTasksError(null)
       const data = await loadProjectTasks(projectId)
-      setTasks(data)
+      setTasks(applyPendingCardColorOverrides(data))
     } catch (error) {
       console.error(error)
       setTasksError(error instanceof Error ? error.message : "Unable to load tasks")
     } finally {
-      if (shouldShowLoading) {
-        setTasksLoading(false)
-      }
+      setTasksLoading(false)
     }
-  }, [projectId])
+  }, [projectId, applyPendingCardColorOverrides])
 
   const fetchMembership = useCallback(async () => {
     if (!projectId) {
       return
     }
-    const shouldShowLoading = getCachedProjectMembership(projectId) === undefined
-    if (shouldShowLoading) {
-      setMembershipLoading(true)
-    }
+    setMembershipLoading(true)
     try {
       const data = await loadProjectMembership(projectId)
       setMembershipId(data?.id ?? null)
@@ -442,38 +378,131 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       console.error(error)
       setMembershipId(null)
     } finally {
-      if (shouldShowLoading) {
-        setMembershipLoading(false)
-      }
+      setMembershipLoading(false)
     }
   }, [projectId])
 
   useEffect(() => {
-    const cached = getCachedProjectDepartments(projectId)
-    setRemoteDepartments(cached ? normalizeDepartments(cached) : [])
-    setDepartmentsLoading(cached === undefined)
     fetchDepartments()
   }, [projectId, fetchDepartments])
 
   useEffect(() => {
-    const cached = getCachedProjectTasks(projectId)
-    setTasks(cached ?? [])
-    setTasksLoading(cached === undefined)
     fetchTasks()
   }, [projectId, fetchTasks])
 
   useEffect(() => {
-    const cached = getCachedProjectMembership(projectId)
-    setMembershipId(cached?.id ?? null)
-    setMembershipLoading(cached === undefined)
     fetchMembership()
   }, [projectId, fetchMembership])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    const handleProjectRefresh = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ projectId?: string | null; origin?: string }>
+      ).detail
+      if (detail?.projectId && detail.projectId !== projectId) {
+        return
+      }
+      if (detail?.origin === "tasks-page") {
+        return
+      }
+      fetchDepartments()
+      fetchTasks()
+      fetchMembership()
+    }
+    window.addEventListener(PROJECT_REFRESH_EVENT, handleProjectRefresh)
+    return () => window.removeEventListener(PROJECT_REFRESH_EVENT, handleProjectRefresh)
+  }, [fetchDepartments, fetchMembership, fetchTasks, projectId])
 
   useEffect(() => {
     if (!membershipId && myTaskOnly) {
       setMyTaskOnly(false)
     }
   }, [membershipId, myTaskOnly])
+
+  const handleTaskColorChange = useCallback(
+    async (taskId: string, color: string) => {
+      const normalizedColor = sanitizeHexColor(color)
+      const derivedTextColor = getContrastingTextColor(normalizedColor)
+      latestColorRequestRef.current[taskId] = normalizedColor
+
+      setTasks((prev) => {
+        const previousTask = prev.find((task) => task.id === taskId)
+        if (previousTask) {
+          colorRollbackRef.current[taskId] = {
+            cardColor: previousTask.cardColor,
+            cardTextColor: previousTask.cardTextColor,
+          }
+        }
+        return prev.map((task) =>
+          task.id === taskId
+            ? { ...task, cardColor: normalizedColor, cardTextColor: derivedTextColor }
+            : task
+        )
+      })
+
+      try {
+        const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ cardColor: normalizedColor }),
+        })
+        if (!response.ok) {
+          const message = await response.text()
+          throw new Error(message || "Failed to update task color")
+        }
+        const updatedTask = (await response.json()) as TaskRecord
+        if (latestColorRequestRef.current[taskId] !== normalizedColor) {
+          return
+        }
+        setTasks((prev) => prev.map((task) => (task.id === updatedTask.id ? updatedTask : task)))
+        pendingColorOverridesRef.current[taskId] = {
+          cardColor: normalizedColor,
+          cardTextColor: derivedTextColor,
+        }
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent(PROJECT_REFRESH_EVENT, {
+              detail: { projectId, origin: "tasks-page" },
+            })
+          )
+        }
+        delete colorRollbackRef.current[taskId]
+        delete latestColorRequestRef.current[taskId]
+      } catch (error) {
+        console.error(error)
+        if (latestColorRequestRef.current[taskId] !== normalizedColor) {
+          return
+        }
+        delete pendingColorOverridesRef.current[taskId]
+        setTasks((prev) => {
+          const rollback = colorRollbackRef.current[taskId]
+          if (!rollback) {
+            return prev
+          }
+          return prev.map((task) =>
+            task.id === taskId
+              ? { ...task, cardColor: rollback.cardColor, cardTextColor: rollback.cardTextColor }
+              : task
+          )
+        })
+        delete colorRollbackRef.current[taskId]
+        delete latestColorRequestRef.current[taskId]
+        return
+      }
+
+      try {
+        await fetchTasks()
+      } catch (refreshError) {
+        console.error("Unable to refresh tasks after color update", refreshError)
+      }
+    },
+    [projectId, fetchTasks]
+  )
 
   const paginatedTasks = useMemo(() => {
     const startIndex = (page - 1) * pageSize
@@ -643,11 +672,13 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
         throw new Error(message)
       }
       setTasks((prev) => prev.filter((task) => task.id !== pendingDeleteTask.id))
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent(PROJECT_REFRESH_EVENT, { detail: { projectId } })
-        )
-      }
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent(PROJECT_REFRESH_EVENT, {
+              detail: { projectId, origin: "tasks-page" },
+            })
+          )
+        }
       closeDeleteDialog()
     } catch (error) {
       console.error("Failed to delete task", error)
@@ -776,7 +807,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                     </button>
                   </div>
                   <DropdownMenuSeparator className="my-1 bg-primary/15" />
-                  <div className="max-h-[18rem] overflow-y-auto py-1">
+                  <div className="asap-scroll max-h-[18rem] overflow-y-auto">
                     {departmentOptions.map((dept) => (
                       <DropdownMenuCheckboxItem
                         key={dept}
@@ -913,9 +944,12 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
           >
             <div
               className={cn(
-                "projects-scroll [scrollbar-gutter:stable] flex flex-col space-y-3 px-0.5 py-4 pb-0"
+                "projects-scroll [scrollbar-gutter:stable] flex flex-col space-y-3 px-0.5 py-2 pb-2"
               )}
-              style={{ maxHeight: cardListMaxHeight }}
+              style={{
+                maxHeight: cardListMaxHeight,
+                minHeight: cardListMaxHeight,
+              }}
             >
             {tasksError ? (
               <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -932,6 +966,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
               key={task.id}
               title={task.title}
               deadline={task.dueDate ? format(new Date(task.dueDate), "dd/MM/yyyy") : "—"}
+              taskId={task.id}
               assignees={
                 task.assignees.length > 0
                   ? task.assignees.map(

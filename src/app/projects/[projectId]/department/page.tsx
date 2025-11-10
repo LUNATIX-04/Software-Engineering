@@ -252,9 +252,16 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
     if (typeof window === "undefined") {
       return
     }
-    const handleProjectRefresh = (event: Event) => {
-      const detail = (event as CustomEvent<{ projectId?: string | null; source?: string }>).detail
+    const handleProjectRefresh = (
+      event: Event
+    ) => {
+      const detail = (
+        event as CustomEvent<{ projectId?: string | null; source?: string; origin?: string }>
+      ).detail
       if (detail?.projectId && detail.projectId !== projectId) {
+        return
+      }
+      if (detail?.origin === "department-page") {
         return
       }
       if (
@@ -670,6 +677,20 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
         setDepartments((prev) =>
           prev.map((dept) => (dept.id === departmentId ? updated : dept))
         )
+        if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(PROJECT_REFRESH_EVENT, {
+            detail: {
+              projectId,
+              source: "department-color",
+              origin: "department-page",
+              departmentId,
+              color: updated.color,
+              textColor: updated.textColor,
+            },
+          })
+        )
+        }
       } catch (error) {
         console.error("Failed to update department color", error)
         notify({
@@ -971,6 +992,7 @@ function DepartmentCard({
   const [headMenuOpen, setHeadMenuOpen] = useState(false)
   const [colorMenuOpen, setColorMenuOpen] = useState(false)
   const [colorMode, setColorMode] = useState<"presets" | "custom">("presets")
+  const [previewColor, setPreviewColor] = useState<string | null>(null)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState(department.name)
   const nameInputRef = useRef<HTMLInputElement>(null)
@@ -995,9 +1017,14 @@ function DepartmentCard({
     }
   }, [headControlsDisabled])
 
-  const innerTone = useMemo(() => blendColorWithWhite(department.color, 0.35), [
-    department.color,
-  ])
+  useEffect(() => {
+    if (!colorMenuOpen) {
+      setPreviewColor(null)
+    }
+  }, [colorMenuOpen])
+
+  const displayColor = previewColor ?? department.color
+  const innerTone = useMemo(() => blendColorWithWhite(displayColor, 0.35), [displayColor])
 
   const textColor = department.textColor || CARD_TEXT_COLOR
   const currentHeadLabel =
@@ -1059,7 +1086,7 @@ function DepartmentCard({
       id={`department-card-${department.id}`}
       className="relative flex flex-col gap-6 rounded-[2.75rem] border-2 border-primary/30 bg-white px-6 py-6 shadow-[0_12px_0_rgba(144,122,214,0.15)] transition-shadow hover:shadow-[0_18px_0_rgba(144,122,214,0.2)]"
       style={{
-        backgroundColor: department.color,
+        backgroundColor: displayColor,
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.9 : 1,
@@ -1261,6 +1288,10 @@ function DepartmentCard({
                     type="button"
                     className="flex size-10 items-center justify-center rounded-2xl border-2 border-primary/20 text-[0.65rem] font-semibold transition hover:border-primary"
                     style={{ backgroundColor: option.value }}
+                    onMouseEnter={() => setPreviewColor(option.value)}
+                    onMouseLeave={() => setPreviewColor(null)}
+                    onFocus={() => setPreviewColor(option.value)}
+                    onBlur={() => setPreviewColor(null)}
                     onClick={() => {
                       if (disabled) {
                         return

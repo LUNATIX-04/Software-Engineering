@@ -79,7 +79,6 @@ import { DropdownMenuLabel } from "@radix-ui/react-dropdown-menu"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import { PROJECT_ROLE, type ProjectRole } from "@/types/projects"
 import { isRemovalError } from "@/utils/projects/removal"
-import { refreshProjectCache } from "@/utils/projects/prefetch"
 
 const DEPARTMENT_LAYOUTS: DepartmentLayoutOption[] = ["compact", "fullWidth"]
 const THEME_OPTIONS: ThemeOption[] = ["standard", "light", "dark", "red", "blue"]
@@ -370,23 +369,6 @@ function AppShellInner({ children }: AppShellProps) {
     }
     return selectedOwners.filter((owner) => owner.username.toLowerCase().includes(term))
   }, [selectedOwnersSearch, selectedOwners])
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return
-    }
-    const handleGlobalProjectRefresh = (event: Event) => {
-      const detail = (event as CustomEvent<{ projectId?: string | null }>).detail
-      const triggeredProjectId = detail?.projectId ?? null
-      if (!triggeredProjectId) {
-        return
-      }
-      refreshProjectCache(triggeredProjectId).catch(() => undefined)
-    }
-    window.addEventListener(PROJECT_REFRESH_EVENT, handleGlobalProjectRefresh)
-    return () =>
-      window.removeEventListener(PROJECT_REFRESH_EVENT, handleGlobalProjectRefresh)
-  }, [])
 
   useEffect(() => {
     if (!canCustomizeInviteMaxUses) {

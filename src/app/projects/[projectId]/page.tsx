@@ -11,11 +11,7 @@ import { ArrowLeft, CalendarDays, FolderKanban, PencilLine, RefreshCcw, Tags } f
 import { Button } from "@/components/ui/button"
 import { usePreferences } from "@/contexts/preferences"
 import { type ProjectRecord } from "@/utils/projects/api"
-import {
-  getCachedProjectRecord,
-  loadProjectRecord,
-  prefetchProjectBundle,
-} from "@/utils/projects/prefetch"
+import { loadProjectRecord } from "@/utils/projects/prefetch"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 
 type ProjectInfoPageProps = {
@@ -29,59 +25,24 @@ type FormattedDates = {
   updated: string
 }
 
-type PrefetchStatus = "idle" | "loading" | "done" | "error"
 
 export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
   const { projectId } = React.use(params)
-  const cachedProject = getCachedProjectRecord(projectId)
-  const [project, setProject] = React.useState<ProjectRecord | null>(cachedProject ?? null)
-  const [loading, setLoading] = React.useState(cachedProject === undefined)
+  const [project, setProject] = React.useState<ProjectRecord | null>(null)
+  const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [refreshToken, setRefreshToken] = useState(0)
-  const [prefetchStatus, setPrefetchStatus] = useState<PrefetchStatus>("idle")
   const router = useRouter()
   const { profile } = usePreferences()
 
-  const showPrefetchBanner =
-    !loading && (prefetchStatus === "loading" || prefetchStatus === "error")
-
-  useEffect(() => {
+  React.useEffect(() => {
     if (!projectId) {
       return
     }
     let active = true
-    setPrefetchStatus("loading")
-    prefetchProjectBundle(projectId)
-      .then(() => {
-        if (!active) {
-          return
-        }
-        setPrefetchStatus("done")
-      })
-      .catch(() => {
-        if (!active) {
-          return
-        }
-        setPrefetchStatus("error")
-      })
-    const basePath = `/projects/${projectId}`
-    void router.prefetch(basePath)
-    void router.prefetch(`${basePath}/task`)
-    void router.prefetch(`${basePath}/calendar`)
-    void router.prefetch(`${basePath}/department`)
-    void router.prefetch(`${basePath}/member`)
-    void router.prefetch(`${basePath}/edit`)
-    return () => {
-      active = false
-    }
-  }, [projectId, router])
-
-  React.useEffect(() => {
-    let active = true
-    const cached = getCachedProjectRecord(projectId)
-    setProject(cached ?? null)
-    setLoading(cached === undefined)
+    setLoading(true)
     setError(null)
+    setProject(null)
 
     loadProjectRecord(projectId)
       .then((data) => {
@@ -113,8 +74,13 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
       return
     }
     const handleProjectRefresh = (event: Event) => {
-      const detail = (event as CustomEvent<{ projectId?: string | null }>).detail
+      const detail = (
+        event as CustomEvent<{ projectId?: string | null; origin?: string }>
+      ).detail
       if (detail?.projectId && detail.projectId !== projectId) {
+        return
+      }
+      if (detail?.origin === "tasks-page") {
         return
       }
       setRefreshToken((token) => token + 1)
@@ -173,11 +139,6 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
     // The error branch above should already cover missing project scenarios.
   }
 
-  const prefetchDescription =
-    prefetchStatus === "error"
-      ? "Unable to finish warming every tab. Some pages may still fetch fresh data."
-      : "Preparing the rest of the workspace for smoother navigation…"
-
   const role = project.membership?.role ?? "MEMBER"
   const isOwner = role === "OWNER"
   const hasDescription = Boolean(project.description?.trim())
@@ -199,24 +160,6 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
 
   return (
     <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
-      {showPrefetchBanner ? (
-        <div className="mb-6 rounded-[2rem] border border-primary/30 bg-white/80 px-6 py-4 text-sm font-medium text-primary shadow-[0_12px_30px_rgba(79,61,152,0.18)] backdrop-blur">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-base font-semibold">
-              {prefetchStatus === "error"
-                ? "Background warming failed"
-                : "Preparing your workspace…"}
-            </span>
-            <span className="text-xs uppercase tracking-[0.3em] text-primary/60">
-              {prefetchStatus === "error" ? "Retrying" : "Prefetching"}
-            </span>
-          </div>
-          <p className="mt-2 text-xs font-normal text-foreground/60">{prefetchDescription}</p>
-          {prefetchStatus === "loading" ? (
-            <div className="mt-4 h-2 rounded-full bg-primary/20 prefetch-progress-track" />
-          ) : null}
-        </div>
-      ) : null}
       <div className="flex w-full max-w-7xl flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
           <Button

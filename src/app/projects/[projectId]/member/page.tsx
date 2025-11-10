@@ -413,8 +413,34 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       return
     }
     const handleProjectRefresh = (event: Event) => {
-      const detail = (event as CustomEvent<{ projectId?: string | null }>).detail
+      const detail = (
+        event as CustomEvent<{
+          projectId?: string | null
+          origin?: string
+          source?: string
+          departmentId?: string
+          color?: string
+          textColor?: string
+        }>
+      ).detail
       if (detail?.projectId && detail.projectId !== projectId) {
+        return
+      }
+      if (detail?.origin === "member-page") {
+        return
+      }
+      if (detail?.source === "department-color" && detail.departmentId) {
+        setRemoteDepartments((prev) =>
+          prev.map((dept) =>
+            dept.id === detail.departmentId
+              ? {
+                  ...dept,
+                  color: detail.color ?? dept.color,
+                  textColor: detail.textColor ?? dept.textColor,
+                }
+              : dept
+          )
+        )
         return
       }
       fetchDepartments()
@@ -606,7 +632,11 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
         if (typeof window !== "undefined") {
           window.dispatchEvent(
             new CustomEvent(PROJECT_REFRESH_EVENT, {
-              detail: { projectId, source: "member-kick" },
+              detail: {
+                projectId,
+                source: "member-kick",
+                origin: "member-page",
+              },
             })
           )
         }
@@ -822,6 +852,17 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
         if (wasDepartmentHead && previous.departmentId) {
           await updateProjectDepartment(projectId, previous.departmentId, { head: null })
           fetchDepartments()
+        }
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent(PROJECT_REFRESH_EVENT, {
+              detail: {
+                projectId,
+                source: "member-department-change",
+                origin: "member-page",
+              },
+            })
+          )
         }
       } catch (error) {
         console.error("Failed to update member department", error)

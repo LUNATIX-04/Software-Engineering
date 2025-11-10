@@ -1,0 +1,1 @@
+export const MAX_DEPARTMENT_LENGTH = 128

@@ -1,6 +1,6 @@
 import { Prisma, PrismaClient } from "@prisma/client"
 
-import { prisma } from "@/lib/prisma"
+import { prisma } from "../../lib/prisma"
 
 type ExtendedPrismaClient = PrismaClient & {
   projectMember: Prisma.ProjectMemberDelegate

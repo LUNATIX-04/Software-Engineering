@@ -16,6 +16,11 @@ import { HexColorPicker } from "react-colorful"
 import { cn } from "@/lib/utils"
 import { TOOLTIP_DELAY_DURATION_MS } from "@/constants/ui"
 import { DEFAULT_TASK_CARD_COLOR, QUICK_COLOR_OPTIONS } from "@/constants/task-colors"
+import {
+  computeTextColor,
+  getContrastingTextColor,
+  sanitizeHexColor,
+} from "@/utils/colors"
 
 function hexToRgb(hex: string) {
   const normalized = hex.replace("#", "")
@@ -70,35 +75,6 @@ function normalizeHexString(hex: string | null | undefined) {
   return `#${value.toLowerCase()}`
 }
 
-function getContrastRatio(hexA: string, hexB: string) {
-  const l1 = getRelativeLuminance(hexA)
-  const l2 = getRelativeLuminance(hexB)
-  const [lighter, darker] = l1 > l2 ? [l1, l2] : [l2, l1]
-  return (lighter + 0.05) / (darker + 0.05)
-}
-
-const LIGHT_TEXT = "#FFFFFF"
-const DARK_TEXT = "#2F2766"
-const MIN_CONTRAST = 3
-
-function computeTextColor(backgroundHex: string, preferredHex?: string | null) {
-  const normalizedBg = normalizeHexString(backgroundHex)
-  const normalizedPreferred = normalizeHexString(preferredHex)
-
-  if (normalizedBg && normalizedPreferred) {
-    const ratio = getContrastRatio(normalizedBg, normalizedPreferred)
-    if (ratio >= MIN_CONTRAST) {
-      return normalizedPreferred
-    }
-  }
-
-  if (!normalizedBg) {
-    return normalizedPreferred ?? DARK_TEXT
-  }
-
-  return isHexColorDark(normalizedBg) ? LIGHT_TEXT : DARK_TEXT
-}
-
 type TaskCardDepartment = {
   id: string
   name: string
@@ -120,6 +96,7 @@ type TaskCardProps = {
   cardColor: string
   cardTextColor: string
   onColorChange?: (color: string) => void
+  taskId?: string
 }
 
 export function TaskCard({
@@ -136,6 +113,7 @@ export function TaskCard({
   cardColor,
   cardTextColor,
   onColorChange,
+  taskId,
 }: TaskCardProps) {
   const normalizedCardColor = normalizeHexString(cardColor) ?? DEFAULT_TASK_CARD_COLOR
 
@@ -144,10 +122,12 @@ export function TaskCard({
   const [menuTriggerHover, setMenuTriggerHover] = React.useState(false)
   const [colorMode, setColorMode] = React.useState<"presets" | "custom">("presets")
   const [customColor, setCustomColor] = React.useState(normalizedCardColor)
+  const [previewColor, setPreviewColor] = React.useState<string | null>(null)
   const colorChangeTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   React.useEffect(() => {
     setCustomColor(normalizedCardColor)
+    setPreviewColor(null)
   }, [normalizedCardColor])
 
   React.useEffect(() => {
@@ -157,6 +137,12 @@ export function TaskCard({
       }
     }
   }, [])
+
+  React.useEffect(() => {
+    if (!menuOpen) {
+      setPreviewColor(null)
+    }
+  }, [menuOpen])
 
   const commitColorChange = React.useCallback(
     (nextColor: string, options?: { immediate?: boolean }) => {
@@ -178,6 +164,15 @@ export function TaskCard({
       }, 200)
     },
     [onColorChange]
+  )
+
+  const handlePresetColorSelect = React.useCallback(
+    (color: string) => {
+      setCustomColor(color)
+      commitColorChange(color, { immediate: true })
+      setMenuOpen(false)
+    },
+    [commitColorChange]
   )
 
   const handleClick = React.useCallback(
@@ -221,10 +216,11 @@ export function TaskCard({
     ? departmentDetails[departmentDetails.length - 1]
     : null
 
-  const resolvedCardTextColor = computeTextColor(normalizedCardColor, cardTextColor)
-  const isBackgroundDark = isHexColorDark(normalizedCardColor)
-  const hoverColor = adjustHexBrightness(normalizedCardColor, isBackgroundDark ? 20 : -20)
-  const borderColor = adjustHexBrightness(normalizedCardColor, isBackgroundDark ? 10 : -20)
+  const effectiveCardColor = previewColor ?? normalizedCardColor
+  const resolvedCardTextColor = computeTextColor(effectiveCardColor, cardTextColor)
+  const isBackgroundDark = isHexColorDark(effectiveCardColor)
+  const hoverColor = adjustHexBrightness(effectiveCardColor, isBackgroundDark ? 20 : -20)
+  const borderColor = adjustHexBrightness(effectiveCardColor, isBackgroundDark ? 10 : -20)
 
   const assigneeLabel = assignees.length > 0 ? assignees.join(", ") : "—"
 
@@ -252,7 +248,7 @@ export function TaskCard({
   const menuIconClassName = cn("size-5 transition-colors duration-200", menuOpen ? "text-primary" : "")
 
   const cardStyle = {
-    background: isHovering ? hoverColor : normalizedCardColor,
+    background: isHovering ? hoverColor : effectiveCardColor,
     color: resolvedCardTextColor,
     borderColor,
     filter: isHovering ? "brightness(1.02)" : undefined,
@@ -284,15 +280,22 @@ export function TaskCard({
           borderColor: "rgba(47,39,102,0.35)",
         }
       : {
-          backgroundColor: normalizedCardColor,
-          color: resolvedCardTextColor,
-          borderColor,
+          backgroundColor: primaryDepartment?.color ?? normalizedCardColor,
+          color: primaryDepartment?.textColor ?? resolvedCardTextColor,
+          borderColor:
+            primaryDepartment?.color ?? normalizedCardColor
+              ? adjustHexBrightness(
+                  primaryDepartment?.color ?? normalizedCardColor,
+                  isHexColorDark(primaryDepartment?.color ?? normalizedCardColor) ? 10 : -10
+                )
+              : borderColor,
         }
     : undefined
 
   return (
     <article
       className={cardClassName}
+      id={taskId ? `task-card-${taskId}` : undefined}
       style={cardStyle}
       role={onOpen ? "button" : undefined}
       tabIndex={onOpen ? 0 : undefined}
@@ -404,7 +407,7 @@ export function TaskCard({
             <DropdownMenuContent
               align="end"
               sideOffset={-4}
-              className="w-64 rounded-2xl border-none bg-button-background p-3 text-base text-button-foreground shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
+              className="w-48 rounded-2xl border-none bg-button-background p-3 text-base text-button-foreground shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
               data-task-menu="true"
               onPointerDown={(event) => event.stopPropagation()}
               onClick={(event) => event.stopPropagation()}
@@ -440,6 +443,7 @@ export function TaskCard({
                   </span>
                 </DropdownMenuItem>
               ) : null}
+              {/*
               {onColorChange ? (
                 <>
                   <DropdownMenuSeparator />
@@ -498,12 +502,27 @@ export function TaskCard({
                                   : "border-primary/20 hover:border-primary"
                               )}
                               style={{ backgroundColor: option.value }}
-                              onClick={(event) => {
-                                event.preventDefault()
-                                event.stopPropagation()
-                                setCustomColor(normalizedOption)
-                                commitColorChange(normalizedOption, { immediate: true })
-                              }}
+                        onMouseEnter={() => {
+                          setPreviewColor(normalizedOption)
+                        }}
+                        onMouseLeave={() => {
+                          setPreviewColor((current) =>
+                            current === normalizedOption ? null : current
+                          )
+                        }}
+                        onFocus={() => {
+                          setPreviewColor(normalizedOption)
+                        }}
+                        onBlur={() => {
+                          setPreviewColor((current) =>
+                            current === normalizedOption ? null : current
+                          )
+                        }}
+                        onClick={(event) => {
+                          event.preventDefault()
+                          event.stopPropagation()
+                          handlePresetColorSelect(normalizedOption)
+                        }}
                               aria-label={`Select ${option.label}`}
                             />
                           )
@@ -528,6 +547,7 @@ export function TaskCard({
                   </div>
                 </>
               ) : null}
+              */}
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}

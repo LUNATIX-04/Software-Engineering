@@ -41,6 +41,60 @@ export function generatePastelColor() {
   return hslToHex(hue, saturation, lightness)
 }
 
+const LIGHT_TEXT_COLOR = "#FFFFFF"
+const DARK_TEXT_COLOR = "#2F2766"
+const MIN_CONTRAST_RATIO = 3
+
+function normalizeHexString(hex: string | null | undefined) {
+  if (!hex) {
+    return null
+  }
+  const value = hex.trim().replace("#", "")
+  if (value.length !== 6) {
+    return null
+  }
+  return `#${value.toLowerCase()}`
+}
+
+function getRelativeLuminance(hex: string) {
+  const { r, g, b } = hexToRgb(hex)
+  const toChannel = (value: number) => {
+    const channel = value / 255
+    return channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4)
+  }
+  return (
+    RELATIVE_LUMINANCE_FACTORS.r * toChannel(r) +
+    RELATIVE_LUMINANCE_FACTORS.g * toChannel(g) +
+    RELATIVE_LUMINANCE_FACTORS.b * toChannel(b)
+  )
+}
+
+function getContrastRatio(hexA: string, hexB: string) {
+  const l1 = getRelativeLuminance(hexA)
+  const l2 = getRelativeLuminance(hexB)
+  const [lighter, darker] = l1 > l2 ? [l1, l2] : [l2, l1]
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
+export function computeTextColor(backgroundHex: string, preferredHex?: string | null) {
+  const normalizedBg = normalizeHexString(backgroundHex)
+  const normalizedPreferred = normalizeHexString(preferredHex)
+
+  if (normalizedBg && normalizedPreferred) {
+    const ratio = getContrastRatio(normalizedBg, normalizedPreferred)
+    if (ratio >= MIN_CONTRAST_RATIO) {
+      return normalizedPreferred
+    }
+  }
+
+  if (!normalizedBg) {
+    return normalizedPreferred ?? DARK_TEXT_COLOR
+  }
+
+  const luminance = getRelativeLuminance(normalizedBg)
+  return luminance < 0.5 ? LIGHT_TEXT_COLOR : DARK_TEXT_COLOR
+}
+
 function hslToHex(h: number, s: number, l: number) {
   s /= 100
   l /= 100

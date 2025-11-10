@@ -30,7 +30,11 @@ import { format } from "date-fns"
 import { usePreferences } from "@/contexts/preferences"
 import type { DepartmentLayoutOption } from "@/types/preferences"
 import { cn } from "@/lib/utils"
-import { getContrastingTextColor, sanitizeHexColor } from "@/utils/colors"
+import {
+  computeTextColor,
+  getContrastingTextColor,
+  sanitizeHexColor,
+} from "@/utils/colors"
 import { Calendar } from "../ui/calendar"
 import { HexColorPicker } from "react-colorful"
 import { DEFAULT_TASK_CARD_COLOR, QUICK_COLOR_OPTIONS } from "@/constants/task-colors"
@@ -268,8 +272,15 @@ export function TaskForm({
   )
   const [colorMenuOpen, setColorMenuOpen] = React.useState(false)
   const [colorMode, setColorMode] = React.useState<"presets" | "custom">("presets")
+  const [quickColorPreview, setQuickColorPreview] = React.useState<string | null>(null)
   const { profile } = usePreferences()
   const assigneeLayout: DepartmentLayoutOption = profile?.departmentLayout ?? "fullWidth"
+
+  React.useEffect(() => {
+    if (!colorMenuOpen) {
+      setQuickColorPreview(null)
+    }
+  }, [colorMenuOpen])
 
   const [assigneeIds, setAssigneeIds] = React.useState<string[]>(
     initialValues.assigneeIds.length > 0 ? [...initialValues.assigneeIds] : []
@@ -807,14 +818,18 @@ export function TaskForm({
       : "No start date set"
   const TIME_SCROLLER_HEIGHT_CLASS = "h-[8rem]"
 
+  const effectiveFormColor = quickColorPreview ?? cardColor
+  const formTextColor = computeTextColor(effectiveFormColor)
+
   return (
     <div className="grid items-start gap-10 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-12">
       <form
         onSubmit={handleSubmit}
         className="flex flex-col gap-7 rounded-[3.5rem] border-2 border-primary/30 bg-card-project px-[clamp(2.5rem,4vw,3.75rem)] pb-12 pt-8 shadow-[0_2px_6px_rgba(0,0,0,0.12)] lg:-ml-4 2xl:-ml-6"
+        style={{ backgroundColor: effectiveFormColor, color: formTextColor }}
       >
         <div className="flex items-center justify-between gap-4">
-          <h1 className="text-3xl font-bold text-[#2F2766]">{heading}</h1>
+          <h1 className="text-3xl font-bold text-current">{heading}</h1>
           <DropdownMenu
             open={colorMenuOpen}
             onOpenChange={(open) => {
@@ -829,7 +844,7 @@ export function TaskForm({
                 type="button"
                 className="inline-flex items-center justify-between gap-3 rounded-[1.5rem] border border-primary/30 bg-white/90 px-4 py-2 text-sm font-semibold text-primary shadow-[0_6px_0_rgba(144,122,214,0.15)] transition hover:border-primary hover:bg-primary/10 focus-visible:outline-none"
               >
-                <span className="inline-flex items-center gap-2">
+                <span className="inline-flex items-center gap-2 select-none">
                   <Palette className="size-4" />
                   Select Color
                 </span>
@@ -873,28 +888,48 @@ export function TaskForm({
                   )}
                 </button>
               </div>
-              {colorMode === "presets" ? (
-                <div className="flex flex-wrap gap-2">
-                  {QUICK_COLOR_OPTIONS.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className="flex size-10 items-center justify-center rounded-2xl border-2 border-primary/20 text-[0.65rem] font-semibold transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0"
-                      style={{ backgroundColor: option.value }}
-                      onClick={() => {
-                        setCardColor(sanitizeHexColor(option.value))
-                        setColorMenuOpen(false)
-                      }}
-                      aria-label={`Select ${option.label}`}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="max-h-[18rem] space-y-2 overflow-auto rounded-2xl border border-primary/20 bg-white/60 p-3">
-                  <div className="rounded-2xl bg-white p-2">
-                    <HexColorPicker
+                    {colorMode === "presets" ? (
+                      <div className="flex flex-wrap gap-2">
+                        {QUICK_COLOR_OPTIONS.map((option) => {
+                          const normalizedValue = sanitizeHexColor(option.value)
+                          return (
+                            <button
+                              key={option.value}
+                              type="button"
+                              className="flex size-10 items-center justify-center rounded-2xl border-2 border-primary/20 text-[0.65rem] font-semibold transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0"
+                              style={{ backgroundColor: option.value }}
+                              onMouseEnter={() => setQuickColorPreview(normalizedValue)}
+                              onMouseLeave={() =>
+                                setQuickColorPreview((current) =>
+                                  current === normalizedValue ? null : current
+                                )
+                              }
+                              onFocus={() => setQuickColorPreview(normalizedValue)}
+                              onBlur={() =>
+                                setQuickColorPreview((current) =>
+                                  current === normalizedValue ? null : current
+                                )
+                              }
+                              onClick={() => {
+                                setCardColor(normalizedValue)
+                                setQuickColorPreview(null)
+                                setColorMenuOpen(false)
+                              }}
+                              aria-label={`Select ${option.label}`}
+                            />
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="max-h-[18rem] space-y-2 overflow-auto rounded-2xl border border-primary/20 bg-white/60 p-3">
+                        <div className="rounded-2xl bg-white p-2">
+                          <HexColorPicker
                       color={cardColor || DEFAULT_TASK_CARD_COLOR}
-                      onChange={(color) => setCardColor(sanitizeHexColor(color))}
+                            onChange={(color) => {
+                              const normalizedValue = sanitizeHexColor(color)
+                              setCardColor(normalizedValue)
+                              setQuickColorPreview(normalizedValue)
+                            }}
                       style={{ width: "100%", height: "160px" }}
                     />
                   </div>
@@ -921,7 +956,7 @@ export function TaskForm({
             className="project-detail-scroll min-h-[10rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-6 py-2 text-base text-[#2F2766] placeholder:text-primary/60 shadow-none focus-visible:outline-none focus-visible:ring-0" />
         </div>
 
-        <div className="space-y-4 text-[#2F2766]">
+        <div className="space-y-4 text-current">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-center gap-3">
               <span className="text-lg font-semibold w-27 mt-3">Assigned To :</span>
@@ -1188,7 +1223,7 @@ export function TaskForm({
           </div>
         </div>
         {showStatus ? (
-          <div className="space-y-4 text-[#2F2766]">
+          <div className="space-y-4 text-current">
             <span className="text-lg font-semibold">Task Status :</span>
             <DropdownMenu>
                 <DropdownMenuTrigger asChild>

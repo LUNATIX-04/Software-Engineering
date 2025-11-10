@@ -1,8 +1,8 @@
 import type { Prisma } from "@prisma/client"
 
-import { projectMembers } from "@/server/projects/db"
-import type { ProjectMemberStatus, ProjectRole } from "@/types/projects"
-import { PROJECT_MEMBER_STATUS, PROJECT_ROLE } from "@/types/projects"
+import { projectMembers } from "./db"
+import type { ProjectMemberStatus, ProjectRole } from "../../types/projects"
+import { PROJECT_MEMBER_STATUS, PROJECT_ROLE } from "../../types/projects"
 
 type MembershipWithProject = Prisma.ProjectMemberGetPayload<{
   include: { project: true }

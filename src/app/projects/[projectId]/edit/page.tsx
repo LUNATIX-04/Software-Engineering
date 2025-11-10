@@ -9,10 +9,7 @@ import { Button } from "@/components/ui/button"
 import { ProjectForm, type ProjectFormValues } from "@/components/projects/ProjectForm"
 import { usePreferences } from "@/contexts/preferences"
 import { type ProjectRecord, updateProject } from "@/utils/projects/api"
-import {
-  getCachedProjectRecord,
-  loadProjectRecord,
-} from "@/utils/projects/prefetch"
+import { loadProjectRecord } from "@/utils/projects/prefetch"
 import { uploadProjectImage } from "@/utils/projects/media"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 
@@ -28,19 +25,20 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
   const handleNavigateBack = useCallback(() => router.push("/projects"), [router])
   const { profile } = usePreferences()
   const preferredDepartmentLayout = profile?.departmentLayout ?? "fullWidth"
-  const cachedProject = getCachedProjectRecord(projectId)
-  const [project, setProject] = useState<ProjectRecord | null>(cachedProject ?? null)
-  const [loading, setLoading] = useState(cachedProject === undefined)
+  const [project, setProject] = useState<ProjectRecord | null>(null)
+  const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!projectId) {
+      return
+    }
     let active = true
-    const cached = getCachedProjectRecord(projectId)
-    setProject(cached ?? null)
-    setLoading(cached === undefined)
+    setLoading(true)
     setLoadError(null)
+
 
     loadProjectRecord(projectId)
       .then((data) => {
