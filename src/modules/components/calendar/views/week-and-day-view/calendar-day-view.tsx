@@ -1,7 +1,7 @@
 import { format, isWithinInterval, parseISO } from "date-fns";
-import { Calendar, Clock, User } from "lucide-react";
+import { Clock, User } from "lucide-react";
 import { useEffect, useRef } from "react";
-import { DayPicker } from "@/components/ui/day-picker";
+import { Calendar } from "@/components/ui/calendar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useCalendar } from "@/modules/components/calendar/contexts/calendar-context";
 
@@ -166,12 +166,13 @@ export function CalendarDayView({ singleDayEvents, multiDayEvents }: IProps) {
 			</div>
 
 			<div className="hidden w-72 divide-y border-l md:block">
-				<DayPicker
-					className="mx-auto w-fit"
+				<Calendar
+					className="mx-auto w-fit bg-white calendar-no-past"
 					mode="single"
 					selected={selectedDate}
 					onSelect={(date) => date && setSelectedDate(date)}
 					initialFocus
+					allowPastDates
 				/>
 
 				<div className="flex-1 space-y-3">

@@ -5,6 +5,7 @@ export type TaskAssignee = {
   username: string
   fullName: string | null
   departmentId: string | null
+  avatarUrl: string | null
 }
 
 export type TaskDepartment = {
@@ -27,6 +28,7 @@ export type TaskRecord = {
     id: string
     username: string
     fullName: string | null
+    avatarUrl: string | null
     role: string
   }
   createdAt: string

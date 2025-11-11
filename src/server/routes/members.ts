@@ -220,6 +220,8 @@ export function registerMemberRoutes(app: Elysia) {
       return new Response(JSON.stringify({ error: "Username is required" }), { status: 400 })
     }
 
+    const previousUsername = membership.username ?? null
+
     const updated = await projectMembers.update({
       where: { id: membership.id },
       data: { username },
@@ -228,6 +230,22 @@ export function registerMemberRoutes(app: Elysia) {
         username: true,
       },
     })
+
+    if (
+      previousUsername &&
+      previousUsername !== username &&
+      previousUsername.trim().length > 0
+    ) {
+      await prisma.projectDepartment.updateMany({
+        where: {
+          projectId: params.projectId,
+          head: previousUsername,
+        },
+        data: {
+          head: username,
+        },
+      })
+    }
 
     return new Response(JSON.stringify(updated))
   })

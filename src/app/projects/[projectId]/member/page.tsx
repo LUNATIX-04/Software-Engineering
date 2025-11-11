@@ -705,6 +705,8 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     if (!projectId || !memberDetailTarget || memberDetailTarget.id !== membership?.id) {
       return
     }
+    const previousUsername = memberDetailTarget.name
+    const departmentId = memberDetailTarget.departmentId ?? membership?.departmentId ?? null
     const nextUsername = detailUsername.trim()
     const nextBio = detailBio.trim()
     if (!nextUsername) {
@@ -743,6 +745,15 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
         prev ? { ...prev, name: nextUsername, bio: nextBio } : prev
       )
       setMembership((prev) => (prev ? { ...prev, username: nextUsername } : prev))
+      if (departmentId) {
+        setRemoteDepartments((prev) =>
+          prev.map((dept) =>
+            dept.id === departmentId && dept.head === previousUsername
+              ? { ...dept, head: nextUsername }
+              : dept
+          )
+        )
+      }
       notify({
         title: "Profile updated",
         description: "Your project username and bio were updated.",
@@ -764,6 +775,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     notify,
     projectId,
     setMembership,
+    setRemoteDepartments,
   ])
 
   const handleToggleDepartmentFilter = (
@@ -1201,33 +1213,46 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                       </div>
                       <div className="flex flex-1 flex-col gap-3">
                         <div className="flex flex-col gap-1">
-                          <div className="text-lg font-semibold text-[#2F2766]">
+                          <div className="text-lg mt-2 font-semibold text-[#2F2766]">
                             {(memberDetailTarget.id === membership?.id ? (
-                          <div className="space-y-2">
-                            <input
-                              type="text"
-                              value={detailUsername}
-                              onChange={(event) => setDetailUsername(event.target.value)}
-                              className="h-12 w-full rounded-full border-2 border-primary/30 bg-white px-4 text-sm font-semibold text-[#2F2766] shadow-[0_4px_0_rgba(144,122,214,0.15)] focus:border-primary focus:outline-none"
-                              placeholder="Project username"
-                            />
+                              <div className="space-y-2">
+                                <input
+                                  type="text"
+                                  value={detailUsername}
+                                  onChange={(event) => setDetailUsername(event.target.value)}
+                                  className="h-12 w-full rounded-full border-2 border-primary/30 bg-white px-4 text-sm font-semibold text-[#2F2766] shadow-[0_4px_0_rgba(144,122,214,0.15)] focus:border-primary focus:outline-none"
+                                  placeholder="Project username"
+                                />
+                              </div>
+                            ) : null) ?? memberDetailTarget.name}
                           </div>
-                        ) : null) ?? memberDetailTarget.name}
-                          </div>
-                          {memberDetailTarget.email ? (
-                            <div className="text-sm text-muted-foreground">
-                              {memberDetailTarget.email}
-                            </div>
-                          ) : null}
+                          <p className="text-sm font-semibold  text-primary/70">
+                              <span className="text-foreground/40">Department : </span>{memberDetailTarget.department}
+                            </p>
+                            <p className="text-sm font-semibold  text-primary/70">
+                               <span className="text-foreground/40">Role : </span>{memberDetailTarget.role}
+                            </p>
                         </div>
                       </div>
+                    </div>
+                    <div className="space-y-3">
+                    {memberDetailTarget.email ? (
+                      <div>
+                        <p className="text-sm font-semibold uppercase tracking-wide text-primary/70">
+                          Email
+                        </p>
+                        <p className="text-sm text-[var(--task-hero-text)]">
+                          {memberDetailTarget.email}
+                        </p>
+                      </div>
+                    ) : null}
                     </div>
                     <div className="space-y-3">
                       <p className="text-sm font-semibold uppercase tracking-wide text-primary/70">
                         About me
                       </p>
                       {memberDetailTarget.id === membership?.id ? (
-                        <div className="group/textarea overflow-hidden rounded-[1rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.12)]">
+                        <div className="group/textarea -mt-2 overflow-hidden rounded-[1rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.12)]">
                           <Textarea
                             value={detailBio}
                             onChange={(event) => setDetailBio(event.target.value)}
@@ -1237,7 +1262,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                           />
                         </div>
                       ) : (
-                        <div className="rounded-2xl border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-[#2F2766]">
+                        <div className="rounded-2xl  -mt-2 border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-[#2F2766]">
                           {memberDetailTarget.bio?.length ? memberDetailTarget.bio : "No bio provided."}
                         </div>
                       )}

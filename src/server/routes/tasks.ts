@@ -44,7 +44,7 @@ type TaskWithRelations = {
       id: string
       username: string
       departmentId: string | null
-      profile: { fullName: string | null }
+      profile: { fullName: string | null; avatarUrl: string | null }
     }
     taskId: string
     memberId: string
@@ -54,7 +54,7 @@ type TaskWithRelations = {
     id: string
     username: string
     role: ProjectRole
-    profile: { fullName: string | null }
+    profile: { fullName: string | null; avatarUrl: string | null }
   }
   submissions: Array<{
     id: string
@@ -144,17 +144,25 @@ function serializeTask(task: TaskWithRelations) {
           textColor: task.department.textColor,
         }
       : null,
-    assignees: task.assignees.map((assignment) => ({
-      id: assignment.member.id,
-      username: assignment.member.username,
-      fullName: assignment.member.profile?.fullName ?? null,
-      departmentId: assignment.member.departmentId,
-    })),
+    assignees: (() => {
+      const filteredAssignees = task.assignees.filter(
+        (assignment) => assignment.member.id !== task.createdBy.id
+      )
+      const sourceAssignees = filteredAssignees.length > 0 ? filteredAssignees : task.assignees
+      return sourceAssignees.map((assignment) => ({
+        id: assignment.member.id,
+        username: assignment.member.username,
+        fullName: assignment.member.profile?.fullName ?? null,
+        departmentId: assignment.member.departmentId,
+        avatarUrl: assignment.member.profile?.avatarUrl ?? null,
+      }))
+    })(),
     createdBy: {
       id: task.createdBy.id,
       username: task.createdBy.username,
       fullName: task.createdBy.profile?.fullName ?? null,
       role: task.createdBy.role,
+      avatarUrl: task.createdBy.profile?.avatarUrl ?? null,
     },
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
@@ -235,6 +243,7 @@ function fetchTasks(projectId: string): Promise<TaskWithRelations[]> {
               profile: {
                 select: {
                   fullName: true,
+                  avatarUrl: true,
                 },
               },
             },
@@ -246,7 +255,7 @@ function fetchTasks(projectId: string): Promise<TaskWithRelations[]> {
           id: true,
           username: true,
           profile: {
-            select: { fullName: true },
+            select: { fullName: true, avatarUrl: true },
           },
           role: true,
         },
@@ -301,6 +310,7 @@ async function loadTask(projectId: string, taskId: string): Promise<TaskWithRela
               profile: {
                 select: {
                   fullName: true,
+                  avatarUrl: true,
                 },
               },
             },
@@ -312,7 +322,7 @@ async function loadTask(projectId: string, taskId: string): Promise<TaskWithRela
           id: true,
           username: true,
           profile: {
-            select: { fullName: true },
+            select: { fullName: true, avatarUrl: true },
           },
           role: true,
         },
@@ -517,6 +527,7 @@ export function registerTaskRoutes(app: Elysia) {
                   profile: {
                     select: {
                       fullName: true,
+                      avatarUrl: true,
                     },
                   },
                 },
@@ -529,7 +540,7 @@ export function registerTaskRoutes(app: Elysia) {
               username: true,
               role: true,
               profile: {
-                select: { fullName: true },
+                select: { fullName: true, avatarUrl: true },
               },
             },
           },

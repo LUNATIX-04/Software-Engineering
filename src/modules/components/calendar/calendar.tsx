@@ -47,6 +47,7 @@ function mapTasksToEvents(tasks: TaskRecord[], projectId: string): IEvent[] {
     const startDate = resolveDate(task.startDate, task.createdAt)
     const endDate = resolveDate(task.dueDate, task.startDate ?? task.createdAt)
     const userSource = task.assignees[0] ?? task.createdBy
+    const avatarUrl = userSource.avatarUrl ?? null
     const color = STATUS_COLOR_MAP[task.status] ?? DEFAULT_EVENT_COLOR
     return {
       id: toEventId(task.id),
@@ -57,14 +58,18 @@ function mapTasksToEvents(tasks: TaskRecord[], projectId: string): IEvent[] {
       color,
       user: {
         id: userSource.id,
-        name: userSource.fullName ?? userSource.username ?? "Member",
-        picturePath: null,
+        name: userSource.username ?? userSource.fullName ?? "Member",
+        picturePath: avatarUrl,
       },
       taskId: task.id,
       projectId,
       status: task.status,
       accentColor: task.cardColor,
       accentTextColor: task.cardTextColor,
+      departmentId: task.department?.id ?? null,
+      departmentName: task.department?.name ?? null,
+      departmentColor: task.department?.color ?? null,
+      departmentTextColor: task.department?.textColor ?? null,
     }
   })
 }
@@ -72,16 +77,25 @@ function mapTasksToEvents(tasks: TaskRecord[], projectId: string): IEvent[] {
 function mapTasksToUsers(tasks: TaskRecord[]): IUser[] {
   const unique = new Map<string, IUser>()
 
-  const addUser = (id: string, name: string | null) => {
+  const addUser = (id: string, username: string | null, nameHint: string | null, picturePath: string | null) => {
     if (!unique.has(id)) {
-      unique.set(id, { id, name: name ?? "Member", picturePath: null })
+      unique.set(id, { id, name: username ?? nameHint ?? "Member", picturePath })
+      return
+    }
+    if (!unique.get(id)?.picturePath && picturePath) {
+      unique.set(id, { ...unique.get(id)!, picturePath })
     }
   }
 
   tasks.forEach((task) => {
-    addUser(task.createdBy.id, task.createdBy.fullName ?? task.createdBy.username)
+    addUser(
+      task.createdBy.id,
+      task.createdBy.username,
+      task.createdBy.fullName,
+      task.createdBy.avatarUrl ?? null
+    )
     task.assignees.forEach((assignee) => {
-      addUser(assignee.id, assignee.fullName ?? assignee.username)
+      addUser(assignee.id, assignee.username, assignee.fullName, assignee.avatarUrl ?? null)
     })
   })
 

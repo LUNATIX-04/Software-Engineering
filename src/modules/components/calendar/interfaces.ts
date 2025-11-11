@@ -19,6 +19,10 @@ export interface IEvent {
 	status?: string;
 	accentColor?: string | null;
 	accentTextColor?: string | null;
+	departmentId?: string | null;
+	departmentName?: string | null;
+	departmentColor?: string | null;
+	departmentTextColor?: string | null;
 }
 
 export interface ICalendarCell {

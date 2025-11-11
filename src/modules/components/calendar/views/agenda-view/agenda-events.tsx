@@ -1,6 +1,7 @@
 import {format, parseISO} from "date-fns";
 import type {FC} from "react";
-import {Avatar, AvatarFallback, AvatarImage} from "@/components/ui/avatar";
+import Image from "next/image";
+import {Avatar, AvatarFallback} from "@/components/ui/avatar";
 import {
     Command,
     CommandEmpty,
@@ -75,16 +76,25 @@ export const AgendaEvents: FC = () => {
 								<EventBullet color={event.color} accentColor={event.accentColor ?? undefined}/>
 							) : (
 								<Avatar>
-									<AvatarImage src="" alt="@shadcn"/>
-									<AvatarFallback
-										className={getBgColor(event.color)}
-										style={event.accentColor ? {
-											backgroundColor: event.accentColor,
-											color: event.accentTextColor ?? undefined,
-										} : undefined}
-									>
-										{getFirstLetters(event.title)}
-									</AvatarFallback>
+									{event.user.picturePath ? (
+										<Image
+											src={event.user.picturePath}
+											alt={event.user.name}
+											width={32}
+											height={32}
+											className="size-full rounded-full object-cover"
+										/>
+									) : (
+										<AvatarFallback
+											className={getBgColor(event.color)}
+											style={event.accentColor ? {
+												backgroundColor: event.accentColor,
+												color: event.accentTextColor ?? undefined,
+											} : undefined}
+										>
+											{getFirstLetters(event.title)}
+										</AvatarFallback>
+									)}
 								</Avatar>
 							)}
                                             <div className="flex flex-col">

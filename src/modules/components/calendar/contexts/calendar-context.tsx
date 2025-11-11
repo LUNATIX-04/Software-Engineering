@@ -1,7 +1,14 @@
 "use client";
 
 import type React from "react";
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useMemo,
+	useState,
+} from "react";
 import { useLocalStorage } from "@/modules/components/calendar/hooks";
 import type { IEvent, IUser } from "@/modules/components/calendar/interfaces";
 import type {
@@ -25,6 +32,11 @@ interface ICalendarContext {
 	selectedColors: TEventColor[];
 	filterEventsBySelectedColors: (colors: TEventColor) => void;
 	filterEventsBySelectedUser: (userId: IUser["id"] | "all") => void;
+	selectedDepartments: string[];
+	toggleDepartmentFilter: (department: string) => void;
+	availableDepartments: string[];
+	departmentMeta: Record<string, { color?: string; textColor?: string }>;
+	clearDepartmentFilters: () => void;
 	users: IUser[];
 	events: IEvent[];
 	addEvent: (event: IEvent) => void;
@@ -91,16 +103,77 @@ export function CalendarProvider({
 	const [selectedUserId, setSelectedUserId] = useState<IUser["id"] | "all">(
 		"all",
 	);
+	const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
 	const [selectedColors, setSelectedColors] = useState<TEventColor[]>([]);
 
-const [allEvents, setAllEvents] = useState<IEvent[]>(events || []);
-const [filteredEvents, setFilteredEvents] = useState<IEvent[]>(events || []);
+	const [allEvents, setAllEvents] = useState<IEvent[]>(events || []);
+	const [filteredEvents, setFilteredEvents] = useState<IEvent[]>(events || []);
 
-useEffect(() => {
-	const nextEvents = events || [];
-	setAllEvents(nextEvents);
-	setFilteredEvents(nextEvents);
-}, [events]);
+	useEffect(() => {
+		const nextEvents = events || [];
+		setAllEvents(nextEvents);
+		setFilteredEvents(nextEvents);
+	}, [events]);
+
+	const availableDepartments = useMemo(() => {
+		const names = new Set<string>();
+		allEvents.forEach((event) => {
+			if (event.departmentName) {
+				names.add(event.departmentName);
+			}
+		});
+		return Array.from(names);
+	}, [allEvents]);
+
+	const departmentMeta = useMemo(() => {
+		const meta: Record<string, { color?: string; textColor?: string }> =
+			{};
+		allEvents.forEach((event) => {
+			if (!event.departmentName) {
+				return;
+			}
+			const existing = meta[event.departmentName];
+			if (!existing || event.departmentColor) {
+				meta[event.departmentName] = {
+					color: event.departmentColor ?? existing?.color,
+					textColor: event.departmentTextColor ?? existing?.textColor,
+				};
+			}
+		});
+		return meta;
+	}, [allEvents]);
+
+	const applyFilters = useCallback(() => {
+		let nextEvents = allEvents;
+
+		if (selectedColors.length > 0) {
+			nextEvents = nextEvents.filter((event) => {
+				const eventColor = event.color || "blue";
+				return selectedColors.includes(eventColor);
+			});
+		}
+
+		if (selectedDepartments.length > 0) {
+			nextEvents = nextEvents.filter((event) => {
+				if (!event.departmentName) {
+					return false;
+				}
+				return selectedDepartments.includes(event.departmentName);
+			});
+		}
+
+		if (selectedUserId !== "all") {
+			nextEvents = nextEvents.filter(
+				(event) => event.user.id === selectedUserId,
+			);
+		}
+
+		setFilteredEvents(nextEvents);
+	}, [allEvents, selectedColors, selectedDepartments, selectedUserId]);
+
+	useEffect(() => {
+		applyFilters();
+	}, [applyFilters]);
 
 	const updateSettings = (newPartialSettings: Partial<CalendarSettings>) => {
 		setSettings({
@@ -131,32 +204,29 @@ useEffect(() => {
 	};
 
 	const filterEventsBySelectedColors = (color: TEventColor) => {
-		const isColorSelected = selectedColors.includes(color);
-		const newColors = isColorSelected
-			? selectedColors.filter((c) => c !== color)
-			: [...selectedColors, color];
-
-		if (newColors.length > 0) {
-			const filtered = allEvents.filter((event) => {
-				const eventColor = event.color || "blue";
-				return newColors.includes(eventColor);
-			});
-			setFilteredEvents(filtered);
-		} else {
-			setFilteredEvents(allEvents);
-		}
-
-		setSelectedColors(newColors);
+		setSelectedColors((prev) => {
+			if (prev.includes(color)) {
+				return prev.filter((c) => c !== color);
+			}
+			return [...prev, color];
+		});
 	};
 
 	const filterEventsBySelectedUser = (userId: IUser["id"] | "all") => {
 		setSelectedUserId(userId);
-		if (userId === "all") {
-			setFilteredEvents(allEvents);
-		} else {
-			const filtered = allEvents.filter((event) => event.user.id === userId);
-			setFilteredEvents(filtered);
-		}
+	};
+
+	const toggleDepartmentFilter = (department: string) => {
+		setSelectedDepartments((prev) => {
+			if (prev.includes(department)) {
+				return prev.filter((name) => name !== department);
+			}
+			return [...prev, department];
+		});
+	};
+
+	const clearDepartmentFilters = () => {
+		setSelectedDepartments([]);
 	};
 
 	const handleSelectDate = (date: Date | undefined) => {
@@ -188,9 +258,9 @@ useEffect(() => {
 	};
 
 	const clearFilter = () => {
-		setFilteredEvents(allEvents);
 		setSelectedColors([]);
 		setSelectedUserId("all");
+		setSelectedDepartments([]);
 	};
 
 	const value = {
@@ -201,7 +271,12 @@ useEffect(() => {
 		badgeVariant,
 		setBadgeVariant,
 		users,
-		selectedColors,
+			selectedColors,
+			selectedDepartments,
+			toggleDepartmentFilter,
+			availableDepartments,
+			departmentMeta,
+			clearDepartmentFilters,
 		filterEventsBySelectedColors,
 		filterEventsBySelectedUser,
 		events: filteredEvents,

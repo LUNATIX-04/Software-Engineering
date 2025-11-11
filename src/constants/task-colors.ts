@@ -1,5 +1,5 @@
 export const TASK_CARD_COLOR_PALETTE = [
-  "#F6F0FF",
+  "#CDB4FF",
   "#FFECEC",
   "#E7F9FF",
   "#FFF4E0",

@@ -32,9 +32,11 @@ function Calendar({
   formatters,
   components,
   disabled,
+  allowPastDates = false,
   ...props
 }: React.ComponentProps<typeof DayPicker> & {
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
+  allowPastDates?: boolean
 }) {
   const todayStart = React.useMemo(() => {
     const base = new Date()
@@ -42,6 +44,10 @@ function Calendar({
     return base
   }, [])
   const disabledDays = React.useMemo(() => {
+    if (allowPastDates) {
+      return disabled ?? []
+    }
+
     const beforeToday = { before: todayStart }
     if (!disabled) {
       return beforeToday
@@ -50,7 +56,7 @@ function Calendar({
       return [...disabled, beforeToday]
     }
     return [disabled, beforeToday]
-  }, [disabled, todayStart])
+  }, [allowPastDates, disabled, todayStart])
   const defaultClassNames = getDefaultClassNames()
   return (
     <DayPicker

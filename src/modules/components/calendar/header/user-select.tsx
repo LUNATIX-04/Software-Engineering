@@ -1,4 +1,5 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import Image from "next/image";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AvatarGroup } from "@/components/ui/avatar-group";
 import {
 	Select,
@@ -22,13 +23,19 @@ export function UserSelect() {
 					<AvatarGroup className="mx-2 flex items-center" max={3}>
 						{users.map((user) => (
 							<Avatar key={user.id} className="size-6 text-xxs">
-								<AvatarImage
-									src={user.picturePath ?? undefined}
-									alt={user.name}
-								/>
-								<AvatarFallback className="text-xxs">
-									{user.name[0]}
-								</AvatarFallback>
+								{user.picturePath ? (
+									<Image
+										src={user.picturePath}
+										alt={user.name}
+										width={24}
+										height={24}
+										className="size-full rounded-full object-cover"
+									/>
+								) : (
+									<AvatarFallback className="text-xxs">
+										{user.name[0]}
+									</AvatarFallback>
+								)}
 							</Avatar>
 						))}
 					</AvatarGroup>
@@ -43,13 +50,19 @@ export function UserSelect() {
 					>
 						<div className="flex items-center gap-2">
 							<Avatar key={user.id} className="size-6">
-								<AvatarImage
-									src={user.picturePath ?? undefined}
-									alt={user.name}
-								/>
-								<AvatarFallback className="text-xxs">
-									{user.name[0]}
-								</AvatarFallback>
+								{user.picturePath ? (
+									<Image
+										src={user.picturePath}
+										alt={user.name}
+										width={24}
+										height={24}
+										className="size-full rounded-full object-cover"
+									/>
+								) : (
+									<AvatarFallback className="text-xxs">
+										{user.name[0]}
+									</AvatarFallback>
+								)}
 							</Avatar>
 
 							<p className="truncate">{user.name}</p>
