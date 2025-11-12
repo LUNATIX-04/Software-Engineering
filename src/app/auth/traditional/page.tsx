@@ -281,7 +281,7 @@ export default function TraditionalAuthPage() {
                 {isSignUp ? "":
                 <div className="pointer-events-none absolute left-1/2 translate-y-2 h-25 w-25 -translate-x-1/2 md:block">
                   <Image
-                    src="/imageWeb/Homepage/logo.png"
+                    src="/imageWeb/homepage/logo.png"
                     alt="ASAP project preview"
                     fill
                     className="object-cover opacity-80"
