@@ -78,6 +78,7 @@ export function CalendarProvider({
 	view?: TCalendarView;
 	badge?: "dot" | "colored";
 	projectId?: string;
+	canCreateTasks?: boolean;
 }) {
 	const [settings, setSettings] = useLocalStorage<CalendarSettings>(
 		"calendar-settings",
