@@ -36,6 +36,7 @@ export function CalendarWeekView({singleDayEvents, multiDayEvents}: IProps) {
             exit="exit"
             variants={fadeIn}
             transition={transition}
+            data-cy="project-calendar-week-view"
         >
             <motion.div
                 className="flex flex-col items-center justify-center border-b p-4 text-sm sm:hidden"
@@ -130,6 +131,8 @@ export function CalendarWeekView({singleDayEvents, multiDayEvents}: IProps) {
                         >
                             <div className="grid grid-cols-7 divide-x">
                                 {weekDays.map((day, dayIndex) => {
+                                    const dayId = format(day, "yyyy-MM-dd");
+                                    const gridDayCy = `calendar-week-day-column-${dayId}`;
                                     const dayEvents = singleDayEvents.filter(
                                         (event) =>
                                             isSameDay(parseISO(event.startDate), day) ||
@@ -140,6 +143,7 @@ export function CalendarWeekView({singleDayEvents, multiDayEvents}: IProps) {
                                     return (
                                         <motion.div
                                             key={dayIndex}
+                                            data-cy={gridDayCy}
                                             className="relative"
                                             initial={{opacity: 0}}
                                             animate={{opacity: 1}}
@@ -148,6 +152,7 @@ export function CalendarWeekView({singleDayEvents, multiDayEvents}: IProps) {
                                             {hours.map((hour, index) => (
                                                 <motion.div
                                                     key={hour}
+                                                    data-cy={`calendar-week-hour-${dayId}-${hour}`}
                                                     className="relative"
                                                     style={{height: "96px"}}
                                                     initial={{opacity: 0}}

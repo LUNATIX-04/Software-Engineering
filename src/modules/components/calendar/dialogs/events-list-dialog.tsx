@@ -58,18 +58,21 @@ export function EventListDialog({
                 </ModalHeader>
                 <div className="max-h-[60vh] overflow-y-auto space-y-2">
                     {cellEvents.length > 0 ? (
-                        cellEvents.map((event) => (
-                            <TaskDetailsDialog event={event} key={event.id}>
-                                <div
-                                    className={cn(
-                                        "flex items-center gap-2 p-2 border rounded-md hover:bg-muted cursor-pointer",
-                                        {
-                                            [dayCellVariants({color: event.color})]:
-                                                badgeVariant === "colored",
-                                        },
-                                    )}
-                                    style={badgeVariant === "colored" ? getEventAccentStyles(event, { text: true }) : undefined}
-                                >
+                        cellEvents.map((event) => {
+                            const eventCyId = event.taskId ?? event.id;
+                            return (
+                                <TaskDetailsDialog event={event} key={event.id}>
+                                    <div
+                                        data-cy={`calendar-month-event-list-item-${eventCyId}`}
+                                        className={cn(
+                                            "flex items-center gap-2 p-2 border rounded-md hover:bg-muted cursor-pointer",
+                                            {
+                                                [dayCellVariants({color: event.color})]:
+                                                    badgeVariant === "colored",
+                                            },
+                                        )}
+                                        style={badgeVariant === "colored" ? getEventAccentStyles(event, { text: true }) : undefined}
+                                    >
                                         <EventBullet color={event.color} accentColor={event.accentColor ?? undefined}/>
                                         <div className="flex justify-between items-center w-full">
                                             <p className="text-sm font-medium">{event.title}</p>
@@ -77,9 +80,10 @@ export function EventListDialog({
                                                 {formatTime(event.startDate, use24HourFormat)}
                                             </p>
                                         </div>
-                                </div>
-                            </TaskDetailsDialog>
-                        ))
+                                    </div>
+                                </TaskDetailsDialog>
+                            );
+                        })
                     ) : (
                         <p className="text-sm text-muted-foreground">
                             No events for this date.

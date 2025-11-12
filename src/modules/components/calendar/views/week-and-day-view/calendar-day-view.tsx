@@ -23,6 +23,7 @@ export function CalendarDayView({ singleDayEvents, multiDayEvents }: IProps) {
 	const scrollAreaRef = useRef<HTMLDivElement>(null);
 
 	const hours = Array.from({ length: 24 }, (_, i) => i);
+	const selectedDateId = format(selectedDate, "yyyy-MM-dd");
 
 	useEffect(() => {
 		const handleDragOver = (e: DragEvent) => {
@@ -123,10 +124,11 @@ export function CalendarDayView({ singleDayEvents, multiDayEvents }: IProps) {
 						<div className="relative flex-1 border-l border-primary/20 bg-white">
 							<div className="relative">
 								{hours.map((hour, index) => (
-									<div
-										key={hour}
-										className="relative h-[96px]"
-									>
+								<div
+									key={hour}
+									className="relative h-[96px]"
+									data-cy={`calendar-day-hour-${selectedDateId}-${hour}`}
+								>
 										{index !== 0 && (
 											<div className="pointer-events-none absolute inset-x-0 top-0 border-b" />
 										)}
@@ -196,11 +198,16 @@ export function CalendarDayView({ singleDayEvents, multiDayEvents }: IProps) {
 					{currentEvents.length > 0 && (
 						<ScrollArea className="h-[422px] px-4" type="always">
 							<div className="space-y-6 pb-4">
-								{currentEvents.map((event) => {
+										{currentEvents.map((event) => {
 									const user = users.find((user) => user.id === event.user.id);
 
-									return (
-										<div key={event.id} className="space-y-1.5">
+											const eventCyId = event.taskId ?? event.id;
+											return (
+												<div
+													key={event.id}
+													className="space-y-1.5"
+													data-cy={`calendar-day-current-event-${eventCyId}`}
+												>
 											<p className="line-clamp-2 text-sm font-semibold">
 												{event.title}
 											</p>

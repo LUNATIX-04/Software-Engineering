@@ -39,8 +39,14 @@ export function RenderGroupedEvents({
 
 			if (!hasOverlap) style = { ...style, width: "100%", left: "0%" };
 
+			const eventCyId = event.taskId ?? event.id;
 			return (
-				<div key={event.id} className="absolute p-1" style={style}>
+				<div
+					key={event.id}
+					data-cy={`calendar-week-task-${eventCyId}`}
+					className="absolute p-1"
+					style={style}
+				>
 					<EventBlock event={event} />
 				</div>
 			);

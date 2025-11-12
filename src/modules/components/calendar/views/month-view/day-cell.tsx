@@ -61,6 +61,7 @@ export function DayCell({ cell, events, eventPositions }: IProps) {
     projectId && canCreateTasks
       ? `/projects/${projectId}/task/create?date=${format(date, "yyyy-MM-dd")}`
       : undefined;
+  const formattedDate = format(date, "yyyy-MM-dd");
 
   // Memoize cellEvents and currentCellMonth for performance
   const { cellEvents, currentCellMonth } = useMemo(() => {
@@ -126,6 +127,7 @@ export function DayCell({ cell, events, eventPositions }: IProps) {
   const cellContent = useMemo(
     () => (
       <motion.div
+        data-cy={`calendar-month-day-cell-${formattedDate}`}
         className={cn(
           "flex h-full lg:min-h-[10rem] flex-col gap-1 border-l border-t",
           isSunday(date) && "border-l-0"
@@ -182,6 +184,7 @@ export function DayCell({ cell, events, eventPositions }: IProps) {
 
           {showDesktopMore && (
             <motion.div
+              data-cy={`calendar-month-day-show-more-${formattedDate}`}
               className={cn(
                 "h-4.5 px-1.5 my-2 text-end text-xs font-semibold text-muted-foreground",
                 !currentMonth && "opacity-50"
@@ -205,6 +208,7 @@ export function DayCell({ cell, events, eventPositions }: IProps) {
       showDesktopMore,
       showMoreCount,
       renderEventAtPosition,
+      formattedDate,
     ]
   );
 

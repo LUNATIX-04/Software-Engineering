@@ -100,11 +100,13 @@ export function MonthEventBadge({
     eventBadgeVariants({ color, multiDayPosition: position, className })
   )
   const accentStyle = getEventAccentStyles(event, { text: true })
+  const eventCyId = event.taskId ?? event.id
 
   return (
     <DraggableEvent event={event}>
       <TaskDetailsDialog event={event}>
         <div
+          data-cy={`calendar-month-task-${eventCyId}`}
           role="button"
           tabIndex={0}
           className={eventBadgeClasses}

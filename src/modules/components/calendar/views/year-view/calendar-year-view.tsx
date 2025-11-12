@@ -1,4 +1,4 @@
-import { getYear, isSameDay, isSameMonth } from "date-fns";
+import { getYear, isSameDay, isSameMonth, format } from "date-fns";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
@@ -50,10 +50,12 @@ export function CalendarYearView({ singleDayEvents, multiDayEvents }: IProps) {
 				{MONTHS.map((month, monthIndex) => {
 					const monthDate = new Date(currentYear, monthIndex, 1);
 					const cells = getCalendarCells(monthDate);
+					const monthKey = format(monthDate, "yyyy-MM");
 
 					return (
 						<motion.div
 							key={month}
+							data-cy={`calendar-year-month-${monthKey}`}
 							className="flex flex-col border border-border rounded-lg shadow-sm overflow-hidden"
 							initial={{ opacity: 0, scale: 0.95 }}
 							animate={{ opacity: 1, scale: 1 }}
@@ -95,10 +97,12 @@ export function CalendarYearView({ singleDayEvents, multiDayEvents }: IProps) {
 										isSameDay(new Date(event.startDate), cell.date),
 									);
 									const hasEvents = dayEvents.length > 0;
+									const cellKey = format(cell.date, "yyyy-MM-dd");
 
 									return (
 										<div
 											key={cell.date.toISOString()}
+											data-cy={`calendar-year-day-${cellKey}`}
 											className={cn(
 												"flex flex-col items-center justify-start p-1 min-h-[2rem] relative",
 												!isCurrentMonth && "text-muted-foreground/40",
@@ -109,7 +113,10 @@ export function CalendarYearView({ singleDayEvents, multiDayEvents }: IProps) {
 										>
 											{isCurrentMonth && hasEvents ? (
 												<EventListDialog date={cell.date} events={dayEvents}>
-													<div className="w-full h-full flex flex-col items-center justify-start gap-0.5">
+													<div
+														data-cy={`calendar-year-day-events-${cellKey}`}
+														className="w-full h-full flex flex-col items-center justify-start gap-0.5"
+													>
 														<span
 															className={cn(
 																"size-5 flex items-center justify-center font-medium",
@@ -124,20 +131,20 @@ export function CalendarYearView({ singleDayEvents, multiDayEvents }: IProps) {
 																dayEvents
 																	.slice(0, 2)
 																	.map((event) => (
-									<EventBullet
-										key={event.id}
-										color={event.color}
-										accentColor={event.accentColor ?? undefined}
-										className="size-1.5"
-									/>
+																		<EventBullet
+																			key={event.id}
+																			color={event.color}
+																			accentColor={event.accentColor ?? undefined}
+																			className="size-1.5"
+																		/>
 																	))
 															) : (
 																<div className="flex flex-col justify-center items-center">
-									<EventBullet
-										color={dayEvents[0].color}
-										accentColor={dayEvents[0].accentColor ?? undefined}
-										className="size-1.5"
-									/>
+																	<EventBullet
+																		color={dayEvents[0].color}
+																		accentColor={dayEvents[0].accentColor ?? undefined}
+																		className="size-1.5"
+																	/>
 																	<span className="text-[0.6rem]">
 																		+{dayEvents.length - 1}
 																	</span>

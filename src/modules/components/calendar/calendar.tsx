@@ -180,14 +180,20 @@ export function Calendar({ projectId }: CalendarProps) {
     !membershipLoading && membershipRole !== PROJECT_ROLE.MEMBER
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3" data-cy="project-calendar-root">
       {loading && (
-        <div className="px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+        <div
+          className="px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground"
+          data-cy="project-calendar-loading"
+        >
           Loading tasks…
         </div>
       )}
       {error && (
-        <div className="rounded-2xl border border-destructive/60 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+        <div
+          className="rounded-2xl border border-destructive/60 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          data-cy="project-calendar-error"
+        >
           {error}
         </div>
       )}
