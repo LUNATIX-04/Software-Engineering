@@ -1213,13 +1213,13 @@ function AppShellInner({ children }: AppShellProps) {
       },
       {
         key: "member" as const,
-        label: "Member",
+        label: "Members",
         href: activeProjectId ? `/projects/${activeProjectId}/member` : "",
         disabled: !activeProjectId,
       },
       {
         key: "department" as const,
-        label: "Department",
+        label: "Departments",
         href: activeProjectId ? `/projects/${activeProjectId}/department` : "",
         disabled: !activeProjectId,
       },
