@@ -106,6 +106,10 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "packageManager": "bun@1.1.0",
+  "engines": {
+    "bun": ">=1.1.0"
+  },
   "type": "module",
   "bugs": {
     "url": "https://github.com/LUNATIX-04/Software-Engineering/issues"
