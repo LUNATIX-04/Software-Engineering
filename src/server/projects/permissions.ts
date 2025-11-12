@@ -34,7 +34,9 @@ export async function requireProjectMembership(
   userId: string,
   roles?: ProjectRole[]
 ) {
-  const membership = await fetchMembershipWithProject({ projectId, userId })
+  const membership = (await fetchMembershipWithProject({ projectId, userId })) as
+    | MembershipWithProject
+    | null
   if (!membership || !membership.project) {
     throw new Error("not_found")
   }

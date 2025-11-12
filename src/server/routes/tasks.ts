@@ -56,18 +56,20 @@ type TaskWithRelations = {
     role: ProjectRole
     profile: { fullName: string | null; avatarUrl: string | null }
   }
-  submissions: Array<{
-    id: string
-    status: SubmissionStatusValue
-    description: string | null
-    reviewerComment: string | null
-    attachmentMetadata: unknown | null
-    submittedBy: { id: string; username: string; role: ProjectRole }
-    reviewer: { id: string; username: string; role: ProjectRole } | null
-    createdAt: Date
-    updatedAt: Date
-  }>
-}
+    submissions: Array<{
+      id: string
+      status: SubmissionStatusValue
+      description: string | null
+      reviewerComment: string | null
+      attachmentMetadata: unknown | null
+      submittedBy: { id: string; username: string; role: ProjectRole }
+      reviewer: { id: string; username: string; role: ProjectRole } | null
+      createdAt: Date
+      updatedAt: Date
+      acknowledgedAt: Date | null
+      ownerAcknowledgedAt: Date | null
+    }>
+  }
 
 function parseCardColor(value: unknown): string | undefined {
   if (typeof value !== "string") return undefined
@@ -195,7 +197,9 @@ function serializeTask(task: TaskWithRelations) {
   }
 }
 
-function serializeSubmission(submission: NonNullable<ReturnType<typeof fetchSubmission>>) {
+function serializeSubmission(
+  submission: NonNullable<Awaited<ReturnType<typeof fetchSubmission>>>
+) {
   return {
     id: submission.id,
     status: submission.status,
@@ -591,8 +595,9 @@ export function registerTaskRoutes(app: Elysia) {
     const payload = await request.json().catch(() => null)
     const description = typeof payload?.description === "string" ? payload.description.trim() : null
     const attachments = Array.isArray(payload?.attachments)
-      ? payload.attachments.filter((item): item is Record<string, unknown> =>
-          typeof item === "object" && item !== null
+      ? payload.attachments.filter(
+          (item: unknown): item is Record<string, unknown> =>
+            typeof item === "object" && item !== null
         )
       : []
 
@@ -636,8 +641,9 @@ export function registerTaskRoutes(app: Elysia) {
       ? (statusValue as SubmissionStatusValue)
       : null
     const attachments = Array.isArray(payload?.attachments)
-      ? payload.attachments.filter((item): item is Record<string, unknown> =>
-          typeof item === "object" && item !== null
+      ? payload.attachments.filter(
+          (item: unknown): item is Record<string, unknown> =>
+            typeof item === "object" && item !== null
         )
       : undefined
 
