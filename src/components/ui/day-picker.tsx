@@ -59,7 +59,10 @@ function DayPicker({
       "absolute bg-popover inset-0 opacity-0",
       defaultClassNames.dropdown,
     ),
-    table: cn("w-full border-collapse", defaultClassNames.table),
+    table: cn(
+      "w-full border-collapse",
+      (defaultClassNames as Record<string, string>).table
+    ),
     weekdays: cn("flex", defaultClassNames.weekdays),
     weekday: cn(
       "text-muted-foreground rounded-md flex-1 font-normal text-[0.8rem] select-none",

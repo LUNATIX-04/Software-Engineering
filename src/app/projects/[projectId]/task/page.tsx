@@ -773,11 +773,10 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     <div className="mx-auto overflow-hidden w-full px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
       <div className="flex w-full max-w-7xl flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
-              <Button
-                type="button"
-                data-cy="project-task-create-button"
-            variant="ghost"
+          <Button
+            type="button"
             data-cy="project-task-back-button"
+            variant="ghost"
             onClick={handleBackClick}
             className="inline-flex size-12 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary focus-visible:ring-0"
           >

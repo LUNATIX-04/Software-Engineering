@@ -36,6 +36,7 @@ import {
 } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import Image from "next/image"
+import { cn } from "@/lib/utils"
 import { TASK_STATUS_LABEL, type TaskRecord, type TaskStatus, type TaskSubmission } from "../data"
 import {
   fetchProjectMembership,
@@ -787,10 +788,16 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const calendarComponents = useMemo(
     () => ({
       DayButton: (props: React.ComponentProps<typeof CalendarDayButton>) => (
-        <CalendarDayButton {...props} className="pointer-events-none" />
+        <CalendarDayButton
+          {...props}
+          className={cn(
+            "pointer-events-none",
+            dayClassName(props.day.date)
+          )}
+        />
       ),
     }),
-    []
+    [dayClassName]
   )
 
   if (loading) {
@@ -1172,10 +1179,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       <Calendar
         mode="range"
         selected={dateRange}
-        dayClassName={dayClassName}
         defaultMonth={startlineDateValue ?? new Date()}
         className="w-full rounded-[1.5rem] border-0 bg-transparent shadow-none"
         disabled={{ before: startlineDateValue ?? new Date() }}
+        components={calendarComponents}
       />
                     </div>
             </div>

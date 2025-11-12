@@ -6,7 +6,7 @@
 
 1. ตั้ง Folder สักทีเปิด VScode ให้ไป Folder นั้นแล้วเปิด Terminal (VScode)
 
-2. พิมพ์คำสั่ง "git clone https://github.com/LUNATIX-04/Software-Engineering.git"
+2. พิมพ์คำสั่ง git clone https://github.com/ASAPSekmutt/Software-Engineering.git
 
 3. จากนั้นให้ VScode กด Open Folder เข้าตัวที่ clone มาคือ Software-Engineering ที่โหลดมา 
 
@@ -16,9 +16,19 @@
 
 6. ให้สร้างไฟล์ .env เลย[ที่เคยสร้างไว้ใน Project เก่า] (สร้างให้อยู่ที่เดียวกับ src,public อื่นๆ หรือคืออยู่ใน Software Engineering เลย)
 
-7. bun dev เข้า Web ใช้งานได้เลย พยายามเล่นแบบเต็มจอก่อนเพราะมีบาง UI น่าจะเละเทะเช่น Tasks
+7. ย้ายไป Branch E2E-Cy ก่อนเพราะอันนี้คือล่าสุด
 
-8. อันนี้ไม่มีอะไรทดสอบ invite link เฉยๆ สามารถกดนี้ได้ http://localhost:3000/invite/ff4aba99-ee0e-4c8c-8b39-25ce84c8ae74 เข้ามาแล้วจะเจอ ใส่ username ของproject นี้ ถ้ากด join คือเข้า project เลย (ถ้าไม่เคยสมัครจะไปหน้า sign in) พอเข้ามาน่าจะเจอ Project "Apple" ลองเล่นดูได้
+8. bun dev เข้า Web ใช้งานได้เลย พยายามเล่นแบบเต็มจอก่อนเพราะมีบาง UI น่าจะเละเทะเช่น Tasks
+
+9. อันนี้ไม่มีอะไรทดสอบ invite link เฉยๆ สามารถกดนี้ได้ http://localhost:3000/invite/ff4aba99-ee0e-4c8c-8b39-25ce84c8ae74 เข้ามาแล้วจะเจอ ใส่ username ของproject นี้ ถ้ากด join คือเข้า project เลย (ถ้าไม่เคยสมัครจะไปหน้า sign in) พอเข้ามาน่าจะเจอ Project "Apple" ลองเล่นดูได้
+
+## วิธีตรจสอบว่าตัวเองอยู่ branch ถูกไหม ตรงกับ repo ปัจจุบันเป่า
+
+git remote -v
+
+## สำหรับคนที่ยังไม่ได้ย้าย Branch ใช้อันนี้ได้เลย
+
+git remote set-url origin https://github.com/ASAPSekmutt/Software-Engineering.git
 
 ## เวลาก่อนทำงานให้ใช้ (ดึงงานล่าสุดมาใช้)
 
