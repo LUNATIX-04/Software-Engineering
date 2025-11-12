@@ -12,7 +12,7 @@
 
 4. ถ้าไม่มี Bun ให้ติดตั้งก่อน ถ้ามีใช้คำสั่ง bun install
 
-5. จากนั้นพิมพ์ bunx prisma generate
+5. จากนั้นพิมพ์ bun prisma generate
 
 6. ให้สร้างไฟล์ .env เลย[ที่เคยสร้างไว้ใน Project เก่า] (สร้างให้อยู่ที่เดียวกับ src,public อื่นๆ หรือคืออยู่ใน Software Engineering เลย)
 
