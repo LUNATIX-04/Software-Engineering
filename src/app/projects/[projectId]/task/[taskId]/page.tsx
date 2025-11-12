@@ -287,7 +287,15 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
   React.useEffect(() => {
     const submission = task?.submission
-    const updatedAt = submission?.updatedAt ?? null
+    if (!submission) {
+      submissionUpdatedAtRef.current = null
+      setSubmissionMarker(null)
+      setFeedbackMarker(null)
+      setSubmissionAcknowledgedMarker(null)
+      setFeedbackAcknowledgedMarker(null)
+      return
+    }
+    const updatedAt = submission.updatedAt ?? null
     if (!updatedAt) {
       submissionUpdatedAtRef.current = null
       setSubmissionMarker(null)
@@ -301,10 +309,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     }
     submissionUpdatedAtRef.current = updatedAt
     const markerLabel = new Date(updatedAt).toLocaleString()
-    const acknowledgedAtLabel = submission?.acknowledgedAt
+    const acknowledgedAtLabel = submission.acknowledgedAt
       ? new Date(submission.acknowledgedAt).toLocaleString()
       : null
-    const reviewerCommentPresent = Boolean(submission?.reviewerComment?.trim())
+    const reviewerCommentPresent = Boolean(submission.reviewerComment?.trim())
     const ackExists = Boolean(submission.acknowledgedAt)
     const treatAsFeedback =
       submission.status !== "SUBMITTED" ||
