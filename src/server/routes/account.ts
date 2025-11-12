@@ -1,5 +1,6 @@
 import type { Elysia } from "elysia"
 
+import bcrypt from "bcrypt"
 import { createClient } from "../../utils/supabase/server"
 
 function parseJsonBody(request: Request) {
@@ -127,6 +128,20 @@ export function registerAccountRoutes(app: Elysia) {
     if (updateError) {
       const message = updateError.message || "Unable to update password"
       return new Response(JSON.stringify({ error: message }), { status: 400 })
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12)
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({ password_hash: hashedPassword })
+      .eq("id", user.id)
+
+    if (profileError) {
+      console.error("Unable to mark password as set", profileError)
+      return new Response(
+        JSON.stringify({ error: "Unable to record password status" }),
+        { status: 500 }
+      )
     }
 
     return new Response(JSON.stringify({ success: true }))

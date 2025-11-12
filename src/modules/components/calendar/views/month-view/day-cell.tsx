@@ -56,10 +56,11 @@ const MAX_VISIBLE_EVENTS = 3;
 export function DayCell({ cell, events, eventPositions }: IProps) {
   const { day, currentMonth, date } = cell;
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const { projectId } = useCalendar();
-  const addTaskHref = projectId
-    ? `/projects/${projectId}/task/create?date=${format(date, "yyyy-MM-dd")}`
-    : undefined;
+  const { projectId, canCreateTasks } = useCalendar();
+  const addTaskHref =
+    projectId && canCreateTasks
+      ? `/projects/${projectId}/task/create?date=${format(date, "yyyy-MM-dd")}`
+      : undefined;
 
   // Memoize cellEvents and currentCellMonth for performance
   const { cellEvents, currentCellMonth } = useMemo(() => {

@@ -5,10 +5,14 @@ import { CalendarBody } from "@/modules/components/calendar/calendar-body"
 import { CalendarProvider } from "@/modules/components/calendar/contexts/calendar-context"
 import { DndProvider } from "@/modules/components/calendar/contexts/dnd-context"
 import { CalendarHeader } from "@/modules/components/calendar/header/calendar-header"
-import { fetchProjectTasks } from "@/utils/projects/api"
+import {
+  fetchProjectMembership,
+  fetchProjectTasks,
+} from "@/utils/projects/api"
 import type { TaskRecord, TaskStatus } from "@/app/projects/[projectId]/task/data"
 import type { IEvent, IUser } from "@/modules/components/calendar/interfaces"
 import type { TEventColor } from "@/modules/components/calendar/types"
+import { PROJECT_ROLE, type ProjectRole } from "@/types/projects"
 
 const STATUS_COLOR_MAP: Record<TaskStatus, TEventColor> = {
   SUBMITTED: "purple",
@@ -111,6 +115,10 @@ export function Calendar({ projectId }: CalendarProps) {
   const [users, setUsers] = React.useState<IUser[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
+  const [membershipRole, setMembershipRole] = React.useState<ProjectRole | null>(
+    null,
+  )
+  const [membershipLoading, setMembershipLoading] = React.useState(true)
 
   React.useEffect(() => {
     let active = true
@@ -140,6 +148,37 @@ export function Calendar({ projectId }: CalendarProps) {
     }
   }, [projectId])
 
+  React.useEffect(() => {
+    let active = true
+    if (!projectId) {
+      if (active) {
+        setMembershipRole(null)
+        setMembershipLoading(false)
+      }
+      return
+    }
+    setMembershipLoading(true)
+    fetchProjectMembership(projectId)
+      .then((membership) => {
+        if (!active) return
+        setMembershipRole(membership.role)
+      })
+      .catch(() => {
+        if (!active) return
+        setMembershipRole(null)
+      })
+      .finally(() => {
+        if (!active) return
+        setMembershipLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [projectId])
+
+  const canCreateTasks =
+    !membershipLoading && membershipRole !== PROJECT_ROLE.MEMBER
+
   return (
     <div className="flex flex-col gap-3">
       {loading && (
@@ -152,7 +191,13 @@ export function Calendar({ projectId }: CalendarProps) {
           {error}
         </div>
       )}
-      <CalendarProvider events={events} users={users} view="month" projectId={projectId}>
+      <CalendarProvider
+        events={events}
+        users={users}
+        view="month"
+        projectId={projectId}
+        canCreateTasks={canCreateTasks}
+      >
         <DndProvider showConfirmation={false}>
           <div className="w-full border rounded-xl">
             <CalendarHeader />

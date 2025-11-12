@@ -44,6 +44,7 @@ interface ICalendarContext {
 	removeEvent: (eventId: number) => void;
 	clearFilter: () => void;
 	projectId?: string;
+	canCreateTasks: boolean;
 }
 
 interface CalendarSettings {
@@ -69,6 +70,7 @@ export function CalendarProvider({
 	badge = "colored",
 	view = "day",
 	projectId,
+	canCreateTasks = true,
 }: {
 	children: React.ReactNode;
 	users: IUser[];
@@ -257,41 +259,42 @@ export function CalendarProvider({
 		setFilteredEvents((prev) => prev.filter((e) => e.id !== eventId));
 	};
 
-	const clearFilter = () => {
-		setSelectedColors([]);
-		setSelectedUserId("all");
-		setSelectedDepartments([]);
-	};
+		const clearFilter = () => {
+			setSelectedColors([]);
+			setSelectedUserId("all");
+			setSelectedDepartments([]);
+		};
 
-	const value = {
-		selectedDate,
-		setSelectedDate: handleSelectDate,
-		selectedUserId,
-		setSelectedUserId,
-		badgeVariant,
-		setBadgeVariant,
-		users,
+		const value = {
+			selectedDate,
+			setSelectedDate: handleSelectDate,
+			selectedUserId,
+			setSelectedUserId,
+			badgeVariant,
+			setBadgeVariant,
+			users,
 			selectedColors,
 			selectedDepartments,
 			toggleDepartmentFilter,
 			availableDepartments,
 			departmentMeta,
 			clearDepartmentFilters,
-		filterEventsBySelectedColors,
-		filterEventsBySelectedUser,
-		events: filteredEvents,
-		view: currentView,
-		use24HourFormat,
-		toggleTimeFormat,
-		setView,
-		agendaModeGroupBy,
-		setAgendaModeGroupBy,
-		addEvent,
-		updateEvent,
-		removeEvent,
-		clearFilter,
-		projectId,
-	};
+			filterEventsBySelectedColors,
+			filterEventsBySelectedUser,
+			events: filteredEvents,
+			view: currentView,
+			use24HourFormat,
+			toggleTimeFormat,
+			setView,
+			agendaModeGroupBy,
+			setAgendaModeGroupBy,
+			addEvent,
+			updateEvent,
+			removeEvent,
+			clearFilter,
+			projectId,
+			canCreateTasks,
+		};
 
 	return (
 		<CalendarContext.Provider value={value}>

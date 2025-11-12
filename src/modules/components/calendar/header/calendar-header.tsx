@@ -19,7 +19,7 @@ import Views from "./view-tabs"
 
 export function CalendarHeader() {
   const router = useRouter()
-  const { view, events, projectId } = useCalendar()
+  const { view, events, projectId, canCreateTasks } = useCalendar()
 
   return (
     <div className="flex flex-col gap-4 border-b p-4 lg:flex-row lg:items-center lg:justify-between">
@@ -48,7 +48,7 @@ export function CalendarHeader() {
 
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:gap-1.5">
           <UserSelect />
-          {projectId ? (
+          {projectId && canCreateTasks ? (
             <Button
               type="button"
               onClick={() => router.push(`/projects/${projectId}/task/create`)}

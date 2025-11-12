@@ -771,24 +771,26 @@ export function AccountSettingsContent({
       {passwordFormOpen ? (
         <form className="space-y-3" onSubmit={handlePasswordSubmit}>
           {profile.hasPassword ? (
-            <div className="relative">
-              <Input
-                type={showOldPassword ? "text" : "password"}
-                value={oldPasswordValue}
-                onChange={(event) => setOldPasswordValue(event.target.value)}
-                autoComplete="current-password"
-                placeholder="Current password"
-                className="rounded-2xl border border-primary/20 px-4 py-5 pr-12 text-base bg-white"
-              />
-              <button
-                type="button"
-                aria-label={showOldPassword ? "Hide password" : "Show password"}
-                className="absolute inset-y-0 right-4 flex items-center text-muted-foreground/80 transition hover:text-muted-foreground"
-                onClick={() => setShowOldPassword((prev) => !prev)}
-                disabled={passwordPending}
-              >
-                {showOldPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-              </button>
+            <div className="space-y-2">
+              <div className="relative">
+                <Input
+                  type={showOldPassword ? "text" : "password"}
+                  value={oldPasswordValue}
+                  onChange={(event) => setOldPasswordValue(event.target.value)}
+                  autoComplete="current-password"
+                  placeholder="Current password"
+                  className="rounded-2xl border border-primary/20 px-4 py-5 pr-12 text-base bg-white"
+                />
+                <button
+                  type="button"
+                  aria-label={showOldPassword ? "Hide password" : "Show password"}
+                  className="absolute inset-y-0 right-4 flex items-center text-muted-foreground/80 transition hover:text-muted-foreground"
+                  onClick={() => setShowOldPassword((prev) => !prev)}
+                  disabled={passwordPending}
+                >
+                  {showOldPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
             </div>
           ) : null}
           <div className="relative">
@@ -904,7 +906,7 @@ export function AccountSettingsContent({
             )
           })}
         </nav>
-        <div className="account-settings-scroll w-full min-h-[calc(100vh-16rem)] overflow-hidden px-[clamp(3.25rem,4vw,3.25rem)] pt-3 min-h-0 flex-1 overflow-y-auto pl-1 pr-1 asap-scroll [scrollbar-gutter:stable]">
+        <div className="account-settings-scroll w-full min-h-[calc(100vh-20rem)] overflow-hidden px-[clamp(3.25rem,4vw,3.25rem)] pt-3 min-h-0 flex-1 overflow-y-auto pl-1 pr-1 asap-scroll [scrollbar-gutter:stable]">
           <div className="space-y-6">{activeSection}</div>
         </div>
       </div>
