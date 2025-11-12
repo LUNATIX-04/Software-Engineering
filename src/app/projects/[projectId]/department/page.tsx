@@ -847,6 +847,7 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
             <Button
               type="button"
               variant="ghost"
+              data-cy="project-department-back-button"
               onClick={handleBackClick}
               className="inline-flex size-12 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary focus-visible:ring-0"
               aria-label="Back to projects"
@@ -873,6 +874,7 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
                   type="button"
                   onClick={handleCreateDepartment}
                   disabled={creating}
+                  data-cy="project-department-create-button"
                   className="inline-flex h-12 select-none items-center gap-2 rounded-full border border-primary/40 bg-white px-6 text-base font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
                 >
                   <PlusCircle className="size-5" aria-hidden="true" />
@@ -896,6 +898,7 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
                   className="rounded-full px-6"
                   onClick={loadDepartments}
                   variant="default"
+                  data-cy="project-department-retry-button"
                 >
                   Try again
                 </Button>
@@ -915,9 +918,10 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
                     items={filteredDepartments.map((department) => department.id)}
                     strategy={verticalListSortingStrategy}
                   >
-                    {filteredDepartments.map((department) => (
+                    {filteredDepartments.map((department, index) => (
                       <DepartmentCard
                         key={department.id}
+                        dataCyIndex={index}
                         department={department}
                         memberCount={departmentMemberCounts[department.id] ?? department.memberCount}
                         headOptions={getHeadOptionsForDepartment(department.id)}
@@ -967,6 +971,7 @@ type DepartmentCardProps = {
   headControlsDisabled?: boolean
   colorControlsDisabled?: boolean
   showManageControls?: boolean
+  dataCyIndex?: number
 }
 
 function DepartmentCard({
@@ -984,6 +989,7 @@ function DepartmentCard({
   headControlsDisabled,
   colorControlsDisabled,
   showManageControls = true,
+  dataCyIndex,
 }: DepartmentCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: department.id,
@@ -999,6 +1005,8 @@ function DepartmentCard({
   const cardRef = useRef<HTMLDivElement | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const dataCySuffix = typeof dataCyIndex === "number" ? `-${dataCyIndex}` : ""
+  const buildDataCy = (base: string) => `${base}${dataCySuffix}`
 
   function blendColorWithWhite(hexColor: string, blendFactor: number) {
   const sanitized = hexColor.replace("#", "")
@@ -1084,6 +1092,7 @@ function DepartmentCard({
         cardRef.current = node as HTMLDivElement | null
       }}
       id={`department-card-${department.id}`}
+      data-cy={buildDataCy("department-card")}
       className="relative flex flex-col gap-6 rounded-[2.75rem] border-2 border-primary/30 bg-white px-6 py-6 shadow-[0_12px_0_rgba(144,122,214,0.15)] transition-shadow hover:shadow-[0_18px_0_rgba(144,122,214,0.2)]"
       style={{
         backgroundColor: displayColor,
@@ -1095,6 +1104,7 @@ function DepartmentCard({
       {showManageControls ? (
         <button
           type="button"
+          data-cy={buildDataCy("department-reorder-button")}
           className="absolute left-4 top-4 inline-flex size-9 items-center justify-center rounded-full border border-white/40 bg-white/70 text-primary shadow-sm transition hover:bg-white disabled:opacity-60"
           aria-label="Reorder department"
           {...attributes}
@@ -1106,6 +1116,7 @@ function DepartmentCard({
       {showManageControls ? (
         <button
           type="button"
+          data-cy={buildDataCy("department-delete-button")}
           className="absolute right-4 top-4 inline-flex size-9 items-center justify-center rounded-full border border-white/40 bg-white/70 text-primary shadow-sm transition hover:bg-white disabled:opacity-60"
           onClick={() => setDeleteDialogOpen(true)}
           disabled={disabled}
@@ -1126,9 +1137,10 @@ function DepartmentCard({
             }}
           >
             {editingName ? (
-              <Input
-                ref={nameInputRef}
-                value={nameDraft}
+                <Input
+                  ref={nameInputRef}
+                  value={nameDraft}
+                  data-cy={buildDataCy("department-name-input")}
                 maxLength={128}
                 onChange={(event) => setNameDraft(event.target.value)}
                 onBlur={handleRename}
@@ -1169,10 +1181,11 @@ function DepartmentCard({
             }
             setHeadMenuOpen(open)
           }}>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="mt-2 flex w-full select-none items-center justify-between rounded-full border-2 border-primary/30 bg-white px-4 py-2 text-base font-medium text-primary shadow-[0_6px_0_rgba(144,122,214,0.2)] focus:outline-none disabled:opacity-60"
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  data-cy={buildDataCy("department-head-trigger")}
+                  className="mt-2 flex w-full select-none items-center justify-between rounded-full border-2 border-primary/30 bg-white px-4 py-2 text-base font-medium text-primary shadow-[0_6px_0_rgba(144,122,214,0.2)] focus:outline-none disabled:opacity-60"
                 disabled={headControlsDisabled}
               >
                 <span className={cn(currentHeadLabel === "Nothing" && "text-[#1E1E1E]")}>
@@ -1235,6 +1248,7 @@ function DepartmentCard({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
+              data-cy={buildDataCy("department-color-trigger")}
               className="flex w-full select-none items-center justify-between rounded-full border-2 border-primary/30 bg-white px-4 py-2 text-sm font-semibold text-primary shadow-[0_6px_0_rgba(144,122,214,0.2)] transition hover:border-primary disabled:opacity-60"
               disabled={colorControlsDisabled}
             >
@@ -1264,6 +1278,7 @@ function DepartmentCard({
               </span>
               <button
                 type="button"
+                data-cy={buildDataCy("department-color-mode-toggle")}
                 className="rounded-full border border-transparent px-3 py-1 text-[0.7rem] font-semibold text-primary transition hover:border-primary/30 hover:bg-primary/5"
                 onClick={() => setColorMode((mode) => (mode === "presets" ? "custom" : "presets"))}
               >
@@ -1286,6 +1301,7 @@ function DepartmentCard({
                   <button
                     key={option.value}
                     type="button"
+                    data-cy={buildDataCy(`department-color-option-${option.value.replace("#", "")}`)}
                     className="flex size-10 items-center justify-center rounded-2xl border-2 border-primary/20 text-[0.65rem] font-semibold transition hover:border-primary"
                     style={{ backgroundColor: option.value }}
                     onMouseEnter={() => setPreviewColor(option.value)}
@@ -1320,7 +1336,7 @@ function DepartmentCard({
 
       {showManageControls ? (
         <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-          <AlertDialogContent className="rounded-[2rem] border-2 border-primary/30 px-8 py-10 text-center shadow-xl">
+        <AlertDialogContent className="rounded-[2rem] border-2 border-primary/30 px-8 py-10 text-center shadow-xl">
             <AlertDialogTitle className="text-2xl font-semibold text-foreground">
               Are you sure? <br /> You want to delete this department? <br />
               <br />
@@ -1328,15 +1344,19 @@ function DepartmentCard({
                 "{department.name}"
               </span>
             </AlertDialogTitle>
-            <AlertDialogFooter className="mt-8 flex w-full flex-row gap-6 justify-between">
-              <AlertDialogCancel className="rounded-full border-none bg-secondary px-8 py-3 text-base font-semibold text-secondary-foreground shadow-none transition hover:bg-secondary/80">
-                No
-              </AlertDialogCancel>
-              <AlertDialogAction
-                className="rounded-full bg-primary px-8 py-3 text-base font-semibold text-primary-foreground hover:bg-primary/90"
-                onClick={handleConfirmDelete}
-                disabled={deleting}
-              >
+          <AlertDialogFooter className="mt-8 flex w-full flex-row gap-6 justify-between">
+            <AlertDialogCancel
+              className="rounded-full border-none bg-secondary px-8 py-3 text-base font-semibold text-secondary-foreground shadow-none transition hover:bg-secondary/80"
+              data-cy={buildDataCy("department-delete-cancel")}
+            >
+              No
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-full bg-primary px-8 py-3 text-base font-semibold text-primary-foreground hover:bg-primary/90"
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+              data-cy={buildDataCy("department-delete-confirm")}
+            >
                 {deleting ? "Deleting…" : "Yes"}
               </AlertDialogAction>
             </AlertDialogFooter>
@@ -1359,6 +1379,7 @@ function AddDepartmentCard({
       type="button"
       onClick={onClick}
       disabled={creating}
+      data-cy="project-department-add-button"
       className="flex h-full min-h-[18rem] flex-col items-center justify-center gap-4 rounded-[2.75rem] border-2 border-primary/30 bg-white/40 px-6 py-6 text-center text-primary shadow-[0_12px_0_rgba(144,122,214,0.15)] transition hover:border-primary hover:text-primary disabled:opacity-60"
     >
       <span className="flex size-14 items-center justify-center rounded-full border-2 border-current text-primary">

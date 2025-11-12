@@ -240,6 +240,7 @@ export default function ProjectCalendarPage({ params }: ProjectCalendarPageProps
           <Button
             type="button"
             variant="ghost"
+            data-cy="project-calendar-old-back-button"
             onClick={handleBackClick}
             className="inline-flex size-12 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary focus-visible:ring-0"
             aria-label="Back to tasks"
@@ -252,6 +253,7 @@ export default function ProjectCalendarPage({ params }: ProjectCalendarPageProps
             <div className="flex items-center gap-3 rounded-full border border-primary/30 bg-[#F6F0FF] px-5 py-2 text-lg font-semibold text-[#2F2766] shadow-[0_6px_0_rgba(144,122,214,0.25)]">
               <button
                 type="button"
+                data-cy="project-calendar-old-prev-month"
                 className="rounded-full p-2 transition hover:bg-white"
                 onClick={() => setReferenceDate((prev) => addMonths(prev, -1))}
                 aria-label="Previous month"
@@ -266,6 +268,7 @@ export default function ProjectCalendarPage({ params }: ProjectCalendarPageProps
               </div>
               <button
                 type="button"
+                data-cy="project-calendar-old-next-month"
                 className="rounded-full p-2 transition hover:bg-white"
                 onClick={() => setReferenceDate((prev) => addMonths(prev, 1))}
                 aria-label="Next month"
@@ -276,6 +279,7 @@ export default function ProjectCalendarPage({ params }: ProjectCalendarPageProps
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 type="button"
+                data-cy="project-calendar-old-today-button"
                 variant="outline"
                 className="rounded-full border-primary/40 bg-white px-5 text-primary shadow-[0_6px_0_rgba(144,122,214,0.2)]"
                 onClick={() => setReferenceDate(new Date())}
@@ -285,6 +289,7 @@ export default function ProjectCalendarPage({ params }: ProjectCalendarPageProps
               </Button>
               <Button
                 type="button"
+                data-cy="project-calendar-old-add-task-button"
                 className="rounded-full bg-primary px-6 py-5 text-base font-semibold text-primary-foreground shadow-[0_10px_0_rgba(79,61,152,0.25)] transition hover:bg-primary/90"
                 onClick={() =>
                   navigateToCreate(

@@ -63,6 +63,7 @@ export type MemberCardProps = {
   onKick?: (() => void) | null
   kickDisabled?: boolean
   className?: string
+  dataCyIndex?: number
 }
 
 export function MemberCard({
@@ -80,9 +81,12 @@ export function MemberCard({
   onKick,
   kickDisabled = false,
   className,
+  dataCyIndex,
 }: MemberCardProps) {
   const departmentStyle = getDepartmentStyle(department, departmentColors)
   const [departmentMenuOpen, setDepartmentMenuOpen] = useState(false)
+  const dataCySuffix = typeof dataCyIndex === "number" ? `-${dataCyIndex}` : ""
+  const buildDataCy = (base: string) => `${base}${dataCySuffix}`
 
   return (
     <article
@@ -92,6 +96,7 @@ export function MemberCard({
         className
       )}
       onClick={onClick}
+      data-cy={buildDataCy("member-card")}
     >
       {onKick ? (
         <button
@@ -106,6 +111,7 @@ export function MemberCard({
           className="absolute right-5 top-5 inline-flex size-9 items-center justify-center rounded-full border-2 border-primary/30 bg-white text-primary shadow-sm transition hover:border-primary hover:bg-primary/10 disabled:opacity-60"
           aria-label={`Remove ${name} from project`}
           disabled={kickDisabled}
+          data-cy={buildDataCy("member-card-kick-button")}
         >
           <Footprints className="size-4" />
         </button>
@@ -179,6 +185,7 @@ export function MemberCard({
                 onClick={(event) => event.stopPropagation()}
                 onPointerDown={(event) => event.stopPropagation()}
                 onKeyDown={(event) => event.stopPropagation()}
+                data-cy={buildDataCy("member-card-department-trigger")}
               >
                 <span className="max-w-[10rem] truncate">{department}</span>
                 <ChevronDown className="size-4" />
@@ -196,6 +203,9 @@ export function MemberCard({
                 return (
                   <DropdownMenuItem
                     key={option}
+                    data-cy={buildDataCy(
+                      `member-card-department-option-${option.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`
+                    )}
                     onSelect={(event) => {
                       event.stopPropagation()
                       onDepartmentSelect(option)

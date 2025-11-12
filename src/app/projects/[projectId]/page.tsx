@@ -165,6 +165,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
           <Button
             type="button"
             variant="ghost"
+            data-cy="project-info-back-button"
             onClick={handleBackClick}
             className="inline-flex size-12 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary focus-visible:ring-0"
             aria-label="Back to projects"
@@ -176,12 +177,13 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
         <div className="mx-auto mt-10 flex w-full max-w-5xl flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10">
           {isOwner ? (
             <div className="flex justify-end">
-              <Button
-                asChild
-                type="button"
-                variant="outline"
-                className="inline-flex h-12 min-w-[11rem] items-center gap-2 rounded-full border-primary/40 bg-white px-8 text-base font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-primary-foreground"
-              >
+          <Button
+            asChild
+            type="button"
+            variant="outline"
+            data-cy="project-info-edit-button"
+            className="inline-flex h-12 min-w-[11rem] items-center gap-2 rounded-full border-primary/40 bg-white px-8 text-base font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-primary-foreground"
+          >
                 <Link href={`/projects/${projectId}/edit`}>
                   <PencilLine className="size-5" />
                   Edit Project
@@ -190,7 +192,10 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
             </div>
           ) : null}
 
-          <section className="rounded-[2.75rem] border-2 border-primary/40 bg-white p-8 shadow-[0_6px_0_rgba(144,122,214,0.15)]">
+          <section
+            className="rounded-[2.75rem] border-2 border-primary/40 bg-white p-8 shadow-[0_6px_0_rgba(144,122,214,0.15)]"
+            data-cy="project-info-summary-section"
+          >
             <div className="flex flex-col gap-8 md:flex-row md:items-center">
               <div className="flex shrink-0 justify-center">
                 {project.imageUrl ? (
@@ -217,21 +222,30 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
               </div>
 
               <dl className="grid gap-5 text-sm text-foreground/80 sm:grid-cols-2">
-                <div className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]">
+                <div
+                  className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]"
+                  data-cy="project-info-created-card"
+                >
                   <CalendarDays className="mt-0.5 size-5 text-primary" />
                   <div>
                     <dt className="text-sm font-semibold text-foreground">Created</dt>
                     <dd>{formattedDates.created}</dd>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]">
+                <div
+                  className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]"
+                  data-cy="project-info-updated-card"
+                >
                   <RefreshCcw className="mt-0.5 size-5 text-primary" />
                   <div>
                     <dt className="text-sm font-semibold text-foreground">Last Updated</dt>
                     <dd>{formattedDates.updated}</dd>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]">
+                <div
+                  className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]"
+                  data-cy="project-info-departments-card"
+                >
                   <Tags className="mt-0.5 size-5 text-primary" />
                   <div>
                     <dt className="text-sm font-semibold text-foreground">Departments</dt>
@@ -240,7 +254,10 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
                     </dd>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]">
+                <div
+                  className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]"
+                  data-cy="project-info-id-card"
+                >
                   <FolderKanban className="mt-0.5 size-5 text-primary" />
                   <div>
                     <dt className="text-sm font-semibold text-foreground">Project ID</dt>
@@ -252,7 +269,10 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
           </div>
           </section>
 
-          <section className="rounded-[2.75rem] border-2 border-primary/30 bg-primary/10 px-8 py-6 shadow-[0_6px_0_rgba(144,122,214,0.1)]">
+          <section
+            className="rounded-[2.75rem] border-2 border-primary/30 bg-primary/10 px-8 py-6 shadow-[0_6px_0_rgba(144,122,214,0.1)]"
+            data-cy="project-info-detail-section"
+          >
             <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-foreground">Project Detail</h2>
@@ -267,8 +287,8 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
                 <h2 className="text-xl font-semibold text-foreground">
                   Departments
                 </h2>
-                {hasDepartments ? (
-                  <div className={departmentsWrapperClass}>
+                  {hasDepartments ? (
+                    <div className={departmentsWrapperClass} data-cy="project-info-department-list">
                     {project.departments.map((department) => (
                       <span
                         key={department}
@@ -320,7 +340,10 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
           </Button>
         </div>
 
-        <section className="rounded-[2.75rem] border-2 border-primary/40 bg-white p-8 shadow-[0_18px_0_rgba(144,122,214,0.15)]">
+        <section
+          className="rounded-[2.75rem] border-2 border-primary/40 bg-white p-8 shadow-[0_18px_0_rgba(144,122,214,0.15)]"
+          data-cy="project-info-summary-section"
+        >
           <div className="flex flex-col gap-8 md:flex-row md:items-center">
             <div className="flex shrink-0 justify-center">
               {project.imageUrl ? (
@@ -347,21 +370,30 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
             </div>
 
             <dl className="grid gap-5 text-sm text-foreground/80 sm:grid-cols-2">
-              <div className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]">
+              <div
+                className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]"
+                data-cy="project-info-created-card"
+              >
                 <CalendarDays className="mt-0.5 size-5 text-primary" />
                 <div>
                   <dt className="text-sm font-semibold text-foreground">Created</dt>
                   <dd>{formattedDates.created}</dd>
                 </div>
               </div>
-              <div className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]">
+              <div
+                className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]"
+                data-cy="project-info-updated-card"
+              >
                 <RefreshCcw className="mt-0.5 size-5 text-primary" />
                 <div>
                   <dt className="text-sm font-semibold text-foreground">Last updated</dt>
                   <dd>{formattedDates.updated}</dd>
                 </div>
               </div>
-              <div className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]">
+              <div
+                className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]"
+                data-cy="project-info-departments-card"
+              >
                 <Tags className="mt-0.5 size-5 text-primary" />
                 <div>
                   <dt className="text-sm font-semibold text-foreground">Departments</dt>
@@ -370,7 +402,10 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
                   </dd>
                 </div>
               </div>
-              <div className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]">
+              <div
+                className="flex items-start gap-3 rounded-2xl bg-background/70 px-4 py-3 shadow-[0_8px_0_rgba(144,122,214,0.15)]"
+                data-cy="project-info-id-card"
+              >
                 <FolderKanban className="mt-0.5 size-5 text-primary" />
                 <div>
                   <dt className="text-sm font-semibold text-foreground">Project ID</dt>
@@ -382,7 +417,10 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
         </div>
         </section>
 
-        <section className="mt-6 rounded-[2.75rem] border-2 border-primary/30 bg-primary/10 px-8 py-6 shadow-[0_14px_0_rgba(144,122,214,0.1)]">
+        <section
+          className="mt-6 rounded-[2.75rem] border-2 border-primary/30 bg-primary/10 px-8 py-6 shadow-[0_14px_0_rgba(144,122,214,0.1)]"
+          data-cy="project-info-detail-section"
+        >
           <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-foreground">Project Detail</h2>
@@ -398,7 +436,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
                 Departments
               </h3>
               {hasDepartments ? (
-                <div className={departmentsWrapperClass}>
+                <div className={departmentsWrapperClass} data-cy="project-info-department-list">
                   {project.departments.map((department) => (
                     <span key={department} className={departmentChipClass}>
                       {department}

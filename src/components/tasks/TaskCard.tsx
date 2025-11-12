@@ -98,6 +98,7 @@ type TaskCardProps = {
   onColorChange?: (color: string) => void
   taskId?: string
   showActions?: boolean
+  dataCyIndex?: number
 }
 
 export function TaskCard({
@@ -116,6 +117,7 @@ export function TaskCard({
   onColorChange,
   taskId,
   showActions = true,
+  dataCyIndex,
 }: TaskCardProps) {
   const normalizedCardColor = normalizeHexString(cardColor) ?? DEFAULT_TASK_CARD_COLOR
 
@@ -126,6 +128,8 @@ export function TaskCard({
   const [customColor, setCustomColor] = React.useState(normalizedCardColor)
   const [previewColor, setPreviewColor] = React.useState<string | null>(null)
   const colorChangeTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const dataCySuffix = typeof dataCyIndex === "number" ? `-${dataCyIndex}` : ""
+  const buildDataCy = (base: string) => `${base}${dataCySuffix}`
 
   React.useEffect(() => {
     setCustomColor(normalizedCardColor)
@@ -305,6 +309,7 @@ export function TaskCard({
       onKeyDown={handleKeyDown}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
+      data-cy={buildDataCy("task-card")}
     >
       <div className="flex min-w-0 flex-1 flex-col gap-2 pr-16" style={textStyle}>
         <div className="flex flex-wrap items-center gap-3 text-current">
@@ -394,6 +399,7 @@ export function TaskCard({
               <button
                 type="button"
                 className={menuButtonClassName}
+                data-cy={buildDataCy("task-card-menu-button")}
                 aria-label={`Task ${title} actions`}
                 data-task-menu="true"
                 style={menuButtonStyle}
@@ -418,6 +424,7 @@ export function TaskCard({
               {onEdit ? (
                 <DropdownMenuItem
                   data-task-menu="true"
+                  data-cy={buildDataCy("task-card-menu-edit")}
                   onSelect={(event) => {
                     event.stopPropagation()
                     onEdit()
@@ -433,6 +440,7 @@ export function TaskCard({
               {onDelete ? (
                 <DropdownMenuItem
                   data-task-menu="true"
+                  data-cy={buildDataCy("task-card-menu-delete")}
                   onSelect={(event) => {
                     event.stopPropagation()
                     onDelete()

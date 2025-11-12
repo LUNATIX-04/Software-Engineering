@@ -381,16 +381,17 @@ export default function ProjectsPage() {
           <div className="relative flex items-center gap-2 text-sm font-medium text-primary select-none">
             <span>Per page</span>
             <DropdownMenu onOpenChange={setPageSizeMenuOpen}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className={pageSizeMenuOpen?"inline-flex h-12 select-none items-center rounded-full border-2 border-primary bg-primary/10 px-4 text-sm font-semibold text-primary transition ":
-                    "inline-flex h-12 select-none items-center rounded-full border-2 border-primary/40 bg-background px-4 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/10 bg-white"}
-                >
-                  {pageSize}
-                </Button>
-              </DropdownMenuTrigger>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                data-cy="project-page-size-button"
+                className={pageSizeMenuOpen?"inline-flex h-12 select-none items-center rounded-full border-2 border-primary bg-primary/10 px-4 text-sm font-semibold text-primary transition ":
+                  "inline-flex h-12 select-none items-center rounded-full border-2 border-primary/40 bg-background px-4 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/10 bg-white"}
+              >
+                {pageSize}
+              </Button>
+            </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
                 className="w-32 rounded-2xl border border-primary/30 bg-background/95 p-2 text-sm text-primary shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
@@ -434,6 +435,7 @@ export default function ProjectsPage() {
           <Button
             type="button"
             variant="outline"
+            data-cy="project-create-project-button"
             onClick={() => router.push("/projects/create")}
             className="inline-flex h-12 bg-white select-none items-center gap-2 rounded-full border-primary/40 px-6 text-base font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-primary-foreground"
           >
@@ -533,6 +535,7 @@ export default function ProjectsPage() {
             <Button
               type="button"
               variant="ghost"
+              data-cy="project-pagination-prev"
               onClick={() => {
                 triggerPageHint()
                 setPage((prev) => Math.max(1, prev - 1))
@@ -560,10 +563,11 @@ export default function ProjectsPage() {
               <span id="project-page-hint" className="sr-only">
                 {pageHint}
               </span>
-              <input
-                id="project-page-input"
-                type="text"
-                inputMode="numeric"
+            <input
+              id="project-page-input"
+              data-cy="project-pagination-input"
+              type="text"
+              inputMode="numeric"
                 value={pageInput}
                 onFocus={triggerPageHint}
                 onBlur={() => {
@@ -588,6 +592,7 @@ export default function ProjectsPage() {
             <Button
               type="button"
               variant="ghost"
+              data-cy="project-pagination-next"
               onClick={() => {
                 triggerPageHint()
                 setPage((prev) => Math.min(totalPages, prev + 1))
@@ -640,6 +645,7 @@ export default function ProjectsPage() {
                   <input
                     type="text"
                     value={selectedOwnersSearch}
+                    data-cy="project-owner-selected-search-input"
                     onChange={(event) => setSelectedOwnersSearch(event.target.value)}
                     placeholder="Search username"
                     className="w-full rounded-full border-2 border-primary/25 bg-white py-2 pl-9 pr-3 text-sm font-semibold text-[#2F2766] placeholder:text-primary/40 focus:border-primary focus:outline-none"
@@ -662,6 +668,7 @@ export default function ProjectsPage() {
                         <button
                           key={owner.id}
                           type="button"
+                          data-cy="project-owner-selected-item"
                           onClick={() => toggleOwnerSelection(owner.id)}
                           className="flex w-full items-center justify-between rounded-2xl border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:border-primary"
                         >
@@ -684,6 +691,7 @@ export default function ProjectsPage() {
                   <input
                     type="text"
                     value={ownerSearch}
+                    data-cy="project-owner-search-input"
                     onChange={(event) => setOwnerSearch(event.target.value)}
                     placeholder="Search username"
                     className="w-full rounded-full border-2 border-primary/25 bg-white py-2 pl-9 pr-3 text-sm font-semibold text-[#2F2766] placeholder:text-primary/40 focus:border-primary focus:outline-none"
@@ -706,6 +714,7 @@ export default function ProjectsPage() {
                       <button
                         key={candidate.id}
                         type="button"
+                        data-cy="project-owner-candidate-item"
                         onClick={() => toggleOwnerSelection(candidate.id)}
                         className={cn(
                           "flex w-full items-center justify-between rounded-2xl border border-primary/20 bg-white px-4 py-3 text-left text-sm font-semibold text-[#2F2766] transition hover:border-primary hover:bg-primary/5",
@@ -727,6 +736,7 @@ export default function ProjectsPage() {
               <Button
                 type="button"
                 variant="outline"
+                data-cy="project-owner-cancel-button"
                 className="rounded-full px-6 py-2 text-sm font-semibold"
                 onClick={() => setOwnerDialogProjectId(null)}
                 disabled={ownersSaving}
@@ -735,6 +745,7 @@ export default function ProjectsPage() {
               </Button>
               <Button
                 type="button"
+                data-cy="project-owner-save-button"
                 className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                 disabled={ownersSaving || ownerSelection.size === 0}
                 onClick={handleSaveOwners}

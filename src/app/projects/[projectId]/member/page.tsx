@@ -923,6 +923,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
           <Button
             type="button"
             variant="ghost"
+            data-cy="project-member-back-button"
             onClick={handleBackClick}
             className="inline-flex size-12 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary focus-visible:ring-0"
             aria-label={backAriaLabel}
@@ -942,6 +943,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                   aria-label="Search members"
                   placeholder="Search"
                   value={search}
+                  data-cy="project-member-search-input"
                   onChange={(event) => setSearch(event.target.value)}
                   className="w-full rounded-full border-2 border-primary/40 bg-white/90 py-3 pl-12 pr-30 text-sm text-[#2F2766] placeholder:text-primary/60 focus:border-primary focus:outline-none"
                 />
@@ -951,6 +953,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                   <Button
                     type="button"
                     variant="outline"
+                    data-cy="project-member-filter-button"
                     className={cn(
                       "select-none inline-flex h-12 w-[8rem] items-center gap-2 rounded-full px-6 text-base font-semibold focus:outline-none",
                       filterCount > 0 ? "" : "justify-center",
@@ -981,6 +984,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                       </DropdownMenuLabel>
                       <button
                         type="button"
+                        data-cy="project-member-filter-close-button"
                         onClick={(event) => {
                           event.preventDefault()
                           event.stopPropagation()
@@ -1036,6 +1040,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                         handleResetFilters()
                       }}
                       className="rounded-2xl px-3 py-2 text-primary/70 focus:bg-primary/10 focus:text-primary"
+                      data-cy="project-member-reset-filters"
                     >
                       Reset filters
                     </DropdownMenuItem>
@@ -1061,6 +1066,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                   <DropdownMenuTrigger asChild>
                     <Button
                       type="button"
+                      data-cy="project-member-page-size-button"
                       variant="outline"
                       className={
                         pageSizeMenuOpen
@@ -1131,7 +1137,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                 </div>
               ) : (
             <>
-            {paginatedMembers.map((member) => {
+            {paginatedMembers.map((member, index) => {
               const isReadOnly = !canEditMember(member)
               const memberDepartmentOptions = resolveDepartmentOptions(member)
               const departmentHeadUsername =
@@ -1151,6 +1157,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                   <TooltipTrigger asChild>
                     <div className="w-full">
                       <MemberCard
+                        dataCyIndex={index}
                         name={member.name}
                         email={member.email}
                         avatarUrl={member.avatarUrl}
@@ -1219,6 +1226,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                                 <input
                                   type="text"
                                   value={detailUsername}
+                                  data-cy="project-member-detail-username-input"
                                   onChange={(event) => setDetailUsername(event.target.value)}
                                   className="h-12 w-full rounded-full border-2 border-primary/30 bg-white px-4 text-sm font-semibold text-[#2F2766] shadow-[0_4px_0_rgba(144,122,214,0.15)] focus:border-primary focus:outline-none"
                                   placeholder="Project username"
@@ -1257,6 +1265,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                             value={detailBio}
                             onChange={(event) => setDetailBio(event.target.value)}
                             placeholder="Share a short bio"
+                            data-cy="project-member-detail-bio-input"
                             className="project-detail-scroll min-h-[8rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-5 py-3 text-sm font-semibold text-[#2F2766] placeholder:text-primary/60 shadow-none focus-visible:outline-none focus-visible:ring-0"
                             rows={4}
                           />
@@ -1276,6 +1285,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                           <Button
                             type="button"
                             variant="outline"
+                            data-cy="project-member-detail-cancel"
                             className="rounded-full px-6 py-2 text-sm font-semibold"
                             onClick={() => handleMemberDetailClose(false)}
                             disabled={detailSaving}
@@ -1284,6 +1294,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                           </Button>
                           <Button
                             type="button"
+                            data-cy="project-member-detail-save"
                             className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
                             disabled={detailSaving}
                             onClick={handleSaveSelfDetails}
@@ -1310,13 +1321,17 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                   <p className="mt-4 text-sm font-semibold text-destructive">{kickError}</p>
                 ) : null}
                 <AlertDialogFooter className="mt-8 flex w-full flex-row justify-end gap-4">
-                  <AlertDialogCancel className="rounded-full border-none bg-secondary px-8 py-3 text-base font-semibold text-secondary-foreground shadow-none transition hover:bg-secondary/80">
+                  <AlertDialogCancel
+                    className="rounded-full border-none bg-secondary px-8 py-3 text-base font-semibold text-secondary-foreground shadow-none transition hover:bg-secondary/80"
+                    data-cy="project-member-kick-cancel"
+                  >
                     No
                   </AlertDialogCancel>
                   <AlertDialogAction
                     className="rounded-full bg-primary px-8 py-3 text-base font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-80"
                     onClick={confirmKickMember}
                     disabled={kickingMemberId === kickTarget?.id}
+                    data-cy="project-member-kick-confirm"
                   >
                     {kickingMemberId === kickTarget?.id ? "Removing…" : "Yes"}
                   </AlertDialogAction>
@@ -1339,6 +1354,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                   <Button
                     type="button"
                     variant="ghost"
+                    data-cy="project-member-pagination-prev"
                     onClick={() => {
                       triggerPageHint()
                       setPage((prev) => Math.max(1, prev - 1))
@@ -1369,6 +1385,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                     <input
                       id="project-page-input"
                       type="text"
+                      data-cy="project-member-pagination-input"
                       inputMode="numeric"
                       value={pageInput}
                       onFocus={triggerPageHint}
@@ -1394,6 +1411,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                   <Button
                     type="button"
                     variant="ghost"
+                    data-cy="project-member-pagination-next"
                     onClick={() => {
                       triggerPageHint()
                       setPage((prev) => Math.min(totalPages, prev + 1))

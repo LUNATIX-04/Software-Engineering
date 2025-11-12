@@ -773,9 +773,11 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     <div className="mx-auto overflow-hidden w-full px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
       <div className="flex w-full max-w-7xl flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
-          <Button
-            type="button"
+              <Button
+                type="button"
+                data-cy="project-task-create-button"
             variant="ghost"
+            data-cy="project-task-back-button"
             onClick={handleBackClick}
             className="inline-flex size-12 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary focus-visible:ring-0"
           >
@@ -793,6 +795,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                   type="text"
                   placeholder="Search"
                   value={search}
+                  data-cy="project-task-search-input"
                   onChange={(event) => setSearch(event.target.value)}
                   className="w-full rounded-full border-2 border-primary/40 bg-white py-3 pl-12 pr-4 text-sm text-foreground placeholder:text-primary/60 focus:border-primary focus:outline-none"
                 />
@@ -801,6 +804,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
+                    data-cy="project-task-department-filter-button"
                     className={cn(
                       "inline-flex w-full items-center justify-between rounded-full border-2 px-5 py-2 text-base font-medium focus:outline-none transition sm:w-auto",
                       filterActive
@@ -844,6 +848,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                     </span>
                     <button
                       type="button"
+                      data-cy="project-task-filter-close-button"
                       className="rounded-full p-1 text-primary/60 transition hover:bg-primary/10 hover:text-primary focus:outline-none"
                       onClick={() => setDepartmentFilterMenuOpen(false)}
                       aria-label="Close filters"
@@ -916,6 +921,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                       handleResetFilters()
                     }}
                     className="rounded-2xl px-3 py-2 text-primary/70 focus:bg-primary/10 focus:text-primary"
+                    data-cy="project-task-reset-filters"
                   >
                     Reset filters
                   </DropdownMenuItem>
@@ -929,6 +935,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                   <DropdownMenuTrigger asChild>
                     <Button
                       type="button"
+                      data-cy="project-task-page-size-button"
                       variant="outline"
                       className={
                         pageSizeMenuOpen
@@ -1017,7 +1024,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                 Loading tasks…
               </div>
             ) : null}
-            {paginatedTasks.map((task) => (
+            {paginatedTasks.map((task, index) => (
             <TaskCard
               key={task.id}
               title={task.title}
@@ -1052,6 +1059,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
               onEdit={() => handleEditTask(task.id)}
               onDelete={() => handleDeleteTaskRequest(task)}
               showActions={canManageTasks}
+              dataCyIndex={index}
             />
             ))}
 
@@ -1078,9 +1086,10 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                             }
                           }}
                         >
-                          <Button
-                            type="button"
-                            variant="ghost"
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    data-cy="project-task-pagination-prev"
                             onClick={() => {
                               triggerPageHint()
                               setPage((prev) => Math.max(1, prev - 1))
@@ -1108,9 +1117,10 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                             <span id="project-page-hint" className="sr-only">
                               {pageHint}
                             </span>
-                            <input
-                              id="project-page-input"
-                              type="text"
+                    <input
+                      id="project-page-input"
+                      type="text"
+                      data-cy="project-task-pagination-input"
                               inputMode="numeric"
                               value={pageInput}
                               onFocus={triggerPageHint}
@@ -1133,9 +1143,10 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                               aria-describedby="project-page-hint"
                             />
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    data-cy="project-task-pagination-next"
                             onClick={() => {
                               triggerPageHint()
                               setPage((prev) => Math.min(totalPages, prev + 1))
@@ -1170,6 +1181,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                 className="rounded-full bg-secondary border-none px-9 py-5 text-lg font-semibold text-secondary-foreground shadow-none transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 onClick={handleCancelDelete}
                 disabled={deletingTask}
+                data-cy="project-task-delete-cancel"
               >
                 No
               </AlertDialogCancel>
@@ -1177,6 +1189,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                 className="rounded-full bg-primary px-9 py-5 text-lg font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                 onClick={handleConfirmDelete}
                 disabled={deletingTask}
+                data-cy="project-task-delete-confirm"
               >
                 {deletingTask ? "Deleting…" : "Yes"}
               </AlertDialogAction>

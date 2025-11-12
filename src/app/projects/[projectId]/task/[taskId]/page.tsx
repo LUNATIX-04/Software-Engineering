@@ -797,7 +797,11 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     return (
       <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6 px-6 py-16 text-center">
         <p className="text-xl font-semibold text-destructive">{error ?? "Task not found."}</p>
-        <Button onClick={() => router.push(`/projects/${projectId}/task`)} className="rounded-full px-6">
+        <Button
+          data-cy="project-task-detail-error-back-button"
+          onClick={() => router.push(`/projects/${projectId}/task`)}
+          className="rounded-full px-6"
+        >
           Back to tasks
         </Button>
       </div>
@@ -812,6 +816,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           <Button
             type="button"
             variant="ghost"
+            data-cy="project-task-detail-back-button"
             onClick={handleBackClick}
             className="inline-flex size-12 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary focus-visible:ring-0"
           >
@@ -1195,10 +1200,11 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                       </div>
                       {canSubmitTask && (
                       <Dialog open={submissionDialogOpen} onOpenChange={setSubmissionDialogOpen}>
-                        <DialogTrigger asChild>
-                          <Button
-                            type="button"
-                            className={`h-11 rounded-full px-6 text-xs font-semibold uppercase tracking-[0.3em] shadow-[0_6px_0_rgba(63,52,120,0.2)] transition ${
+                          <DialogTrigger asChild>
+                            <Button
+                              type="button"
+                              data-cy="project-task-detail-submission-button"
+                              className={`h-11 rounded-full px-6 text-xs font-semibold uppercase tracking-[0.3em] shadow-[0_6px_0_rgba(63,52,120,0.2)] transition ${
                               effectiveHasSubmission
                                 ? "bg-primary text-white hover:bg-primary/90"
                                 : "bg-[var(--task-description-bg)] text-[var(--task-hero-text)] border border-primary/30 hover:border-primary/60 hover:bg-white"
@@ -1230,9 +1236,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                               Submission description
                             </label>
                             <div className="group/textarea overflow-hidden rounded-[1.25rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.25)]">
-                              <Textarea
-                                id="submission-description"
-                                value={submissionDescription}
+                            <Textarea
+                              id="submission-description"
+                              value={submissionDescription}
+                              data-cy="project-task-detail-submission-description"
                                 onChange={(event) => setSubmissionDescription(event.target.value)}
                                 placeholder="Explain your submission…"
                                 className="min-h-[8rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-4 py-3 text-sm text-[var(--task-subtle-text)] placeholder:text-[var(--task-placeholder)] shadow-none focus-visible:outline-none focus-visible:ring-0"
@@ -1251,6 +1258,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                                     type="button"
                                     onClick={() => setSubmissionFileEntries([])}
                                     className="rounded-full border border-primary/30 bg-primary/5 px-4 py-1 text-[0.65rem] font-semibold text-primary transition hover:border-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                    data-cy="project-task-detail-submission-clear-files"
                                   >
                                     Clear
                                   </button>
@@ -1261,6 +1269,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                                     type="file"
                                     multiple
                                     className="hidden"
+                                    data-cy="project-task-detail-submission-file-input"
                                     onChange={handleSubmissionFilesChange}
                                   />
                                 </label>
@@ -1287,6 +1296,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                                           onClick={() => handleRemoveSubmissionFile(entry.id)}
                                           aria-label={`Remove ${entry.name}`}
                                           className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-transparent bg-primary/10 text-primary transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                          data-cy={`project-task-detail-submission-file-remove-${entry.id}`}
                                         >
                                           <X className="size-3" aria-hidden="true" />
                                         </button>
@@ -1303,6 +1313,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                           <DialogFooter className="mt-4 flex flex-wrap gap-3">
                           <Button
                             type="button"
+                            data-cy="project-task-detail-submission-submit"
                             onClick={handleSubmissionSubmit}
                             disabled={submittingSubmission}
                             className={`inline-flex h-12 w-full max-w-xs items-center justify-center rounded-full px-8 text-sm font-semibold text-white shadow-[0_6px_0_rgba(63,52,120,0.2)] transition ${
@@ -1317,9 +1328,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                                   ? "Update Submission"
                                   : "Submit Work"}
                             </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            data-cy="project-task-detail-submission-cancel"
                               onClick={() => setSubmissionDialogOpen(false)}
                               disabled={submittingSubmission}
                               className="h-12 rounded-full px-6 text-sm font-semibold uppercase tracking-[0.3em]"
@@ -1360,6 +1372,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                       {feedbackMarker && feedbackMarker !== feedbackAcknowledgedMarker && (
                         <Button
                           type="button"
+                          data-cy="project-task-detail-feedback-acknowledge"
                           onClick={() =>
                             handleAcknowledgeSubmission(`You read the ${feedbackMarker} feedback.`)
                           }
@@ -1392,6 +1405,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                     {hasPendingSubmissionAcknowledgement && (
                       <Button
                         type="button"
+                        data-cy="project-task-detail-submission-acknowledge"
                         onClick={() =>
                           handleAcknowledgeSubmission("The assignee will know you saw the work.")
                         }
@@ -1502,9 +1516,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                     </div>
                   </div>
                   <div className="group/textarea overflow-hidden rounded-[1.25rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.25)]">
-                    <Textarea
-                      value={reviewComment}
-                      onChange={(event) => setReviewComment(event.target.value)}
+                  <Textarea
+                    value={reviewComment}
+                    onChange={(event) => setReviewComment(event.target.value)}
+                    data-cy="project-task-detail-review-comment"
                       className="project-detail-scroll min-h-[8rem] w-full border-none bg-transparent px-4 py-3 text-sm text-[var(--task-subtle-text)] placeholder:text-[var(--task-placeholder)] shadow-none focus-visible:outline-none focus-visible:ring-0"
                       placeholder="Share feedback…"
                     />
@@ -1514,6 +1529,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                   )}
                   <Button
                     type="button"
+                    data-cy="project-task-detail-review-submit"
                     onClick={handleReviewSubmit}
                     disabled={reviewing}
                     className="inline-flex h-12 w-full items-center justify-center rounded-full border border-primary/30 bg-[var(--task-description-bg)] px-8 text-sm font-semibold text-[var(--task-hero-text)] shadow-[0_6px_0_rgba(63,52,120,0.2)] transition hover:bg-[var(--task-description-bg-hover)]"

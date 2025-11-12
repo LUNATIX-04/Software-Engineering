@@ -34,6 +34,7 @@ export default function ProjectCalendarFullPage({
           <Button
             type="button"
             variant="ghost"
+            data-cy="project-calendar-back-button"
             onClick={handleBackClick}
             className="inline-flex size-12 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary focus-visible:ring-0"
             aria-label="Back to projects"
