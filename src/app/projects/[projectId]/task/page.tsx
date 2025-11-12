@@ -52,6 +52,12 @@ type ProjectTaskPageProps = {
 
 const BASE_PAGE_SIZE_OPTIONS = [3, 9, 18, 36, 64, 96, 136, 172]
 
+const normalizeDataCyValue = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+
 type RemoteDepartment = {
   id: string
   name: string
@@ -333,13 +339,11 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
 
   const pageSizeOptions = useMemo(() => {
     const totalTasks = filteredTasks.length || tasks.length
-    if (totalTasks === 0) {
-      return BASE_PAGE_SIZE_OPTIONS.slice(0, 1)
+    const options = new Set(BASE_PAGE_SIZE_OPTIONS)
+    if (totalTasks > 0) {
+      options.add(totalTasks)
     }
-    const maxAllowed =
-      BASE_PAGE_SIZE_OPTIONS.find((option) => option >= totalTasks) ??
-      BASE_PAGE_SIZE_OPTIONS[BASE_PAGE_SIZE_OPTIONS.length - 1]
-    return BASE_PAGE_SIZE_OPTIONS.filter((option) => option <= maxAllowed)
+    return [...options].sort((a, b) => a - b)
   }, [filteredTasks.length, tasks.length])
 
   useEffect(() => {
@@ -771,7 +775,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
 
   return (
     <div className="mx-auto overflow-hidden w-full px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
-      <div className="flex w-full max-w-7xl flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
+      <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
           <Button
             type="button"
@@ -784,7 +788,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
           </Button>
         </div>
 
-        <div className="mx-auto mt-10 flex w-full max-w-6xl flex-1 flex-col gap-10 px-[clamp(1.5rem,3vw,3.5rem)]"
+        <div className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-10 px-[clamp(1.5rem,3vw,3.5rem)]"
             style={{ minHeight: containerMinHeight }} >
           <header className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
@@ -801,40 +805,47 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
               </div>
               <DropdownMenu open={departmentFilterMenuOpen} onOpenChange={setDepartmentFilterMenuOpen}>
                 <DropdownMenuTrigger asChild>
-                  <button
-                    type="button"
-                    data-cy="project-task-department-filter-button"
-                    className={cn(
-                      "inline-flex w-full items-center justify-between rounded-full border-2 px-5 py-2 text-base font-medium focus:outline-none transition sm:w-auto",
-                      filterActive
-                        ? "border-primary bg-primary/10 text-[#2F2766]"
-                        : "border-primary/30 bg-white text-primary hover:border-primary hover:bg-primary/5"
-                    )}
-                    title={filterSummaryTitle}
-                  >
-                    <span className="flex items-center gap-3">
-                      <Filter className="size-4 text-primary" aria-hidden="true" />
-                      <span className="flex flex-col text-left leading-tight">
-                        <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
-                          Departments
-                        </span>
-                        <span
-                          className="text-sm font-semibold text-[#2F2766] max-w-[12rem] truncate"
-                          title={filterSummaryText}
-                        >
-                          {filterSummaryText}
+                    <button
+                      type="button"
+                      data-cy="project-task-department-filter-button"
+                      className={cn(
+                        "inline-flex w-full items-center justify-between rounded-full border-2 px-5 py-2 text-base font-medium focus:outline-none transition sm:w-auto",
+                        filterActive
+                          ? "border-primary bg-primary/10 text-[#2F2766]"
+                          : "border-primary/30 bg-white text-primary hover:border-primary hover:bg-primary/5"
+                      )}
+                      title={filterSummaryTitle}
+                    >
+                      <span className="flex items-center gap-3" data-cy="project-task-filter-indicator">
+                        <Filter className="size-4 text-primary" aria-hidden="true" />
+                        <span className="flex flex-col text-left leading-tight">
+                          <span
+                            className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60"
+                            data-cy="project-task-filter-label"
+                          >
+                            Filters
+                          </span>
+                          <span
+                            className="text-sm font-semibold text-[#2F2766] max-w-[12rem] truncate"
+                            title={filterSummaryText}
+                            data-cy="project-task-filter-summary"
+                          >
+                            {filterSummaryText}
+                          </span>
                         </span>
                       </span>
-                    </span>
-                    <span className="ml-4 inline-flex items-center gap-2">
-                      {filterBadgeCount ? (
-                        <span className="inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded-full bg-primary/90 px-1 text-xs font-bold text-primary-foreground">
-                          {filterBadgeCount}
-                        </span>
-                      ) : null}
-                      <ChevronDown className="size-4 text-primary" aria-hidden="true" />
-                    </span>
-                  </button>
+                      <span className="ml-4 inline-flex items-center gap-2">
+                        {filterBadgeCount ? (
+                          <span
+                            className="inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded-full bg-primary/90 px-1 text-xs font-bold text-primary-foreground"
+                            data-cy="project-task-filter-badge"
+                          >
+                            {filterBadgeCount}
+                          </span>
+                        ) : null}
+                        <ChevronDown className="size-4 text-primary" aria-hidden="true" />
+                      </span>
+                    </button>
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent
@@ -842,7 +853,10 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                   className="w-60 rounded-3xl border border-primary/40 bg-white px-3 py-2 text-sm font-semibold text-primary shadow-[0_10px_30px_rgba(72,68,110,0.2)]"
                 >
                   <div className="flex items-center justify-between px-1 pb-2 pt-1">
-                    <span className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
+                    <span
+                      className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60"
+                      data-cy="project-task-filter-header"
+                    >
                       Filters
                     </span>
                     <button
@@ -857,37 +871,49 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                   </div>
                   <DropdownMenuSeparator className="my-1 bg-primary/15" />
                   <div className="asap-scroll max-h-[18rem] overflow-y-auto">
-                    {departmentOptions.map((dept) => (
-                      <DropdownMenuCheckboxItem
-                        key={dept}
-                        checked={activeDepartmentFilters.includes(dept)}
-                        onCheckedChange={(checked) =>
-                          handleToggleDepartmentFilter(dept, Boolean(checked))
-                        }
-                        onSelect={(event) => event.preventDefault()}
-                        className="rounded-2xl px-3 py-2 pr-10 text-foreground focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
-                      >
-                        <span className="inline-flex items-center gap-2">
-                          <span
-                            className="size-3 rounded-full border border-black/10"
-                            style={{
-                              backgroundColor: departmentByName[dept]?.color ?? "#D9D6FF",
-                            }}
-                          />
-                          <span className="block max-w-[10rem] truncate">{dept}</span>
-                        </span>
-                      </DropdownMenuCheckboxItem>
-                    ))}
+                    {departmentOptions.map((dept) => {
+                      const slug = normalizeDataCyValue(dept)
+                      return (
+                        <DropdownMenuCheckboxItem
+                          key={dept}
+                          checked={activeDepartmentFilters.includes(dept)}
+                          onCheckedChange={(checked) =>
+                            handleToggleDepartmentFilter(dept, Boolean(checked))
+                          }
+                          onSelect={(event) => event.preventDefault()}
+                          className="rounded-2xl px-3 py-2 pr-10 text-foreground focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
+                          data-cy={`project-task-filter-department-${slug}`}
+                        >
+                          <span className="inline-flex items-center gap-2">
+                            <span
+                              className="size-3 rounded-full border border-black/10"
+                              style={{
+                                backgroundColor: departmentByName[dept]?.color ?? "#D9D6FF",
+                              }}
+                            />
+                            <span className="block max-w-[10rem] truncate" data-cy={`project-task-filter-department-label-${slug}`}>
+                              {dept}
+                            </span>
+                          </span>
+                        </DropdownMenuCheckboxItem>
+                      )
+                    })}
                     {departmentOptions.length === 0 ? (
-                      <div className="px-2 py-3 text-xs font-semibold uppercase tracking-wide text-primary/60">
-                        No departments yet
-                      </div>
-                    ) : null}
+                    <div
+                      className="px-2 py-3 text-xs font-semibold uppercase tracking-wide text-primary/60"
+                      data-cy="project-task-no-departments"
+                    >
+                      No departments yet
+                    </div>
+                  ) : null}
                   </div>
                   <DropdownMenuSeparator className="my-2 bg-primary/20" />
-                  <DropdownMenuLabel className="px-3 pt-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
-                    Task scope
-                  </DropdownMenuLabel>
+                    <DropdownMenuLabel
+                      className="px-3 pt-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60"
+                      data-cy="project-task-scope-label"
+                    >
+                      Task scope
+                    </DropdownMenuLabel>
                   <DropdownMenuRadioGroup
                     value={taskScope}
                     onValueChange={(value) => handleTaskScopeChange(value as TaskScope)}
@@ -895,6 +921,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                     <DropdownMenuRadioItem
                       value="all"
                       className="rounded-2xl px-3 py-2 pr-10 focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
+                      data-cy="project-task-scope-all"
                     >
                       All tasks
                     </DropdownMenuRadioItem>
@@ -902,6 +929,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                       value="assignee"
                       disabled={isTaskScopeSelectionDisabled}
                       className="rounded-2xl px-3 py-2 pr-10 focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
+                      data-cy="project-task-scope-my-tasks"
                     >
                       My Tasks (Assignee)
                     </DropdownMenuRadioItem>
@@ -909,6 +937,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                       value="assigner"
                       disabled={isTaskScopeSelectionDisabled}
                       className="rounded-2xl px-3 py-2 pr-10 focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
+                      data-cy="project-task-scope-assigned-tasks"
                     >
                       Assigned Tasks (Assigner)
                     </DropdownMenuRadioItem>
@@ -929,7 +958,9 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
               </div>
             <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4">
               <div className="relative flex items-center gap-2 select-none text-sm font-medium text-primary flex-nowrap">
-                <span className="whitespace-nowrap">Per page</span>
+                <span className="whitespace-nowrap" data-cy="project-task-pages-label">
+                  Per page
+                </span>
                 <DropdownMenu onOpenChange={setPageSizeMenuOpen}>
                   <DropdownMenuTrigger asChild>
                     <Button
@@ -965,8 +996,9 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                             setPageSize(sizeOption)
                             setPage(1)
                           }}
+                          data-cy={`project-task-page-size-option-${sizeOption}`}
                         >
-                          <span>{sizeOption}</span>
+                          <span data-cy={`project-task-page-size-label-${sizeOption}`}>{sizeOption}</span>
                           {isActive ? <Check className="size-4" /> : null}
                         </DropdownMenuItem>
                       )
@@ -1064,8 +1096,13 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
 
             {paginatedTasks.length === 0 ? (
               <div className="flex min-h-[11rem] flex-col items-center justify-center rounded-[2.5rem] border border-dashed border-primary/30 bg-white/60 p-10 text-center text-primary">
-                <p className="text-lg font-semibold">No tasks found</p>
-                <p className="mt-2 text-sm text-primary/70">
+                <p className="text-lg font-semibold" data-cy="project-task-empty-title">
+                  No tasks found
+                </p>
+                <p
+                  className="mt-2 text-sm text-primary/70"
+                  data-cy="project-task-empty-help"
+                >
                   Try adjusting the search or department filter.
                 </p>
               </div>

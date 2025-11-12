@@ -319,6 +319,7 @@ export function ProfileAvatarDialog({
                       style={previewImageStyle}
                       sizes="(max-width: 768px) 300px, 480px"
                       priority
+                      data-cy="account-avatar-preview-image"
                     />
                     <div className="pointer-events-none absolute inset-0 ring-1 ring-white/40" />
                   </>
@@ -331,6 +332,7 @@ export function ProfileAvatarDialog({
                       className="object-cover"
                       sizes="(max-width: 768px) 300px, 480px"
                       priority
+                      data-cy="account-avatar-current-image"
                     />
                     <div className="pointer-events-none absolute inset-0 ring-1 ring-white/40" />
                   </>

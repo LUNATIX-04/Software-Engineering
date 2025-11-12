@@ -124,6 +124,7 @@ export function MemberCard({
             width={48}
             height={48}
             className="size-[3rem] rounded-full object-cover"
+            data-cy="member-card-avatar"
           />
         ) : (
           <div className="flex size-[3rem] items-center justify-center rounded-full bg-[#D9C9FF] text-[#2F2766]">

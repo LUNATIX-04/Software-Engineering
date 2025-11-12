@@ -77,13 +77,14 @@ export const AgendaEvents: FC = () => {
 							) : (
 								<Avatar>
 									{event.user.picturePath ? (
-										<Image
-											src={event.user.picturePath}
-											alt={event.user.name}
-											width={32}
-											height={32}
-											className="size-full rounded-full object-cover"
-										/>
+											<Image
+												src={event.user.picturePath}
+												alt={event.user.name}
+												width={32}
+												height={32}
+												className="size-full rounded-full object-cover"
+												data-cy="agenda-event-avatar"
+											/>
 									) : (
 										<AvatarFallback
 											className={getBgColor(event.color)}

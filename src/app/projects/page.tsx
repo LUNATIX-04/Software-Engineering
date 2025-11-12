@@ -97,13 +97,11 @@ export default function ProjectsPage() {
 
   const pageSizeOptions = useMemo(() => {
     const totalProjects = filteredProjects.length || projects.length
-    if (totalProjects === 0) {
-      return BASE_PAGE_SIZE_OPTIONS.slice(0, 1)
+    const options = new Set(BASE_PAGE_SIZE_OPTIONS)
+    if (totalProjects > 0) {
+      options.add(totalProjects)
     }
-    const maxAllowed =
-      BASE_PAGE_SIZE_OPTIONS.find((option) => option >= totalProjects) ??
-      BASE_PAGE_SIZE_OPTIONS[BASE_PAGE_SIZE_OPTIONS.length - 1]
-    return BASE_PAGE_SIZE_OPTIONS.filter((option) => option <= maxAllowed)
+    return [...options].sort((a, b) => a - b)
   }, [filteredProjects.length, projects.length])
 
   useEffect(() => {

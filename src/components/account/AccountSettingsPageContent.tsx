@@ -709,13 +709,21 @@ export function AccountSettingsContent({
         <p className={sectionDescriptionClass}>Show who you are across ASAP.</p>
       </div>
       <div className="flex flex-wrap items-center gap-4">
-        <div className="relative flex size-20 items-center justify-center overflow-hidden rounded-full border border-primary/20 bg-primary/5 text-xl font-semibold text-primary">
-          {effectiveAvatarUrl ? (
-            <Image src={effectiveAvatarUrl} alt="Profile avatar" fill sizes="80px" className="object-cover" priority />
-          ) : (
-            avatarFallbackLetter
-          )}
-        </div>
+            <div className="relative flex size-20 items-center justify-center overflow-hidden rounded-full border border-primary/20 bg-primary/5 text-xl font-semibold text-primary">
+              {effectiveAvatarUrl ? (
+                <Image
+                  src={effectiveAvatarUrl}
+                  alt="Profile avatar"
+                  fill
+                  sizes="80px"
+                  className="object-cover"
+                  priority
+                  data-cy="account-avatar-image"
+                />
+              ) : (
+                avatarFallbackLetter
+              )}
+            </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
@@ -906,9 +914,9 @@ export function AccountSettingsContent({
             )
           })}
         </nav>
-        <div className="account-settings-scroll w-full min-h-[calc(100vh-20rem)] overflow-hidden px-[clamp(3.25rem,4vw,3.25rem)] pt-3 min-h-0 flex-1 overflow-y-auto pl-1 pr-1 asap-scroll [scrollbar-gutter:stable]">
-          <div className="space-y-6">{activeSection}</div>
-        </div>
+        <div className="flex-1 w-full min-h-0 overflow-y-auto px-[clamp(2rem,3vw,3.5rem)] pt-4 ">
+          {activeSection}
+        </div> {/*account-settings-scroll asap-scroll [scrollbar-gutter:stable]*/}
       </div>
     )
   }

@@ -30,6 +30,7 @@ export function UserSelect() {
 										width={24}
 										height={24}
 										className="size-full rounded-full object-cover"
+										data-cy="calendar-user-avatar"
 									/>
 								) : (
 									<AvatarFallback className="text-xxs">
@@ -57,6 +58,7 @@ export function UserSelect() {
 										width={24}
 										height={24}
 										className="size-full rounded-full object-cover"
+										data-cy="calendar-user-avatar-option"
 									/>
 								) : (
 									<AvatarFallback className="text-xxs">

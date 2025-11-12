@@ -999,13 +999,13 @@ export function ProjectForm({
   return (
     <div
       className={[
-        "max-w-7xl w-full mx-auto px-[clamp(1.5rem,4vw,4rem)] pb-[clamp(2rem,6vh,4rem)]",
+        "w-full max-w-full mx-auto px-[clamp(1.5rem,4vw,6rem)] pb-[clamp(2rem,6vh,4rem)]",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
     >
-      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.95fr)] lg:gap-16">
+      <div className="grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:gap-16">
         <form
           onSubmit={handleSubmit} //0px 3px 5px 1px rgba(0, 0, 0, 0.25)
           className="rounded-[2.5rem] border-2 border-primary/30 bg-card-project px-10 pt-4 pb-8 shadow-[0_2px_6px_rgba(0,0,0,0.12)]"

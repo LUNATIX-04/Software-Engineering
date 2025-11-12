@@ -802,7 +802,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
   if (loading) {
     return (
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6 px-6 py-16 text-center text-primary">
+      <div className="mx-auto flex w-full max-w-full flex-1 flex-col items-center justify-center gap-6 px-6 py-16 text-center text-primary">
         Loading task…
       </div>
     )
@@ -810,7 +810,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
   if (error || !task) {
     return (
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center justify-center gap-6 px-6 py-16 text-center">
+      <div className="mx-auto flex w-full max-w-full flex-1 flex-col items-center justify-center gap-6 px-6 py-16 text-center">
         <p className="text-xl font-semibold text-destructive">{error ?? "Task not found."}</p>
         <Button
           data-cy="project-task-detail-error-back-button"
@@ -826,7 +826,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
   return (
     <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3 pb-10">
-      <div className="flex w-full max-w-7xl flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
+    <div className="flex w-full max-w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
           <Button
             type="button"
@@ -839,7 +839,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           </Button>
         </div>
 
-        <div className="mx-auto mt-20 flex w-full max-w-4xl flex-1 flex-col gap-10 px-[clamp(1.5rem,3.4vw,3.85rem)] lg:max-w-5xl">
+        <div className="mx-auto mt-20 flex w-full max-w-full flex-1 flex-col gap-10 px-[clamp(1.5rem,3.4vw,3.85rem)]">
           <div className="relative mt-3 w-full max-w-3xl self-center">
           <div
             className="absolute -top-11 left-0 z-0
@@ -871,16 +871,17 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                   className="group -mt-3 flex w-full items-center gap-4 rounded-[1.75rem] border border-primary/30 bg-white/90 px-4 py-3 text-left shadow-[0_6px_15px_rgba(63,52,120,0.08)] transition hover:border-primary/50 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
                   aria-label={`View details for ${assignerLabel}`}
                 >
-                  <Avatar className="h-11 w-11 shrink-0">
-                    {assignerAvatarUrl ? (
-                      <Image
-                        src={assignerAvatarUrl}
-                        alt={`${assignerLabel} avatar`}
-                        width={44}
-                        height={44}
-                        className="h-full w-full rounded-full object-cover"
-                        priority
-                      />
+                    <Avatar className="h-11 w-11 shrink-0">
+                      {assignerAvatarUrl ? (
+                        <Image
+                          src={assignerAvatarUrl}
+                          alt={`${assignerLabel} avatar`}
+                          width={44}
+                          height={44}
+                          className="h-full w-full rounded-full object-cover"
+                          priority
+                          data-cy="task-assigner-avatar"
+                        />
                     ) : (
                       <AvatarFallback className="bg-primary text-primary-foreground">
                         {assignerLabel.charAt(0).toUpperCase() || "A"}
@@ -927,6 +928,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                                   height={80}
                                   className="h-full w-full rounded-full object-cover"
                                   priority
+                                  data-cy="task-assigner-detail-avatar"
                                 />
                               ) : (
                                 <AvatarFallback className="bg-primary text-primary-foreground">
@@ -1024,6 +1026,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                               width={44}
                               height={44}
                               className="h-full w-full object-cover rounded-full"
+                              data-cy="task-assignee-avatar"
                             />
                           ) : (
                             <AvatarFallback className="bg-primary text-primary-foreground">
@@ -1064,6 +1067,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                               width={96}
                               height={96}
                               className="size-full object-cover rounded-full"
+                              data-cy="task-assignee-detail-avatar"
                             />
                           ) : (
                             <AvatarFallback className="bg-primary text-primary-foreground">

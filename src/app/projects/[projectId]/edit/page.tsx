@@ -136,14 +136,14 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
   const renderContent = () => {
     if (loading) {
       return (
-        <div className="mx-auto w-full max-w-4xl px-6 py-12 text-center text-foreground/70">
+        <div className="mx-auto w-full max-w-full px-6 py-12 text-center text-foreground/70">
           Loading project details…
         </div>
       )
     }
     if (loadError) {
       return (
-        <div className="mx-auto w-full max-w-4xl px-6 py-12 text-center text-destructive">
+        <div className="mx-auto w-full max-w-full px-6 py-12 text-center text-destructive">
           {loadError}
         </div>
       )
@@ -165,7 +165,7 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
 
   return (
     <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
-      <div className="flex w-full max-w-7xl flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
+      <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
           <Button
             type="button"

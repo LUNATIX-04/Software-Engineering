@@ -1170,17 +1170,18 @@ function AppShellInner({ children }: AppShellProps) {
     authenticatedUser?.email?.charAt(0).toUpperCase() ??
     "U"
 
-  const avatar = authenticatedUser ? (
-    avatarUrl ? (
-      <Image
-        src={avatarUrl}
-        alt="User avatar"
-        width={36}
-        height={36}
-        className="size-full rounded-full object-cover"
-        priority
-      />
-    ) : (
+      const avatar = authenticatedUser ? (
+        avatarUrl ? (
+          <Image
+            src={avatarUrl}
+            alt="User avatar"
+            width={36}
+            height={36}
+            className="size-full rounded-full object-cover"
+            priority
+            data-cy="nav-account-avatar"
+          />
+        ) : (
       <div className="flex size-full items-center justify-center rounded-full bg-button-background-on-nav text-button-foreground-on-nav text-sm font-semibold">
         {avatarLetter}
       </div>
@@ -1295,6 +1296,7 @@ function AppShellInner({ children }: AppShellProps) {
             {authenticatedUser.email ?? "My Account"}
           </DropdownMenuLabel>
           <DropdownMenuItem
+            data-cy="account-menu-settings"
             className="text-foreground hover:bg-button-hover-background-on-nav rounded-xl py-3 px-4 cursor-pointer text-base"
             onSelect={() => {
               setAccountMenuOpen(false)
@@ -1307,6 +1309,7 @@ function AppShellInner({ children }: AppShellProps) {
             </span>
           </DropdownMenuItem>
           <DropdownMenuItem
+            data-cy="account-menu-signout"
             className="rounded-xl py-3 px-4 cursor-pointer text-base text-destructive transition hover:bg-destructive/10 focus:bg-destructive/10"
             onSelect={() => handleSignOut({ redirect })}
           >
@@ -1356,12 +1359,12 @@ function AppShellInner({ children }: AppShellProps) {
         >
           {canInviteMembers ? (
             <DropdownMenuItem
+              data-cy="project-actions-invite-link"
               className="rounded-2xl px-4 py-3 text-sm font-semibold transition hover:bg-button-hover-background-on-nav"
               onSelect={() => {
                 setProjectActionsOpen(false)
                 setInviteDialogOpen(true)
               }}
-              data-cy="project-actions-invite-link"
             >
               <span className="inline-flex items-center gap-2">
                 <Link2 className="size-4" />
@@ -1370,6 +1373,7 @@ function AppShellInner({ children }: AppShellProps) {
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuItem
+            data-cy="project-actions-refresh"
             className="rounded-2xl px-4 py-3 text-sm font-semibold transition hover:bg-button-hover-background-on-nav"
             onSelect={() => {
               setProjectActionsOpen(false)
@@ -1384,12 +1388,13 @@ function AppShellInner({ children }: AppShellProps) {
               }
             }}
           >
-            <span className="inline-flex items-center gap-2">
-              <RefreshCcw className="size-4" />
-              Refresh
-            </span>
-          </DropdownMenuItem>
+              <span className="inline-flex items-center gap-2">
+                <RefreshCcw className="size-4" />
+                Refresh
+              </span>
+            </DropdownMenuItem>
           <DropdownMenuItem
+            data-cy="project-actions-change-username"
             className="rounded-2xl px-4 py-3 text-sm font-semibold transition hover:bg-button-hover-background-on-nav"
             disabled={!canChangeUsername}
             onSelect={() => {
@@ -1407,13 +1412,14 @@ function AppShellInner({ children }: AppShellProps) {
           </DropdownMenuItem>
           {canEditThisProject ? (
             <DropdownMenuItem
+              data-cy="project-actions-edit"
               className="rounded-2xl px-4 py-3 text-sm font-semibold transition hover:bg-button-hover-background-on-nav"
               onSelect={() => {
-                if (activeProjectId) {
-                  router.push(`/projects/${activeProjectId}/edit`)
-                }
-              }}
-            >
+              if (activeProjectId) {
+                router.push(`/projects/${activeProjectId}/edit`)
+              }
+            }}
+          >
               <span className="inline-flex items-center gap-2">
                 <PencilLine className="size-4" />
                 Edit Project
@@ -1422,12 +1428,13 @@ function AppShellInner({ children }: AppShellProps) {
           ) : null}
           {canChangeOwner ? (
             <DropdownMenuItem
+              data-cy="project-actions-change-owner"
               className="rounded-2xl px-4 py-3 text-sm font-semibold transition hover:bg-button-hover-background-on-nav"
               onSelect={() => {
-                setProjectActionsOpen(false)
-                setOwnerDialogOpen(true)
-              }}
-            >
+              setProjectActionsOpen(false)
+              setOwnerDialogOpen(true)
+            }}
+          >
               <span className="inline-flex items-center gap-2">
                 <UserPen className="size-4" />
                 Change Project Owner
@@ -1436,17 +1443,18 @@ function AppShellInner({ children }: AppShellProps) {
           ) : null}
           {canDeleteThisProject ? (
             <DropdownMenuItem
+              data-cy="project-actions-delete"
               className="rounded-2xl px-4 py-3 text-sm font-semibold transition hover:bg-destructive/10 focus:bg-destructive/10"
               onSelect={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                if (!activeProjectId) {
-                  return
-                }
-                setProjectActionsOpen(false)
-                promptProjectDelete(activeProjectId)
-              }}
-            >
+              event.preventDefault()
+              event.stopPropagation()
+              if (!activeProjectId) {
+                return
+              }
+              setProjectActionsOpen(false)
+              promptProjectDelete(activeProjectId)
+            }}
+          >
               <span className="inline-flex items-center gap-2 text-destructive font-semibold">
                 <Trash2 className="size-4 text-destructive" />
                 Delete Project
@@ -1454,6 +1462,7 @@ function AppShellInner({ children }: AppShellProps) {
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuItem
+            data-cy="project-actions-leave"
             className="rounded-2xl px-4 py-3 text-sm font-semibold transition hover:bg-button-hover-background-on-nav"
             onSelect={(event) => {
               event.preventDefault()
@@ -1487,6 +1496,7 @@ function AppShellInner({ children }: AppShellProps) {
                   isHomepage ? "cursor-default" : "cursor-pointer"
                 )}
                 aria-label={isHomepage ? "ASAP" : "Go to projects"}
+                data-cy="app-shell-logo-button"
               >
                 <span
                   className="text-primary-foreground text-3xl font-bold leading-none select-none"
@@ -1507,6 +1517,7 @@ function AppShellInner({ children }: AppShellProps) {
                   className="bg-button-background text-button-foreground-on-nav hover:bg-button-hover-background-on-nav hover:text-foreground rounded-full px-[clamp(2.5rem,5vw,4rem)] py-[clamp(0.5rem,1.6vh,0.85rem)] text-[clamp(1rem,2.1vw,1.15rem)] font-semibold"
                   onClick={() => router.push("/auth/traditional")}
                   disabled={authLoading}
+                  data-cy="app-shell-sign-in-button"
                 >
                   {authLoading ? "Loading..." : "Sign In"}
                 </Button>
@@ -1534,6 +1545,7 @@ function AppShellInner({ children }: AppShellProps) {
                 }}
                 aria-current={isActive ? "page" : undefined}
                 disabled={item.disabled}
+                data-cy={`project-nav-${item.key}`}
                 className={cn(
                   "relative flex min-w-[5.5rem] flex-1 items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-button-foreground-on-nav transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50",
                   isActive &&
@@ -1579,12 +1591,12 @@ function AppShellInner({ children }: AppShellProps) {
                 ) : (
                   <div className="flex-1" />
                 )}
-                <div className="flex items-center gap-3">
-                  {renderProjectActionsMenu()}
-                  {authenticatedUser ? (
-                    renderAccountDropdown("homepage")
-                  ) : (
-                    <Button
+                  <div className="flex items-center gap-3">
+                    {renderProjectActionsMenu()}
+                    {authenticatedUser ? (
+                      renderAccountDropdown("homepage")
+                    ) : (
+                      <Button
                       variant="secondary"
                       className="rounded-full bg-button-background-on-nav px-6 py-2 text-base font-semibold text-button-foreground-on-nav hover:bg-button-hover-background-on-nav"
                       onClick={() => router.push("/auth/traditional")}
@@ -1610,6 +1622,7 @@ function AppShellInner({ children }: AppShellProps) {
               onClick={handleLogoClick}
               className="rounded-full bg-transparent p-0 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-button-foreground-on-nav/40"
               aria-label="Go to homepage"
+              data-cy="app-shell-logo-button"
             >
               <span
                 className="select-none text-3xl font-bold leading-none text-primary-foreground"
@@ -1636,7 +1649,7 @@ function AppShellInner({ children }: AppShellProps) {
         : null
 
   const mainClassName = cn(
-    "flex-1 bg-background flex flex-col min-h-0 overflow-y-auto",
+    "flex-1 w-full items-center bg-background flex flex-col min-h-0 overflow-y-hidden",
     headerSpacingClass,
     headerVariant === "homepage" && "flex items-center justify-center",
     isTraditionalAuth && [
@@ -1665,12 +1678,12 @@ function AppShellInner({ children }: AppShellProps) {
         }}
       >
           <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
-            <DialogContent
-              className={cn(
-                "w-[min(100vw,1500px)] rounded-[2.5rem] border-none bg-card-project p-0 shadow-2xl",
-                "overflow-hidden"
-              )}
-            >
+          <DialogContent
+            className={cn(
+              "w-[min(100vw,1500px)] rounded-[2.5rem] border-none bg-card-project p-0 shadow-2xl",
+              "overflow-hidden max-h-[95vh]"
+            )}
+          >
               <div className="max-h-[85vh] overflow-hidden">
                 <div className="px-8 py-8">
                   <DialogHeader className="sr-only">
@@ -1786,9 +1799,9 @@ function AppShellInner({ children }: AppShellProps) {
                           const isActive = option.value === inviteExpiry
                           return (
                             <DropdownMenuItem
+                              data-cy={`project-invite-expiry-option-${option.value}`}
                               key={option.value}
                               onSelect={() => setInviteExpiry(option.value)}
-                              data-cy={`project-invite-expiry-option-${option.value}`}
                               className="flex items-center justify-between rounded-2xl px-3 py-2 focus:bg-primary/10 focus:text-primary"
                             >
                               <span>{option.label}</span>
@@ -1842,6 +1855,7 @@ function AppShellInner({ children }: AppShellProps) {
                             const isActive = inviteRoleKey === option.key
                             return (
                             <DropdownMenuItem
+                              data-cy={`project-invite-role-option-${option.key}`}
                               key={option.key}
                               disabled={disabled}
                               onSelect={(event) => {
@@ -1852,7 +1866,6 @@ function AppShellInner({ children }: AppShellProps) {
                                   setInviteRoleKey(option.key)
                               }}
                               className="flex items-center justify-between rounded-2xl px-3 py-2 hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary disabled:opacity-50"
-                              data-cy={`project-invite-role-option-${option.key}`}
                             >
                                 <span>{option.label}</span>
                                 {isActive ? <Check className="size-4 text-primary" /> : null}
@@ -1909,10 +1922,10 @@ function AppShellInner({ children }: AppShellProps) {
                             >
                               {inviteRoleHeadExclusive ? null : (
                               <DropdownMenuItem
+                                data-cy="project-invite-department-option-none"
                                 onSelect={() => {
                                   setInviteDepartmentId(null)
                                 }}
-                                data-cy="project-invite-department-option-none"
                                 className="flex items-center justify-between rounded-2xl px-3 py-2 hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary"
                               >
                                   <span>No department</span>
@@ -1923,11 +1936,11 @@ function AppShellInner({ children }: AppShellProps) {
                                 const isActive = inviteDepartmentId === dept.id
                               return (
                                 <DropdownMenuItem
+                                  data-cy={`project-invite-department-option-${dept.id}`}
                                   key={dept.id}
                                   onSelect={() => {
                                     setInviteDepartmentId(dept.id)
                                   }}
-                                  data-cy={`project-invite-department-option-${dept.id}`}
                                   className="flex items-center justify-between rounded-2xl px-3 py-2 hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary"
                                 >
                                     <span>{dept.name}</span>
@@ -2095,18 +2108,8 @@ function AppShellInner({ children }: AppShellProps) {
                 <div className="space-y-3">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
-                      Selected owners
+                      Owners
                     </p>
-                    <div className="relative w-full max-w-xs">
-                      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary/50" />
-                      <input
-                        type="text"
-                        value={selectedOwnersSearch}
-                        onChange={(event) => setSelectedOwnersSearch(event.target.value)}
-                        placeholder="Search username"
-                        className="w-full rounded-full border-2 border-primary/25 bg-white py-2 pl-9 pr-3 text-sm font-semibold text-[#2F2766] placeholder:text-primary/40 focus:border-primary focus:outline-none"
-                      />
-                    </div>
                   </div>
                   {selectedOwners.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-primary/30 bg-white px-4 py-5 text-sm text-muted-foreground">
@@ -2151,7 +2154,7 @@ function AppShellInner({ children }: AppShellProps) {
                 <div className="space-y-2">
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
-                      All members
+                      Selected owners
                     </p>
                     <div className="relative w-full max-w-xs">
                       <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary/50" />

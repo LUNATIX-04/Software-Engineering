@@ -842,7 +842,7 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
   return (
     <>
       <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
-        <div className="flex w-full max-w-7xl flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
+        <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
           <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
             <Button
               type="button"
@@ -856,7 +856,7 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
             </Button>
           </div>
 
-          <div className="mx-auto mt-10 flex w-full max-w-7xl flex-1 flex-col gap-10 px-[clamp(1.5rem,3vw,3.5rem)]">
+          <div className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-10 px-[clamp(1.5rem,3vw,3.5rem)]">
             <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative w-full max-w-md sm:mr-auto">
                 <Search className="pointer-events-none absolute left-5 top-1/2 size-5 -translate-y-1/2 text-primary/60" />

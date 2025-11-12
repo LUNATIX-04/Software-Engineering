@@ -120,7 +120,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
 
   if (loading) {
     return (
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-[clamp(1.5rem,3vw,3.5rem)] pb-16 pt-10 text-center text-foreground/70">
+      <div className="mx-auto flex w-full max-w-full flex-col gap-3 px-[clamp(1.5rem,3vw,3.5rem)] pb-16 pt-10 text-center text-foreground/70">
         Loading project information…
       </div>
     )
@@ -128,7 +128,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
 
   if (error) {
     return (
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3 px-[clamp(1.5rem,3vw,3.5rem)] pb-16 pt-10 text-center text-destructive">
+      <div className="mx-auto flex w-full max-w-full flex-col gap-3 px-[clamp(1.5rem,3vw,3.5rem)] pb-16 pt-10 text-center text-destructive">
         {error}
       </div>
     )
@@ -160,7 +160,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
 
   return (
     <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
-      <div className="flex w-full max-w-7xl flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
+      <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
           <Button
             type="button"
@@ -174,7 +174,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
           </Button>
         </div>
 
-        <div className="mx-auto mt-10 flex w-full max-w-5xl flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10">
+        <div className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10">
           {isOwner ? (
             <div className="flex justify-end">
           <Button
@@ -202,12 +202,13 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
                   <div className="relative h-40 w-40 overflow-hidden rounded-[2.5rem] border-2 border-primary/40 bg-primary/20 shadow-[0_6px_0_rgba(144,122,214,0.22)]">
                     <Image
                       src={project.imageUrl}
-                    alt={`${project.title} cover`}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-              ) : (
+                      alt={`${project.title} cover`}
+                      fill
+                      className="object-cover"
+                      data-cy="project-cover-image"
+                    />
+                  </div>
+                ) : (
                 <div className="flex h-40 w-40 items-center justify-center rounded-[2.5rem] border-2 border-dashed border-primary/40 bg-primary/10 text-primary shadow-[0_14px_0_rgba(144,122,214,0.22)]">
                   <FolderKanban className="size-14" />
                 </div>
@@ -325,7 +326,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
         </Link>
       </div>
 
-      <div className="mx-auto -mt-8 flex w-full max-w-5xl flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-20">
+      <div className="mx-auto -mt-8 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-20">
         <div className="flex justify-end">
           <Button
             asChild
@@ -344,18 +345,19 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
           className="rounded-[2.75rem] border-2 border-primary/40 bg-white p-8 shadow-[0_18px_0_rgba(144,122,214,0.15)]"
           data-cy="project-info-summary-section"
         >
-          <div className="flex flex-col gap-8 md:flex-row md:items-center">
-            <div className="flex shrink-0 justify-center">
-              {project.imageUrl ? (
-                <div className="relative h-40 w-40 overflow-hidden rounded-[2.5rem] border-2 border-primary/40 bg-primary/20 shadow-[0_14px_0_rgba(144,122,214,0.22)]">
-                  <Image
-                    src={project.imageUrl}
-                  alt={`${project.title} cover`}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            ) : (
+            <div className="flex flex-col gap-8 md:flex-row md:items-center">
+              <div className="flex shrink-0 justify-center">
+                {project.imageUrl ? (
+                  <div className="relative h-40 w-40 overflow-hidden rounded-[2.5rem] border-2 border-primary/40 bg-primary/20 shadow-[0_14px_0_rgba(144,122,214,0.22)]">
+                    <Image
+                      src={project.imageUrl}
+                      alt={`${project.title} cover`}
+                      fill
+                      className="object-cover"
+                      data-cy="project-cover-image"
+                    />
+                  </div>
+                ) : (
               <div className="flex h-40 w-40 items-center justify-center rounded-[2.5rem] border-2 border-dashed border-primary/40 bg-primary/10 text-primary shadow-[0_14px_0_rgba(144,122,214,0.22)]">
                 <FolderKanban className="size-14" />
               </div>

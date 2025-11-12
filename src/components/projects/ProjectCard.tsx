@@ -203,17 +203,18 @@ export function ProjectCard({
       }}
     >
       {imageSrc ? (
-        <div
-          className="project-card-thumbnail relative flex-shrink-0 overflow-hidden"
-          style={thumbnailStyle}
-        >
-          <Image
-            src={imageSrc}
-            alt={`${title} thumbnail`}
-            fill
-            className="object-cover"
-          />
-        </div>
+          <div
+            className="project-card-thumbnail relative flex-shrink-0 overflow-hidden"
+            style={thumbnailStyle}
+          >
+            <Image
+              src={imageSrc}
+              alt={`${title} thumbnail`}
+              fill
+              className="object-cover"
+              data-cy="project-card-thumbnail"
+            />
+          </div>
       ) : (
         <div
           className="project-card-thumbnail flex items-center justify-center flex-shrink-0"
@@ -228,6 +229,7 @@ export function ProjectCard({
           <h3
             className="clamp-ellipsis-1 min-w-0 truncate-ellipsis text-2xl font-bold text-foreground"
             style={titleStyle}
+            data-cy={buildDataCy("project-card-title")}
           >
             {title}
           </h3>
@@ -236,7 +238,12 @@ export function ProjectCard({
           </span>
         </div>
         {description ? (
-          <p className="clamp-ellipsis-1 min-w-0 text-foreground/70">{description}</p>
+          <p
+            className="clamp-ellipsis-1 min-w-0 text-foreground/70"
+            data-cy={buildDataCy("project-card-description")}
+          >
+            {description}
+          </p>
         ) : (
           <div className="min-h-[1.5rem]" aria-hidden />
         )}

@@ -383,13 +383,11 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
 
   const pageSizeOptions = useMemo(() => {
     const totalMembers = filteredMembers.length || members.length
-    if (totalMembers === 0) {
-      return BASE_PAGE_SIZE_OPTIONS.slice(0, 1)
+    const options = new Set(BASE_PAGE_SIZE_OPTIONS)
+    if (totalMembers > 0) {
+      options.add(totalMembers)
     }
-    const maxAllowed =
-      BASE_PAGE_SIZE_OPTIONS.find((option) => option >= totalMembers) ??
-      BASE_PAGE_SIZE_OPTIONS[BASE_PAGE_SIZE_OPTIONS.length - 1]
-    return BASE_PAGE_SIZE_OPTIONS.filter((option) => option <= maxAllowed)
+    return [...options].sort((a, b) => a - b)
   }, [filteredMembers.length, members.length])
 
   useEffect(() => {
@@ -918,7 +916,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
 
   return (
     <div className="mx-auto overflow-hidden w-full px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
-      <div className="flex w-full max-w-7xl flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
+      <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="sticky top-1 z-10 -ml-0.1 flex flex-shrink-0 items-start justify-start lg:-mt-0">
           <Button
             type="button"
@@ -932,7 +930,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
           </Button>
         </div>
         
-        <div className="mx-auto mt-10 flex w-full max-w-10xl flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)]"
+        <div className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)]"
           style={{ minHeight: containerMinHeight }}
         >
           <section className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -1211,6 +1209,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                             width={96}
                             height={96}
                             className="size-full object-cover"
+                            data-cy="member-detail-avatar"
                           />
                         ) : (
                           <div className="flex size-full items-center justify-center bg-[#D9C9FF] text-primary">

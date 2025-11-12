@@ -286,6 +286,7 @@ export default function TraditionalAuthPage() {
                     fill
                     className="object-cover opacity-80"
                     priority
+                    data-cy="auth-preview-image"
                   />
                 </div>}
               </div>
