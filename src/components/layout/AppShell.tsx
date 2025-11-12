@@ -78,6 +78,8 @@ import {
 import { DropdownMenuLabel } from "@radix-ui/react-dropdown-menu"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import { PROJECT_ROLE, type ProjectRole } from "@/types/projects"
+
+const INVITE_DIALOG_OPEN_EVENT = "asap:open-invite-dialog"
 import { isRemovalError } from "@/utils/projects/removal"
 
 const DEPARTMENT_LAYOUTS: DepartmentLayoutOption[] = ["compact", "fullWidth"]
@@ -807,6 +809,17 @@ function AppShellInner({ children }: AppShellProps) {
     rememberSignInToast,
     supabase,
   ])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    const handleOpenInviteDialog = () => setInviteDialogOpen(true)
+    window.addEventListener(INVITE_DIALOG_OPEN_EVENT, handleOpenInviteDialog)
+    return () => {
+      window.removeEventListener(INVITE_DIALOG_OPEN_EVENT, handleOpenInviteDialog)
+    }
+  }, [])
 
   useEffect(() => {
     if (authLoading) {

@@ -4,7 +4,7 @@ import * as React from "react"
 import { useCallback, useRef, useEffect, useMemo, useState } from "react"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Check, Filter, Search, UserRound, X } from "lucide-react"
+import { ArrowLeft, Check, Filter, Link2, Search, UserRound, X } from "lucide-react"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { TOOLTIP_DELAY_DURATION_MS } from "@/constants/ui"
@@ -34,6 +34,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+const INVITE_DIALOG_OPEN_EVENT = "asap:open-invite-dialog"
 import {
   MemberCard,
   type MemberDepartment,
@@ -132,6 +133,12 @@ type ProjectMemberPageProps = {
 
 export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   const { projectId } = React.use(params)
+  const openInviteDialog = useCallback(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    window.dispatchEvent(new CustomEvent(INVITE_DIALOG_OPEN_EVENT))
+  }, [])
   const router = useRouter()
   const { notify } = useNotifications()
   const cachedDepartments = getCachedProjectDepartments(projectId)
@@ -1113,6 +1120,18 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                 >
                   {filteredMembers.length > 0 ? `${filteredMembers.length} members` : ""}
                 </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="inline-flex h-12 items-center justify-center rounded-full border-primary/40 bg-white px-5 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/10"
+                onClick={openInviteDialog}
+                data-cy="project-member-invite-link-button"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <Link2 className="size-4" />
+                  Invite Link
+                </span>
+              </Button>
               </div>
             </div>
           </div>
