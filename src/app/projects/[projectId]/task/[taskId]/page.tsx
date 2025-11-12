@@ -992,16 +992,16 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                       ? assigneeList
                       : task.assignees.map((assignee) => ({
                           id: assignee.id,
+                          projectId,
+                          userId: assignee.id,
+                          role: PROJECT_ROLE.MEMBER,
                           username: assignee.username,
-                          department: null,
-                          role: "Member",
                           email: null,
-                          departmentId: null,
+                          fullName: assignee.fullName,
                           avatarUrl: assignee.avatarUrl,
                           bio: null,
+                          department: task.department,
                           lastSeenAt: null,
-                          projectId: projectId,
-                          userId: "",
                         } as ProjectMemberDetail))
                     ).map((member) => (
                       <div
