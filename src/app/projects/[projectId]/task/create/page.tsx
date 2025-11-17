@@ -6,10 +6,12 @@ import { ArrowLeft } from "lucide-react"
 import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
-import { TaskForm, type TaskAssigneeOption, type TaskFormValues } from "@/components/tasks"
+import { TaskForm, type TaskFormValues } from "@/components/tasks"
 import { DEFAULT_TASK_CARD_COLOR } from "@/constants/task-colors"
 import { useNotifications } from "@/components/notifications/Notification"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
+
+import { createProjectTask, useTaskFormData } from "./hooks/useTaskFormData"
 
 const now = new Date()
 const defaultStartDateText = format(now, "dd/MM/yyyy HH:mm")
@@ -39,81 +41,20 @@ export default function CreateTaskPage({ params }: CreateTaskPageProps) {
   const router = useRouter()
   const [submitting, setSubmitting] = React.useState(false)
   const { notify } = useNotifications()
-  const [memberOptions, setMemberOptions] = React.useState<TaskAssigneeOption[]>([])
-  const [formLoading, setFormLoading] = React.useState(true)
-  const [formError, setFormError] = React.useState<string | null>(null)
-
-  const loadFormData = React.useCallback(async () => {
-    if (!projectId) {
-      return
-    }
-    setFormLoading(true)
-    setFormError(null)
-    try {
-      const membersResponse = await fetch(`/api/projects/${projectId}/members`, {
-        cache: "no-store",
-      })
-
-      if (membersResponse.status === 404) {
-        throw new Error("Not found")
-      }
-      if (!membersResponse.ok) {
-        throw new Error("Failed to load form data")
-      }
-
-      const members = (await membersResponse.json()) as Array<{
-        id: string
-        username: string
-        fullName: string | null
-        role: string
-        department: {
-          id: string
-          name: string
-          color: string
-          textColor: string
-        } | null
-      }>
-      setMemberOptions(
-        members.map((member) => ({
-          id: member.id,
-          label: member.username || member.fullName || "Member",
-          username: member.username,
-          fullName: member.fullName,
-          role: member.role,
-          departmentName: member.department?.name ?? null,
-          departmentColor: member.department?.color ?? null,
-          departmentTextColor: member.department?.textColor ?? null,
-        }))
-      )
-    } catch (error) {
-      console.error(error)
-      setFormError("Unable to load task form data")
-    } finally {
-      setFormLoading(false)
-    }
-  }, [projectId])
-
-  React.useEffect(() => {
-    loadFormData()
-  }, [loadFormData])
+  const { memberOptions, loading: formLoading, error: formError } = useTaskFormData(projectId)
 
   const handleSubmit = async (values: TaskFormValues) => {
+    if (!projectId) {
+      notify({
+        title: "Create task failed",
+        description: "Project ID is missing.",
+        variant: "destructive",
+      })
+      return
+    }
     setSubmitting(true)
     try {
-      const response = await fetch(`/api/projects/${projectId}/tasks`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(values),
-      })
-      //alert(response.body)
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null)
-        const message =
-          typeof payload?.error === "string" ? payload.error : "Failed to create task"
-        throw new Error(message)
-      }
+      await createProjectTask(projectId, values)
       if (typeof window !== "undefined") {
         window.dispatchEvent(
           new CustomEvent(PROJECT_REFRESH_EVENT, { detail: { projectId } })

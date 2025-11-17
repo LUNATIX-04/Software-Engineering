@@ -2,51 +2,24 @@
 
 import * as React from "react"
 import { useCallback, useRef, useEffect, useMemo, useState } from "react"
-import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Check, Filter, Link2, Search, UserRound, X } from "lucide-react"
-import { Textarea } from "@/components/ui/textarea"
-import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
-import { TOOLTIP_DELAY_DURATION_MS } from "@/constants/ui"
-
+import { ArrowLeft, Check, Link2 } from "lucide-react"
 import { useNotifications } from "@/components/notifications/Notification"
 import { Button } from "@/components/ui/button"
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
+  DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 const INVITE_DIALOG_OPEN_EVENT = "asap:open-invite-dialog"
 import {
-  MemberCard,
   type MemberDepartment,
   type MemberRole,
   type SelectableMemberDepartment,
 } from "@/components/projects/MemberCard"
 import { cn } from "@/lib/utils"
-import {
-  ADD_DEPARTMENT_LABEL,
-  DEFAULT_DEPARTMENT_COLORS,
-  DEFAULT_DEPARTMENT_TEXT_COLOR,
-} from "@/constants/departments"
+import { ADD_DEPARTMENT_LABEL, DEFAULT_DEPARTMENT_COLORS, DEFAULT_DEPARTMENT_TEXT_COLOR } from "@/constants/departments"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import {
   kickProjectMember,
@@ -67,31 +40,15 @@ import {
   loadProjectMembership,
 } from "@/utils/projects/prefetch"
 import { PROJECT_ROLE } from "@/types/projects"
-
-type MemberRecord = {
-  id: string
-  name: string
-  email: string | null
-  role: MemberRole
-  rawRole: ProjectMemberDetail["role"]
-  department: MemberDepartment
-  departmentId: string | null
-  avatarUrl: string | null
-  bio: string | null
-  fullName: string | null
-  lastSeenAt: string | null
-}
+import { MemberFilterBar } from "./components/MemberFilterBar"
+import { MemberPaginationControls } from "./components/MemberPaginationControls"
+import { MemberList } from "./components/MemberList"
+import { MemberDetailDialog } from "./components/MemberDetailDialog"
+import { MemberKickDialog } from "./components/MemberKickDialog"
+import { useMemberPaginationControls } from "./hooks/useMemberPaginationControls"
+import type { MemberRecord, RemoteDepartment } from "./types"
 
 // Share the same department catalog as the Department page so colors & labels stay in sync.
-type RemoteDepartment = {
-  id: string
-  name: string
-  color: string
-  textColor: string
-  order: number
-  head: string | null
-}
-
 const normalizeMemberDepartments = (departments: ProjectDepartmentRecord[]): RemoteDepartment[] =>
   departments.map((dept) => ({
     id: dept.id,
@@ -191,13 +148,13 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     }, {})
   }, [remoteDepartments])
 
-  const departmentOptions = useMemo(() => {
+  const departmentOptions = useMemo<SelectableMemberDepartment[]>(() => {
     const ordered = [...remoteDepartments].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
     const unique = ordered.map((dept) => dept.name).filter((name, index, array) => array.indexOf(name) === index)
     if (!unique.includes(ADD_DEPARTMENT_LABEL)) {
       unique.push(ADD_DEPARTMENT_LABEL)
     }
-    return unique
+    return unique as SelectableMemberDepartment[]
   }, [remoteDepartments])
   const viewerDepartmentName = useMemo(() => {
     if (!membership?.departmentId) {
@@ -217,10 +174,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   const [pageSize, setPageSize] = useState(
     BASE_PAGE_SIZE_OPTIONS[1] ?? BASE_PAGE_SIZE_OPTIONS[0]
   )
-  const [pageInput, setPageInput] = useState("1")
-  const [pageHintVisible, setPageHintVisible] = useState(false)
   const paginationControlsRef = useRef<HTMLDivElement | null>(null)
-  const pageHintTimeoutRef = useRef<number | null>(null)
   const [pageSizeMenuOpen, setPageSizeMenuOpen] = useState(false)
   const [kickingMemberId, setKickingMemberId] = useState<string | null>(null)
   const [kickDialogOpen, setKickDialogOpen] = useState(false)
@@ -388,6 +342,25 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     return Math.max(1, Math.ceil(filteredMembers.length / pageSize))
   }, [filteredMembers.length, pageSize])
 
+  const {
+    pageInput,
+    pageHintVisible,
+    pageHint,
+    handlePrevPage,
+    handleNextPage,
+    handlePageInputChange,
+    handlePageInputFocus,
+    handlePageInputBlur,
+    handlePageInputKeyDown,
+    handleContainerFocus,
+    handleContainerBlur,
+  } = useMemberPaginationControls({
+    page,
+    totalPages,
+    onPageChange: setPage,
+    paginationRef: paginationControlsRef,
+  })
+
   const pageSizeOptions = useMemo(() => {
     const totalMembers = filteredMembers.length || members.length
     const options = new Set(BASE_PAGE_SIZE_OPTIONS)
@@ -476,77 +449,10 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     }
   }, [page, totalPages])
 
-  useEffect(() => {
-    setPageInput(String(page))
-  }, [page])
-
   const paginatedMembers = useMemo(() => {
     const startIndex = (page - 1) * pageSize
     return filteredMembers.slice(startIndex, startIndex + pageSize)
   }, [filteredMembers, page, pageSize])
-
-  const clearPageHintTimeout = useCallback(() => {
-    if (pageHintTimeoutRef.current) {
-      window.clearTimeout(pageHintTimeoutRef.current)
-      pageHintTimeoutRef.current = null
-    }
-  }, [])
-
-  const hidePageHint = useCallback(() => {
-    clearPageHintTimeout()
-    setPageHintVisible(false)
-  }, [clearPageHintTimeout])
-
-  const triggerPageHint = useCallback(() => {
-    if (typeof window === "undefined") {
-      return
-    }
-    setPageHintVisible(true)
-    clearPageHintTimeout()
-    pageHintTimeoutRef.current = window.setTimeout(() => {
-      setPageHintVisible(false)
-      pageHintTimeoutRef.current = null
-    }, 2000)
-  }, [clearPageHintTimeout])
-
-  useEffect(() => {
-    if (!pageHintVisible) {
-      return
-    }
-
-    const handlePointerDown = (event: Event) => {
-      if (!paginationControlsRef.current?.contains(event.target as Node)) {
-        hidePageHint()
-      } else {
-        triggerPageHint()
-      }
-    }
-
-    const handleFocusIn = (event: FocusEvent) => {
-      if (!paginationControlsRef.current?.contains(event.target as Node)) {
-        hidePageHint()
-      } else {
-        triggerPageHint()
-      }
-    }
-
-    const pointerEventName =
-      typeof window !== "undefined" && "PointerEvent" in window ? "pointerdown" : "mousedown"
-
-    document.addEventListener(pointerEventName, handlePointerDown as EventListener)
-    document.addEventListener("focusin", handleFocusIn)
-
-    return () => {
-      document.removeEventListener(pointerEventName, handlePointerDown as EventListener)
-      document.removeEventListener("focusin", handleFocusIn)
-    }
-  }, [hidePageHint, pageHintVisible, triggerPageHint])
-
-  useEffect(() => {
-    return () => {
-      clearPageHintTimeout()
-    }
-  }, [clearPageHintTimeout])
 
   const handleRemoveDepartmentFilter = (label: SelectableMemberDepartment) => {
     setActiveDepartments((prev) => prev.filter((item) => item !== label))
@@ -896,22 +802,6 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     [departmentHeadMap, fetchDepartments, members, notify, projectId, remoteDepartments]
   )
 
-  const pageHint =
-  totalPages <= 1 ? "Only page 1" : `Pages 1–${totalPages}`
-
-  const commitPageInput = useCallback(() => {
-    if (!pageInput.trim()) {
-      setPageInput(String(page))
-      return
-    }
-    const parsed = Number(pageInput)
-    if (!Number.isFinite(parsed) || parsed < 1 || parsed > totalPages) {
-      setPageInput(String(page))
-      return
-    }
-    setPage(parsed)
-  }, [page, pageInput, totalPages])
-
   const backAriaLabel = projectId
     ? `Back to members for project ${projectId}`
     : "Back to members"
@@ -941,200 +831,92 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
           style={{ minHeight: containerMinHeight }}
         >
           <section className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative w-full max-w-xs">
-                <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-primary/60" />
-                <input
-                  aria-label="Search members"
-                  placeholder="Search"
-                  value={search}
-                  data-cy="project-member-search-input"
-                  onChange={(event) => setSearch(event.target.value)}
-                  className="w-full rounded-full border-2 border-primary/40 bg-white/90 py-3 pl-12 pr-30 text-sm text-[#2F2766] placeholder:text-primary/60 focus:border-primary focus:outline-none"
-                />
-              </div>
-              <DropdownMenu open={filterActionOpen} onOpenChange={setFilterActionOpen}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    data-cy="project-member-filter-button"
+            <MemberFilterBar
+              availableRoles={AVAILABLE_ROLES}
+              search={search}
+              filterCount={filterCount}
+              filterActionOpen={filterActionOpen}
+              roleFilters={activeRoles}
+              departmentFilters={activeDepartments}
+              departmentOptions={departmentOptions}
+              departmentsError={departmentsError}
+              departmentsLoading={departmentsLoading}
+              onSearchChange={setSearch}
+              onFilterActionOpenChange={setFilterActionOpen}
+              onToggleRoleFilter={handleToggleRoleFilter}
+              onToggleDepartmentFilter={handleToggleDepartmentFilter}
+              onResetFilters={handleResetFilters}
+            />
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center justify-end gap-3 sm:w-auto">
+                <div className="relative flex items-center gap-2 select-none text-sm font-medium text-primary">
+                  <span>Per page</span>
+                  <DropdownMenu onOpenChange={setPageSizeMenuOpen}>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        data-cy="project-member-page-size-button"
+                        variant="outline"
+                        className={
+                          pageSizeMenuOpen
+                            ? "inline-flex h-12 select-none items-center rounded-full border-2 border-primary bg-primary/10 px-4 text-sm font-semibold text-primary"
+                            : "inline-flex h-12 select-none items-center rounded-full border-2 border-primary/40 bg-white px-4 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/10"
+                        }
+                      >
+                        {pageSize}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-32 rounded-2xl border border-primary/30 bg-background/95 p-2 text-sm text-primary shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
+                    >
+                      {pageSizeOptions.map((sizeOption) => {
+                        const isActive = sizeOption === pageSize
+                        return (
+                          <DropdownMenuItem
+                            key={sizeOption}
+                            className={cn(
+                              "flex items-center justify-between rounded-xl px-3 py-2 font-semibold transition hover:bg-primary/10 focus:bg-primary/10 focus:text-primary",
+                              isActive && "bg-primary/10 text-primary"
+                            )}
+                            onSelect={() => {
+                              if (isActive) {
+                                return
+                              }
+                              setPageSize(sizeOption)
+                              setPage(1)
+                            }}
+                          >
+                            <span>{sizeOption}</span>
+                            {isActive ? <Check className="size-4" /> : null}
+                          </DropdownMenuItem>
+                        )
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <div
                     className={cn(
-                      "select-none inline-flex h-12 w-[8rem] items-center gap-2 rounded-full px-6 text-base font-semibold focus:outline-none",
-                      filterCount > 0 ? "" : "justify-center",
-                      filterActionOpen
-                        ? "border-primary bg-button-hover-background text-primary-foreground"
-                        : "border-primary/40 bg-button-background text-button-foreground transition hover:border-primary hover:bg-button-hover-background hover:text-primary-foreground"
+                      "pointer-events-none absolute right-[0rem] bottom-8 z-[500] max-w-[30rem] -translate-y-1/2 rounded-2xl border border-primary/30 bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-primary shadow-lg transition duration-200 ease-out whitespace-nowrap",
+                      pageSizeMenuOpen && filteredMembers.length > 0 ? "opacity-100" : "opacity-0"
                     )}
                   >
-                    <span className="inline-flex items-center gap-2">
-                      <Filter className="size-4" />
-                      Filter
-                    </span>
-                    {filterCount > 0 ? (
-                      <span className="ml-auto inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded-full bg-primary/90 px-1 text-xs font-bold text-primary-foreground">
-                        {filterCount}
-                      </span>
-                    ) : null}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="start"
-                  className="w-60 overflow-hidden rounded-3xl border border-primary/40 bg-white text-sm font-semibold text-primary shadow-[0_10px_30px_rgba(72,68,110,0.2)]"
-                >
-                  <div className="member-filter-scroll max-h-[22rem] overflow-y-auto px-2 py-2">
-                    <div className="flex items-center justify-between px-3 py-1.5">
-                      <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wide text-primary/60">
-                        Filters
-                      </DropdownMenuLabel>
-                      <button
-                        type="button"
-                        data-cy="project-member-filter-close-button"
-                        onClick={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                          setFilterActionOpen(false)
-                        }}
-                        className="rounded-full p-1 text-primary/60 transition hover:bg-primary/10 hover:text-primary focus:outline-none"
-                        aria-label="Close department filters"
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </div>
-                    <DropdownMenuSeparator className="my-1 bg-primary/20" />
-                    <DropdownMenuLabel className="px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
-                      Roles
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator className="my-1 bg-primary/10" />
-                    {AVAILABLE_ROLES.map((role) => (
-                      <DropdownMenuCheckboxItem
-                        key={role}
-                        checked={activeRoles.includes(role)}
-                        onCheckedChange={(checked) => handleToggleRoleFilter(role, Boolean(checked))}
-                        onSelect={(event) => event.preventDefault()}
-                        className="rounded-2xl px-3 py-2 pr-10 text-foreground focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
-                      >
-                        {role}
-                      </DropdownMenuCheckboxItem>
-                    ))}
-                    <DropdownMenuSeparator className="my-1 bg-primary/20" />
-                    <DropdownMenuLabel className="px-3 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
-                      Departments
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator className="my-1 bg-primary/10" />
-              {departmentOptions.map((department) => (
-                <DropdownMenuCheckboxItem
-                  key={department}
-                  checked={activeDepartments.includes(department)}
-                  onCheckedChange={(checked) =>
-                    handleToggleDepartmentFilter(department, Boolean(checked))
-                  }
-                  onSelect={(event) => event.preventDefault()}
-                  className={cn(
-                    "rounded-2xl px-3 py-2 pr-10 focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3",
-                    department === ADD_DEPARTMENT_LABEL ? "text-primary/80" : "text-foreground"
-                  )}
-                >
-                  <span className="block max-w-[20rem] truncate">{department}</span>
-                </DropdownMenuCheckboxItem>
-              ))}
-                    <DropdownMenuSeparator className="my-1 bg-primary/20" />
-                    <DropdownMenuItem
-                      onSelect={(event) => {
-                        event.preventDefault()
-                        handleResetFilters()
-                      }}
-                      className="rounded-2xl px-3 py-2 text-primary/70 focus:bg-primary/10 focus:text-primary"
-                      data-cy="project-member-reset-filters"
-                    >
-                      Reset filters
-                    </DropdownMenuItem>
+                    {filteredMembers.length > 0 ? `${filteredMembers.length} members` : ""}
                   </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            {departmentsError ? (
-              <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-2 text-xs font-semibold text-destructive">
-                {departmentsError}
-              </div>
-            ) : null}
-            {departmentsLoading ? (
-              <span className="text-xs font-semibold uppercase tracking-wide text-primary/60">
-                Updating departments...
-              </span>
-            ) : null}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center justify-end gap-3 sm:w-auto">
-              <div className="relative flex items-center gap-2 select-none text-sm font-medium text-primary">
-                <span>Per page</span>
-                <DropdownMenu onOpenChange={setPageSizeMenuOpen}>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      data-cy="project-member-page-size-button"
-                      variant="outline"
-                      className={
-                        pageSizeMenuOpen
-                          ? "inline-flex h-12 select-none items-center rounded-full border-2 border-primary bg-primary/10 px-4 text-sm font-semibold text-primary"
-                          : "inline-flex h-12 select-none items-center rounded-full border-2 border-primary/40 bg-white px-4 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/10"
-                      }
-                    >
-                      {pageSize}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className="w-32 rounded-2xl border border-primary/30 bg-background/95 p-2 text-sm text-primary shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
-                  >
-                    {pageSizeOptions.map((sizeOption) => {
-                      const isActive = sizeOption === pageSize
-                      return (
-                        <DropdownMenuItem
-                          key={sizeOption}
-                          className={cn(
-                            "flex items-center justify-between rounded-xl px-3 py-2 font-semibold transition hover:bg-primary/10 focus:bg-primary/10 focus:text-primary",
-                            isActive && "bg-primary/10 text-primary"
-                          )}
-                          onSelect={() => {
-                            if (isActive) {
-                              return
-                            }
-                            setPageSize(sizeOption)
-                            setPage(1)
-                          }}
-                        >
-                          <span>{sizeOption}</span>
-                          {isActive ? <Check className="size-4" /> : null}
-                        </DropdownMenuItem>
-                      )
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <div
-                  className={cn(
-                    "pointer-events-none absolute right-[0rem] bottom-8 z-[500] max-w-[30rem] -translate-y-1/2 rounded-2xl border border-primary/30 bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-primary shadow-lg transition duration-200 ease-out whitespace-nowrap",
-                    pageSizeMenuOpen && filteredMembers.length > 0
-                      ? "opacity-100"
-                      : "opacity-0"
-                  )}
-                >
-                  {filteredMembers.length > 0 ? `${filteredMembers.length} members` : ""}
                 </div>
-              <Button
-                type="button"
-                variant="outline"
-                className="inline-flex h-12 items-center justify-center rounded-full border-primary/40 bg-white px-5 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/10"
-                onClick={openInviteDialog}
-                data-cy="project-member-invite-link-button"
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Link2 className="size-4" />
-                  Invite Link
-                </span>
-              </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="inline-flex h-12 items-center justify-center rounded-full border-primary/40 bg-white px-5 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/10"
+                  onClick={openInviteDialog}
+                  data-cy="project-member-invite-link-button"
+                >
+                  <span className="inline-flex items-center gap-2">
+                    <Link2 className="size-4" />
+                    Invite Link
+                  </span>
+                </Button>
               </div>
             </div>
-          </div>
           </section>
 
         <div className="flex flex-1 min-h-0 flex-col">
@@ -1143,308 +925,64 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
               className="projects-scroll [scrollbar-gutter:stable] flex h-full flex-col space-y-3 px-0.5 py-4"
               style={{ maxHeight: cardListMaxHeight }}
             >
-              {membersError ? (
-                <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-6 py-4 text-sm text-destructive">
-                  {membersError}
-                </div>
-              ) : null}
-              {membersLoading ? (
-                <div className="rounded-2xl border border-primary/20 bg-primary/5 px-6 py-5 text-sm text-primary">
-                  Loading members…
-                </div>
-              ) : (
-            <>
-            {paginatedMembers.map((member, index) => {
-              const isReadOnly = !canEditMember(member)
-              const memberDepartmentOptions = resolveDepartmentOptions(member)
-              const departmentHeadUsername =
-                member.departmentId && departmentHeadMap[member.departmentId]
-                  ? departmentHeadMap[member.departmentId]
-                  : null
-              const isDepartmentHead =
-                Boolean(departmentHeadUsername) && departmentHeadUsername === member.name
-              const roleLabel =
-                isDepartmentHead && member.rawRole === "OWNER"
-                  ? "Header (Project Owner)"
-                  : member.role
-              const isSelf = member.id === membership?.id
-              const canKickThisMember = canKickMemberTarget(member)
-              return (
-                <Tooltip key={member.id} delayDuration={TOOLTIP_DELAY_DURATION_MS}>
-                  <TooltipTrigger asChild>
-                    <div className="w-full">
-                      <MemberCard
-                        dataCyIndex={index}
-                        name={member.name}
-                        email={member.email}
-                        avatarUrl={member.avatarUrl}
-                        role={member.role}
-                        roleLabel={roleLabel}
-                        department={member.department}
-                        availableDepartments={isReadOnly ? undefined : memberDepartmentOptions}
-                        onDepartmentSelect={
-                          isReadOnly || !memberDepartmentOptions
-                            ? undefined
-                            : (department) => handleSetMemberDepartment(member.id, department)
-                        }
-                        readOnly={isReadOnly}
-                        departmentColors={departmentStyles}
-                        onKick={canKickThisMember && !isSelf ? () => requestKickMember(member) : undefined}
-                        kickDisabled={kickingMemberId === member.id}
-                        onClick={() => openMemberDetails(member)}
-                      />
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent side="top" sideOffset={6}>
-                    Click to view member details
-                  </TooltipContent>
-                </Tooltip>
-              )
-            })}
-                  {paginatedMembers.length === 0 ? (
-                    <div className="rounded-[3rem] border-2 border-dashed border-primary/40 bg-white/70 px-6 py-12 text-center text-sm font-semibold text-primary">
-                      No members match your filters.
-                    </div>
-                  ) : null}
-                </>
-              )}
+              <MemberList
+                membership={membership}
+                membersLoading={membersLoading}
+                membersError={membersError}
+                paginatedMembers={paginatedMembers}
+                kickingMemberId={kickingMemberId}
+                departmentStyles={departmentStyles}
+                departmentHeadMap={departmentHeadMap}
+                resolveDepartmentOptions={resolveDepartmentOptions}
+                handleSetMemberDepartment={handleSetMemberDepartment}
+                requestKickMember={requestKickMember}
+                openMemberDetails={openMemberDetails}
+                canEditMember={canEditMember}
+                canKickMemberTarget={canKickMemberTarget}
+              />
             </div>
-            </div>
-            <Dialog open={memberDetailDialogOpen} onOpenChange={handleMemberDetailClose}>
-              <DialogContent className="max-w-2xl rounded-[2.5rem] border-2 border-primary/30 bg-white px-8 py-10 text-left shadow-[0_20px_40px_rgba(72,68,110,0.2)]">
-                <DialogHeader className="">
-                  <DialogTitle className="text-2xl -mt-5 font-bold text-[#2F2766]">
-                    {memberDetailTarget?.id === membership?.id ? "My Info" : "Member Info"}
-                  </DialogTitle>
-                </DialogHeader>
-                {memberDetailTarget ? (
-                  <div className="-mt-1 flex flex-col gap-6">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                      <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-full border-4 border-primary/20 bg-primary/5">
-                        {memberDetailTarget.avatarUrl ? (
-                          <Image
-                            src={memberDetailTarget.avatarUrl}
-                            alt={`${memberDetailTarget.name} avatar`}
-                            width={96}
-                            height={96}
-                            className="size-full object-cover"
-                            data-cy="member-detail-avatar"
-                          />
-                        ) : (
-                          <div className="flex size-full items-center justify-center bg-[#D9C9FF] text-primary">
-                            <UserRound className="size-8" />
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-1 flex-col gap-3">
-                        <div className="flex flex-col gap-1">
-                          <div className="text-lg mt-2 font-semibold text-[#2F2766]">
-                            {(memberDetailTarget.id === membership?.id ? (
-                              <div className="space-y-2">
-                                <input
-                                  type="text"
-                                  value={detailUsername}
-                                  data-cy="project-member-detail-username-input"
-                                  onChange={(event) => setDetailUsername(event.target.value)}
-                                  className="h-12 w-full rounded-full border-2 border-primary/30 bg-white px-4 text-sm font-semibold text-[#2F2766] shadow-[0_4px_0_rgba(144,122,214,0.15)] focus:border-primary focus:outline-none"
-                                  placeholder="Project username"
-                                />
-                              </div>
-                            ) : null) ?? memberDetailTarget.name}
-                          </div>
-                          <p className="text-sm font-semibold  text-primary/70">
-                              <span className="text-foreground/40">Department : </span>{memberDetailTarget.department}
-                            </p>
-                            <p className="text-sm font-semibold  text-primary/70">
-                               <span className="text-foreground/40">Role : </span>{memberDetailTarget.role}
-                            </p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                    {memberDetailTarget.email ? (
-                      <div>
-                        <p className="text-sm font-semibold uppercase tracking-wide text-primary/70">
-                          Email
-                        </p>
-                        <p className="text-sm text-[var(--task-hero-text)]">
-                          {memberDetailTarget.email}
-                        </p>
-                      </div>
-                    ) : null}
-                    </div>
-                    <div className="space-y-3">
-                      <p className="text-sm font-semibold uppercase tracking-wide text-primary/70">
-                        About me
-                      </p>
-                      {memberDetailTarget.id === membership?.id ? (
-                        <div className="group/textarea -mt-2 overflow-hidden rounded-[1rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.12)]">
-                          <Textarea
-                            value={detailBio}
-                            onChange={(event) => setDetailBio(event.target.value)}
-                            placeholder="Share a short bio"
-                            data-cy="project-member-detail-bio-input"
-                            className="project-detail-scroll min-h-[8rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-5 py-3 text-sm font-semibold text-[#2F2766] placeholder:text-primary/60 shadow-none focus-visible:outline-none focus-visible:ring-0"
-                            rows={4}
-                          />
-                        </div>
-                      ) : (
-                        <div className="rounded-2xl  -mt-2 border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-[#2F2766]">
-                          {memberDetailTarget.bio?.length ? memberDetailTarget.bio : "No bio provided."}
-                        </div>
-                      )}
-                    </div>
-                    {memberDetailTarget.id === membership?.id ? (
-                      <div className="space-y-3">
-                        {detailError ? (
-                          <p className="text-sm font-semibold text-destructive">{detailError}</p>
-                        ) : null}
-                        <div className="flex justify-end gap-3">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            data-cy="project-member-detail-cancel"
-                            className="rounded-full px-6 py-2 text-sm font-semibold"
-                            onClick={() => handleMemberDetailClose(false)}
-                            disabled={detailSaving}
-                          >
-                            Cancel
-                          </Button>
-                          <Button
-                            type="button"
-                            data-cy="project-member-detail-save"
-                            className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                            disabled={detailSaving}
-                            onClick={handleSaveSelfDetails}
-                          >
-                            {detailSaving ? "Saving…" : "Save Changes"}
-                          </Button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </DialogContent>
-            </Dialog>
-            <AlertDialog open={kickDialogOpen} onOpenChange={handleKickDialogOpenChange}>
-              <AlertDialogContent className="rounded-[2rem] border-2 border-primary/30 px-8 py-10 text-center shadow-xl">
-                <AlertDialogTitle className="text-2xl font-semibold text-foreground">
-                  Are you sure? <br /> You want to remove this member? <br />
-                  <br />
-                  <span className="block min-h-[1.5rem] break-words break-all px-2 text-primary">
-                    {kickTarget?.name?`"${kickTarget.name}"`:""}
-                  </span>
-                </AlertDialogTitle>
-                {kickError ? (
-                  <p className="mt-4 text-sm font-semibold text-destructive">{kickError}</p>
-                ) : null}
-                <AlertDialogFooter className="mt-8 flex w-full flex-row justify-end gap-4">
-                  <AlertDialogCancel
-                    className="rounded-full border-none bg-secondary px-8 py-3 text-base font-semibold text-secondary-foreground shadow-none transition hover:bg-secondary/80"
-                    data-cy="project-member-kick-cancel"
-                  >
-                    No
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    className="rounded-full bg-primary px-8 py-3 text-base font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-80"
-                    onClick={confirmKickMember}
-                    disabled={kickingMemberId === kickTarget?.id}
-                    data-cy="project-member-kick-confirm"
-                  >
-                    {kickingMemberId === kickTarget?.id ? "Removing…" : "Yes"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+        </div>
+        <MemberDetailDialog
+          open={memberDetailDialogOpen}
+          onOpenChange={handleMemberDetailClose}
+          memberTarget={memberDetailTarget}
+          membership={membership}
+          usernameValue={detailUsername}
+          bioValue={detailBio}
+          detailError={detailError}
+          detailSaving={detailSaving}
+          onUsernameChange={setDetailUsername}
+          onBioChange={setDetailBio}
+          onSave={handleSaveSelfDetails}
+          onCancel={() => handleMemberDetailClose(false)}
+        />
+        <MemberKickDialog
+          open={kickDialogOpen}
+          onOpenChange={handleKickDialogOpenChange}
+          target={kickTarget}
+          kickingMemberId={kickingMemberId}
+          error={kickError}
+          onConfirm={confirmKickMember}
+        />
 
-            {!membersLoading && filteredMembers.length > 0 ? (
-              <div
-                  ref={paginationControlsRef}
-                  className="mt-auto mb-20 flex select-none items-center justify-center gap-4 pt-4"
-                  onFocus={triggerPageHint}
-                  onBlur={(event) => {
-                    const nextTarget = event.relatedTarget as HTMLElement | null
-                    if (!nextTarget || !paginationControlsRef.current?.contains(nextTarget)) {
-                      hidePageHint()
-                    }
-                  }}
-                >
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    data-cy="project-member-pagination-prev"
-                    onClick={() => {
-                      triggerPageHint()
-                      setPage((prev) => Math.max(1, prev - 1))
-                    }}
-                    disabled={page === 1}
-                    className={cn(
-                      "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
-                      page === 1 && "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
-                    )}
-                  >
-                    &#9664;
-                  </Button>
-                  <div className="relative flex flex-col items-center gap-1">
-                    <span
-                      aria-hidden="true"
-                      className={cn(
-                        "absolute -top-8 whitespace-nowrap rounded-full border border-primary/30 bg-white px-3 py-1 text-xs font-medium text-primary shadow-sm transition-all duration-200 ease-out",
-                        pageHintVisible
-                          ? "pointer-events-auto opacity-100 translate-y-0 scale-100"
-                          : "pointer-events-none opacity-0 -translate-y-1 scale-95"
-                      )}
-                    >
-                      {pageHint}
-                    </span>
-                    <span id="project-page-hint" className="sr-only">
-                      {pageHint}
-                    </span>
-                    <input
-                      id="project-page-input"
-                      type="text"
-                      data-cy="project-member-pagination-input"
-                      inputMode="numeric"
-                      value={pageInput}
-                      onFocus={triggerPageHint}
-                      onBlur={() => {
-                        commitPageInput()
-                        hidePageHint()
-                      }}
-                      onChange={(event) => {
-                        const numericValue = event.target.value.replace(/[^0-9]/g, "")
-                        setPageInput(numericValue)
-                        triggerPageHint()
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          commitPageInput()
-                          triggerPageHint()
-                        }
-                      }}
-                      className="w-16 select-text rounded-full border-2 border-primary/40 bg-white px-3 py-2 text-center text-base font-semibold text-primary shadow-sm focus:border-primary focus:outline-none"
-                      aria-describedby="project-page-hint"
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    data-cy="project-member-pagination-next"
-                    onClick={() => {
-                      triggerPageHint()
-                      setPage((prev) => Math.min(totalPages, prev + 1))
-                    }}
-                    disabled={page === totalPages}
-                    className={cn(
-                      "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
-                      page === totalPages &&
-                        "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
-                    )}
-                  >
-                    &#9654;
-                  </Button>
-                </div>
-              ):null}
+        {!membersLoading && filteredMembers.length > 0 ? (
+          <MemberPaginationControls
+            paginationRef={paginationControlsRef}
+            page={page}
+            totalPages={totalPages}
+            pageInput={pageInput}
+            pageHint={pageHint}
+            pageHintVisible={pageHintVisible}
+            onPrev={handlePrevPage}
+            onNext={handleNextPage}
+            onPageInputChange={handlePageInputChange}
+            onPageInputFocus={handlePageInputFocus}
+            onPageInputBlur={handlePageInputBlur}
+            onPageInputKeyDown={handlePageInputKeyDown}
+            onContainerFocus={handleContainerFocus}
+            onContainerBlur={handleContainerBlur}
+          />
+        ) : null}
           </div>
         </div>
       </div>

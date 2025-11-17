@@ -1,26 +1,17 @@
 "use client"
 
 import * as React from "react"
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
-import { MoreHorizontal, Palette, PencilLine, Trash2, Wand2 } from "lucide-react"
-import { HexColorPicker } from "react-colorful"
 
 import { cn } from "@/lib/utils"
 import { TOOLTIP_DELAY_DURATION_MS } from "@/constants/ui"
-import { DEFAULT_TASK_CARD_COLOR, QUICK_COLOR_OPTIONS } from "@/constants/task-colors"
+import { DEFAULT_TASK_CARD_COLOR } from "@/constants/task-colors"
 import {
   computeTextColor,
   getContrastingTextColor,
   sanitizeHexColor,
 } from "@/utils/colors"
+import TaskCardMenu from "./TaskCardMenu"
 
 function hexToRgb(hex: string) {
   const normalized = hex.replace("#", "")
@@ -385,181 +376,40 @@ export function TaskCard({
         ) : null}
         <span className={statusChipClassName}>{statusLabel}</span>
         {(showActions ?? true) && (onEdit || onDelete || onColorChange) ? (
-          <DropdownMenu
-            modal={false}
+          <TaskCardMenu
+            menuOpen={menuOpen}
             onOpenChange={(open) => {
               setMenuOpen(open)
               if (!open) {
                 setIsHovering(false)
-                setColorMode("presets")
               }
             }}
-          >
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className={menuButtonClassName}
-                data-cy={buildDataCy("task-card-menu-button")}
-                aria-label={`Task ${title} actions`}
-                data-task-menu="true"
-                style={menuButtonStyle}
-                onClick={(event) => event.stopPropagation()}
-                onPointerDown={(event) => event.stopPropagation()}
-                onKeyDown={(event) => event.stopPropagation()}
-                onMouseEnter={() => setMenuTriggerHover(true)}
-                onMouseLeave={() => setMenuTriggerHover(false)}
-              >
-                <MoreHorizontal className={menuIconClassName} style={menuIconStyle} />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              sideOffset={-4}
-              className="w-48 rounded-2xl border-none bg-button-background p-3 text-base text-button-foreground shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
-              data-task-menu="true"
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => event.stopPropagation()}
-              onKeyDown={(event) => event.stopPropagation()}
-            >
-              {onEdit ? (
-                <DropdownMenuItem
-                  data-task-menu="true"
-                  data-cy={buildDataCy("task-card-menu-edit")}
-                  onSelect={(event) => {
-                    event.stopPropagation()
-                    onEdit()
-                  }}
-                  className="group text-button-foreground rounded-xl py-3 px-4 text-left text-base hover:bg-button-hover-background hover:text-foreground focus:text-foreground"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <PencilLine className="size-4 text-current group-hover:text-foreground group-focus:text-foreground" />
-                    Edit Task
-                  </span>
-                </DropdownMenuItem>
-              ) : null}
-              {onDelete ? (
-                <DropdownMenuItem
-                  data-task-menu="true"
-                  data-cy={buildDataCy("task-card-menu-delete")}
-                  onSelect={(event) => {
-                    event.stopPropagation()
-                    onDelete()
-                  }}
-                  className="rounded-xl px-4 py-3 text-left text-base text-destructive hover:bg-destructive/20 hover:text-destructive focus:bg-destructive/30 focus:text-destructive"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <Trash2 className="text-destructive size-4" />
-                    Delete Task
-                  </span>
-                </DropdownMenuItem>
-              ) : null}
-              {/*
-              {onColorChange ? (
-                <>
-                  <DropdownMenuSeparator />
-                  <div
-                    data-task-menu="true"
-                    className="space-y-3 px-4 py-3 text-left text-sm"
-                    onPointerDown={(event) => event.stopPropagation()}
-                  >
-                    <div className="flex items-center justify-between text-[0.65rem] font-semibold uppercase tracking-wide text-button-foreground">
-                      <span className="inline-flex items-center gap-1">
-                        {colorMode === "presets" ? (
-                          <Palette className="size-3.5" />
-                        ) : (
-                          <Wand2 className="size-3.5" />
-                        )}
-                        {colorMode === "presets" ? "Quick Colors" : "Custom Color"}
-                      </span>
-                      <button
-                        type="button"
-                        className="rounded-full border border-transparent px-3 py-1 text-[0.7rem] font-semibold text-button-foreground transition hover:border-primary/30 hover:bg-primary/5"
-                        onClick={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                          setColorMode((mode) => (mode === "presets" ? "custom" : "presets"))
-                        }}
-                      >
-                        {colorMode === "presets" ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Wand2 className="size-3.5" />
-                            Custom
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1">
-                            <Palette className="size-3.5" />
-                            Palette
-                          </span>
-                        )}
-                      </button>
-                    </div>
-                    {colorMode === "presets" ? (
-                      <div className="flex flex-wrap gap-2">
-                        {QUICK_COLOR_OPTIONS.map((option) => {
-                          const normalizedOption =
-                            normalizeHexString(option.value) ?? DEFAULT_TASK_CARD_COLOR
-                          const isSelected = normalizedOption === normalizedCardColor
-                          return (
-                            <button
-                              key={option.value}
-                              type="button"
-                              data-task-menu="true"
-                              aria-pressed={isSelected}
-                              className={cn(
-                                "flex size-10 items-center justify-center rounded-2xl border-2 text-[0.65rem] font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0",
-                                isSelected
-                                  ? "border-primary"
-                                  : "border-primary/20 hover:border-primary"
-                              )}
-                              style={{ backgroundColor: option.value }}
-                        onMouseEnter={() => {
-                          setPreviewColor(normalizedOption)
-                        }}
-                        onMouseLeave={() => {
-                          setPreviewColor((current) =>
-                            current === normalizedOption ? null : current
-                          )
-                        }}
-                        onFocus={() => {
-                          setPreviewColor(normalizedOption)
-                        }}
-                        onBlur={() => {
-                          setPreviewColor((current) =>
-                            current === normalizedOption ? null : current
-                          )
-                        }}
-                        onClick={(event) => {
-                          event.preventDefault()
-                          event.stopPropagation()
-                          handlePresetColorSelect(normalizedOption)
-                        }}
-                              aria-label={`Select ${option.label}`}
-                            />
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      <div className="space-y-2 rounded-2xl border border-primary/20 bg-white/60 p-3">
-                        <div className="rounded-2xl bg-white p-2">
-                          <HexColorPicker
-                            color={customColor}
-                            onChange={(color) => {
-                              const normalizedValue =
-                                normalizeHexString(color) ?? DEFAULT_TASK_CARD_COLOR
-                              setCustomColor(normalizedValue)
-                              commitColorChange(normalizedValue)
-                            }}
-                            style={{ width: "100%", height: "160px" }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </>
-              ) : null}
-              */}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            menuButtonClassName={menuButtonClassName}
+            menuButtonStyle={menuButtonStyle}
+            menuIconClassName={menuIconClassName}
+            menuIconStyle={menuIconStyle}
+            title={title}
+            buildDataCy={buildDataCy}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            onTriggerMouseEnter={() => setMenuTriggerHover(true)}
+            onTriggerMouseLeave={() => setMenuTriggerHover(false)}
+            colorControls={
+              onColorChange
+                ? {
+                    colorMode,
+                    setColorMode,
+                    normalizedCardColor,
+                    customColor,
+                    setCustomColor,
+                    previewColor,
+                    setPreviewColor,
+                    handlePresetColorSelect,
+                    commitColorChange,
+                  }
+                : undefined
+            }
+          />
         ) : null}
       </div>
     </article>

@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Check, PlusCircle, Search, X } from "lucide-react"
+import { Check, PlusCircle, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { SearchField } from "@/components/ui/search-field"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -364,17 +365,14 @@ export default function ProjectsPage() {
       style={{ minHeight: containerMinHeight }}
     >
       <div className="flex flex-col gap-4 mt-10 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative ml-5 w-[clamp(20rem,30vw,40rem)] max-w-xl sm:max-w-lg">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-primary/60" />
-          <input
-            type="text"
-            placeholder="Search"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-white rounded-full border-2 border-primary/40 bg-background py-3 pl-12 pr-4 text-foreground placeholder:text-primary/60 transition-colors focus:border-primary focus:outline-none"
-            data-cy="project-search-input"
-          />
-        </div>
+        <SearchField
+          wrapperClassName="ml-5 w-[clamp(20rem,30vw,40rem)] max-w-xl sm:max-w-lg"
+          placeholder="Search"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="bg-background transition-colors"
+          data-cy="project-search-input"
+        />
         <div className="flex items-center justify-end gap-3 sm:w-auto">
           <div className="relative flex items-center gap-2 text-sm font-medium text-primary select-none">
             <span>Per page</span>
@@ -638,17 +636,14 @@ export default function ProjectsPage() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
                   Selected owners
                 </p>
-                <div className="relative w-full max-w-xs">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary/50" />
-                  <input
-                    type="text"
-                    value={selectedOwnersSearch}
-                    data-cy="project-owner-selected-search-input"
-                    onChange={(event) => setSelectedOwnersSearch(event.target.value)}
-                    placeholder="Search username"
-                    className="w-full rounded-full border-2 border-primary/25 bg-white py-2 pl-9 pr-3 text-sm font-semibold text-[#2F2766] placeholder:text-primary/40 focus:border-primary focus:outline-none"
-                  />
-                </div>
+                <SearchField
+                  wrapperClassName="w-full max-w-xs"
+                  value={selectedOwnersSearch}
+                  data-cy="project-owner-selected-search-input"
+                  onChange={(event) => setSelectedOwnersSearch(event.target.value)}
+                  placeholder="Search username"
+                  className="py-2 pl-9 pr-3 text-sm font-semibold text-[#2F2766] placeholder:text-primary/40"
+                />
               </div>
               {selectedOwners.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-primary/30 bg-white px-4 py-5 text-sm text-muted-foreground">
@@ -684,17 +679,14 @@ export default function ProjectsPage() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
                   All members
                 </p>
-                <div className="relative w-full max-w-xs">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-primary/50" />
-                  <input
-                    type="text"
-                    value={ownerSearch}
-                    data-cy="project-owner-search-input"
-                    onChange={(event) => setOwnerSearch(event.target.value)}
-                    placeholder="Search username"
-                    className="w-full rounded-full border-2 border-primary/25 bg-white py-2 pl-9 pr-3 text-sm font-semibold text-[#2F2766] placeholder:text-primary/40 focus:border-primary focus:outline-none"
-                  />
-                </div>
+                <SearchField
+                  wrapperClassName="w-full max-w-xs"
+                  value={ownerSearch}
+                  data-cy="project-owner-search-input"
+                  onChange={(event) => setOwnerSearch(event.target.value)}
+                  placeholder="Search username"
+                  className="py-2 pl-9 pr-3 text-sm font-semibold text-[#2F2766] placeholder:text-primary/40"
+                />
               </div>
               <div className="asap-scroll [scrollbar-gutter:stable] max-h-40 space-y-3 overflow-y-auto pr-1">
                 {ownersLoading ? (

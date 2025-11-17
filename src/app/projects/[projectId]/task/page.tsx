@@ -3,28 +3,10 @@
 import * as React from "react"
 import { useRef, useEffect, useCallback, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ChevronDown, PlusCircle, Search, Check, Filter, X } from "lucide-react"
+import { ArrowLeft, PlusCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { SearchField } from "@/components/ui/search-field"
 import {
   TASK_STATUS_LABEL,
   TASK_STATUS_STYLE,
@@ -44,6 +26,12 @@ import {
 } from "@/utils/projects/prefetch"
 import { PROJECT_ROLE } from "@/types/projects"
 
+import TaskDeleteDialog from "./components/TaskDeleteDialog"
+import TaskFilterMenu from "./components/TaskFilterMenu"
+import { TaskScope } from "./types"
+import TaskPageSizeSelector from "./components/TaskPageSizeSelector"
+import TaskPaginationControls from "./components/TaskPaginationControls"
+
 type ProjectTaskPageProps = {
   params: Promise<{
     projectId: string
@@ -51,12 +39,6 @@ type ProjectTaskPageProps = {
 }
 
 const BASE_PAGE_SIZE_OPTIONS = [3, 9, 18, 36, 64, 96, 136, 172]
-
-const normalizeDataCyValue = (value: string) =>
-  value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
 
 type RemoteDepartment = {
   id: string
@@ -66,8 +48,6 @@ type RemoteDepartment = {
   order: number
   head: string | null
 }
-
-type TaskScope = "all" | "assignee" | "assigner"
 
 const normalizeDepartments = (departments: ProjectDepartmentRecord[]): RemoteDepartment[] =>
   departments.map((dept) => ({
@@ -88,7 +68,6 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const [search, setSearch] = useState("")
   const [activeDepartmentFilters, setActiveDepartmentFilters] = useState<string[]>([])
   const [taskScope, setTaskScope] = useState<TaskScope>("all")
-  const [currentPage, setCurrentPage] = useState(1)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [pendingDeleteTask, setPendingDeleteTask] = useState<TaskRecord | null>(null)
   const [deletingTask, setDeletingTask] = useState(false)
@@ -96,10 +75,6 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const [pageSize, setPageSize] = useState(
     BASE_PAGE_SIZE_OPTIONS[1] ?? BASE_PAGE_SIZE_OPTIONS[0]
   )
-  const [pageInput, setPageInput] = useState("1")
-  const [pageHintVisible, setPageHintVisible] = useState(false)
-  const paginationControlsRef = useRef<HTMLDivElement | null>(null)
-  const pageHintTimeoutRef = useRef<number | null>(null)
   const colorRollbackRef = useRef<Record<string, { cardColor: string; cardTextColor: string }>>({})
   const latestColorRequestRef = useRef<Record<string, string>>({})
   const pendingColorOverridesRef = useRef<Record<string, { cardColor: string; cardTextColor: string }>>({})
@@ -128,7 +103,6 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       }
     })
   }, [])
-  const [pageSizeMenuOpen, setPageSizeMenuOpen] = useState(false)
   const [tasksLoading, setTasksLoading] = useState(true)
   const [tasksError, setTasksError] = useState<string | null>(null)
   const [remoteDepartments, setRemoteDepartments] = useState<RemoteDepartment[]>([])
@@ -158,6 +132,13 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const departmentByName = useMemo(() => {
     return remoteDepartments.reduce<Record<string, RemoteDepartment>>((acc, dept) => {
       acc[dept.name] = dept
+      return acc
+    }, {})
+  }, [remoteDepartments])
+
+  const departmentColorMap = useMemo(() => {
+    return remoteDepartments.reduce<Record<string, string>>((acc, dept) => {
+      acc[dept.name] = dept.color
       return acc
     }, {})
   }, [remoteDepartments])
@@ -364,11 +345,6 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   }, [page, totalPages])
 
   useEffect(() => {
-    setPageInput(String(page))
-    setCurrentPage(page)
-  }, [page])
-
-  useEffect(() => {
     setActiveDepartmentFilters((prev) => {
       if (prev.length === 0) {
         return prev
@@ -555,86 +531,8 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     return filteredTasks.slice(startIndex, startIndex + pageSize)
   }, [filteredTasks, page, pageSize])
 
-  const clearPageHintTimeout = useCallback(() => {
-    if (pageHintTimeoutRef.current) {
-      window.clearTimeout(pageHintTimeoutRef.current)
-      pageHintTimeoutRef.current = null
-    }
-  }, [])
-
-  const hidePageHint = useCallback(() => {
-    clearPageHintTimeout()
-    setPageHintVisible(false)
-  }, [clearPageHintTimeout])
-
-  const triggerPageHint = useCallback(() => {
-    if (typeof window === "undefined") {
-      return
-    }
-    setPageHintVisible(true)
-    clearPageHintTimeout()
-    pageHintTimeoutRef.current = window.setTimeout(() => {
-      setPageHintVisible(false)
-      pageHintTimeoutRef.current = null
-    }, 2000)
-  }, [clearPageHintTimeout])
-
-  const commitPageInput = useCallback(() => {
-    if (pageInput.trim().length === 0) {
-      setPageInput(String(page))
-      return
-    }
-    const parsed = Number(pageInput)
-    if (!Number.isFinite(parsed) || parsed < 1 || parsed > totalPages) {
-      setPageInput(String(page))
-      return
-    }
-    setPage(parsed)
-  }, [page, pageInput, totalPages])
-  
-    useEffect(() => {
-      if (!pageHintVisible) {
-        return
-      }
-  
-      const handlePointerDown = (event: Event) => {
-        if (!paginationControlsRef.current?.contains(event.target as Node)) {
-          hidePageHint()
-        } else {
-          triggerPageHint()
-        }
-      }
-  
-      const handleFocusIn = (event: FocusEvent) => {
-        if (!paginationControlsRef.current?.contains(event.target as Node)) {
-          hidePageHint()
-        } else {
-          triggerPageHint()
-        }
-      }
-  
-      const pointerEventName =
-        typeof window !== "undefined" && "PointerEvent" in window ? "pointerdown" : "mousedown"
-  
-      document.addEventListener(pointerEventName, handlePointerDown as EventListener)
-      document.addEventListener("focusin", handleFocusIn)
-  
-      return () => {
-        document.removeEventListener(pointerEventName, handlePointerDown as EventListener)
-        document.removeEventListener("focusin", handleFocusIn)
-      }
-    }, [hidePageHint, pageHintVisible, triggerPageHint])
-  
-    useEffect(() => {
-      return () => {
-        clearPageHintTimeout()
-      }
-    }, [clearPageHintTimeout])
-
-
   React.useEffect(() => {
     setPage(1)
-    setPageInput("1")
   }, [activeDepartmentFilters, taskScope, search])
 
   const handleToggleDepartmentFilter = useCallback((departmentName: string, enabled: boolean) => {
@@ -748,8 +646,6 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     router.push("/projects")
   }, [router])
 
-  const pageHint = totalPages <= 1 ? "Only page 1" : `Pages 1–${totalPages}`
-
   const containerMinHeight = "calc(100dvh - 8rem)"
   const cardListMaxHeight = "calc(100dvh - 22rem)"
 
@@ -792,229 +688,44 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
             style={{ minHeight: containerMinHeight }} >
           <header className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
-              <div className="relative w-full sm:max-w-xs">
-                <Search className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-primary/60" />
-                <input
-                  type="text"
-                  placeholder="Search"
-                  value={search}
-                  data-cy="project-task-search-input"
-                  onChange={(event) => setSearch(event.target.value)}
-                  className="w-full rounded-full border-2 border-primary/40 bg-white py-3 pl-12 pr-4 text-sm text-foreground placeholder:text-primary/60 focus:border-primary focus:outline-none"
-                />
-              </div>
-              <DropdownMenu open={departmentFilterMenuOpen} onOpenChange={setDepartmentFilterMenuOpen}>
-                <DropdownMenuTrigger asChild>
-                    <button
-                      type="button"
-                      data-cy="project-task-department-filter-button"
-                      className={cn(
-                        "inline-flex w-full items-center justify-between rounded-full border-2 px-5 py-2 text-base font-medium focus:outline-none transition sm:w-auto",
-                        filterActive
-                          ? "border-primary bg-primary/10 text-[#2F2766]"
-                          : "border-primary/30 bg-white text-primary hover:border-primary hover:bg-primary/5"
-                      )}
-                      title={filterSummaryTitle}
-                    >
-                      <span className="flex items-center gap-3" data-cy="project-task-filter-indicator">
-                        <Filter className="size-4 text-primary" aria-hidden="true" />
-                        <span className="flex flex-col text-left leading-tight">
-                          <span
-                            className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60"
-                            data-cy="project-task-filter-label"
-                          >
-                            Filters
-                          </span>
-                          <span
-                            className="text-sm font-semibold text-[#2F2766] max-w-[12rem] truncate"
-                            title={filterSummaryText}
-                            data-cy="project-task-filter-summary"
-                          >
-                            {filterSummaryText}
-                          </span>
-                        </span>
-                      </span>
-                      <span className="ml-4 inline-flex items-center gap-2">
-                        {filterBadgeCount ? (
-                          <span
-                            className="inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded-full bg-primary/90 px-1 text-xs font-bold text-primary-foreground"
-                            data-cy="project-task-filter-badge"
-                          >
-                            {filterBadgeCount}
-                          </span>
-                        ) : null}
-                        <ChevronDown className="size-4 text-primary" aria-hidden="true" />
-                      </span>
-                    </button>
-                </DropdownMenuTrigger>
-
-                <DropdownMenuContent
-                  align="start"
-                  className="w-60 rounded-3xl border border-primary/40 bg-white px-3 py-2 text-sm font-semibold text-primary shadow-[0_10px_30px_rgba(72,68,110,0.2)]"
-                >
-                  <div className="flex items-center justify-between px-1 pb-2 pt-1">
-                    <span
-                      className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60"
-                      data-cy="project-task-filter-header"
-                    >
-                      Filters
-                    </span>
-                    <button
-                      type="button"
-                      data-cy="project-task-filter-close-button"
-                      className="rounded-full p-1 text-primary/60 transition hover:bg-primary/10 hover:text-primary focus:outline-none"
-                      onClick={() => setDepartmentFilterMenuOpen(false)}
-                      aria-label="Close filters"
-                    >
-                      <X className="size-4" />
-                    </button>
-                  </div>
-                  <DropdownMenuSeparator className="my-1 bg-primary/15" />
-                  <div className="asap-scroll max-h-[18rem] overflow-y-auto">
-                    {departmentOptions.map((dept) => {
-                      const slug = normalizeDataCyValue(dept)
-                      return (
-                        <DropdownMenuCheckboxItem
-                          key={dept}
-                          checked={activeDepartmentFilters.includes(dept)}
-                          onCheckedChange={(checked) =>
-                            handleToggleDepartmentFilter(dept, Boolean(checked))
-                          }
-                          onSelect={(event) => event.preventDefault()}
-                          className="rounded-2xl px-3 py-2 pr-10 text-foreground focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
-                          data-cy={`project-task-filter-department-${slug}`}
-                        >
-                          <span className="inline-flex items-center gap-2">
-                            <span
-                              className="size-3 rounded-full border border-black/10"
-                              style={{
-                                backgroundColor: departmentByName[dept]?.color ?? "#D9D6FF",
-                              }}
-                            />
-                            <span className="block max-w-[10rem] truncate" data-cy={`project-task-filter-department-label-${slug}`}>
-                              {dept}
-                            </span>
-                          </span>
-                        </DropdownMenuCheckboxItem>
-                      )
-                    })}
-                    {departmentOptions.length === 0 ? (
-                    <div
-                      className="px-2 py-3 text-xs font-semibold uppercase tracking-wide text-primary/60"
-                      data-cy="project-task-no-departments"
-                    >
-                      No departments yet
-                    </div>
-                  ) : null}
-                  </div>
-                  <DropdownMenuSeparator className="my-2 bg-primary/20" />
-                    <DropdownMenuLabel
-                      className="px-3 pt-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60"
-                      data-cy="project-task-scope-label"
-                    >
-                      Task scope
-                    </DropdownMenuLabel>
-                  <DropdownMenuRadioGroup
-                    value={taskScope}
-                    onValueChange={(value) => handleTaskScopeChange(value as TaskScope)}
-                  >
-                    <DropdownMenuRadioItem
-                      value="all"
-                      className="rounded-2xl px-3 py-2 pr-10 focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
-                      data-cy="project-task-scope-all"
-                    >
-                      All tasks
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem
-                      value="assignee"
-                      disabled={isTaskScopeSelectionDisabled}
-                      className="rounded-2xl px-3 py-2 pr-10 focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
-                      data-cy="project-task-scope-my-tasks"
-                    >
-                      My Tasks (Assignee)
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem
-                      value="assigner"
-                      disabled={isTaskScopeSelectionDisabled}
-                      className="rounded-2xl px-3 py-2 pr-10 focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
-                      data-cy="project-task-scope-assigned-tasks"
-                    >
-                      Assigned Tasks (Assigner)
-                    </DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                  <DropdownMenuSeparator className="my-2 bg-primary/20" />
-                  <DropdownMenuItem
-                    onSelect={(event) => {
-                      event.preventDefault()
-                      handleResetFilters()
-                    }}
-                    className="rounded-2xl px-3 py-2 text-primary/70 focus:bg-primary/10 focus:text-primary"
-                    data-cy="project-task-reset-filters"
-                  >
-                    Reset filters
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-              </div>
+              <SearchField
+                wrapperClassName="w-full sm:max-w-xs"
+                placeholder="Search"
+                value={search}
+                data-cy="project-task-search-input"
+                onChange={(event) => setSearch(event.target.value)}
+              />
+              <TaskFilterMenu
+                open={departmentFilterMenuOpen}
+                onOpenChange={setDepartmentFilterMenuOpen}
+                onClose={() => setDepartmentFilterMenuOpen(false)}
+                filterActive={filterActive}
+                filterSummaryText={filterSummaryText}
+                filterSummaryTitle={filterSummaryTitle}
+                filterBadgeCount={filterBadgeCount}
+                departmentOptions={departmentOptions}
+                departmentColorMap={departmentColorMap}
+                activeDepartmentFilters={activeDepartmentFilters}
+                onToggleDepartmentFilter={handleToggleDepartmentFilter}
+                taskScope={taskScope}
+                onTaskScopeChange={handleTaskScopeChange}
+                isScopeSelectionDisabled={isTaskScopeSelectionDisabled}
+                onResetFilters={handleResetFilters}
+              />
+            </div>
             <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4">
-              <div className="relative flex items-center gap-2 select-none text-sm font-medium text-primary flex-nowrap">
-                <span className="whitespace-nowrap" data-cy="project-task-pages-label">
-                  Per page
-                </span>
-                <DropdownMenu onOpenChange={setPageSizeMenuOpen}>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      data-cy="project-task-page-size-button"
-                      variant="outline"
-                      className={
-                        pageSizeMenuOpen
-                          ? "inline-flex h-12 select-none items-center rounded-full border-2 border-primary bg-primary/10 px-4 text-sm font-semibold text-primary"
-                          : "inline-flex h-12 select-none items-center rounded-full border-2 border-primary/40 bg-white px-4 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/10"
-                      }
-                    >
-                      {pageSize}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent
-                    align="end"
-                    className="w-32 rounded-2xl border border-primary/30 bg-background/95 p-2 text-sm text-primary shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
-                  >
-                    {pageSizeOptions.map((sizeOption) => {
-                      const isActive = sizeOption === pageSize
-                      return (
-                        <DropdownMenuItem
-                          key={sizeOption}
-                          className={cn(
-                            "flex items-center justify-between rounded-xl px-3 py-2 font-semibold transition hover:bg-primary/10 focus:bg-primary/10 focus:text-primary",
-                            isActive && "bg-primary/10 text-primary"
-                          )}
-                          onSelect={() => {
-                            if (isActive) {
-                              return
-                            }
-                            setPageSize(sizeOption)
-                            setPage(1)
-                          }}
-                          data-cy={`project-task-page-size-option-${sizeOption}`}
-                        >
-                          <span data-cy={`project-task-page-size-label-${sizeOption}`}>{sizeOption}</span>
-                          {isActive ? <Check className="size-4" /> : null}
-                        </DropdownMenuItem>
-                      )
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <div
-                  className={cn(
-                    "pointer-events-none absolute right-[-8rem] top-3/2 z-[500] max-w-[14rem] -translate-y-1/2 rounded-2xl border border-primary/30 bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-primary shadow-lg transition duration-200 ease-out",
-                    "whitespace-nowrap",
-                    pageSizeMenuOpen && filteredTasks.length > 0 ? "opacity-100" : "opacity-0"
-                  )}
-                >
-                  {filteredTasks.length > 0 ? `${filteredTasks.length} tasks` : ""}
-                </div>
-              </div>
+              <TaskPageSizeSelector
+                pageSize={pageSize}
+                pageSizeOptions={pageSizeOptions}
+                totalCount={filteredTasks.length}
+                onPageSizeChange={(sizeOption) => {
+                  if (sizeOption === pageSize) {
+                    return
+                  }
+                  setPageSize(sizeOption)
+                  setPage(1)
+                }}
+              />
               {canManageTasks && (
                 <Button
                   type="button"
@@ -1111,127 +822,23 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
           </div>
 
           {!tasksLoading && filteredTasks.length > 0 ? (
-                      <div
-                          ref={paginationControlsRef}
-                          className="mt-auto mb-10 flex select-none items-center justify-center gap-4 pt-4"
-                          onFocus={triggerPageHint}
-                          onBlur={(event) => {
-                            const nextTarget = event.relatedTarget as HTMLElement | null
-                            if (!nextTarget || !paginationControlsRef.current?.contains(nextTarget)) {
-                              hidePageHint()
-                            }
-                          }}
-                        >
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    data-cy="project-task-pagination-prev"
-                            onClick={() => {
-                              triggerPageHint()
-                              setPage((prev) => Math.max(1, prev - 1))
-                            }}
-                            disabled={page === 1}
-                            className={cn(
-                              "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
-                              page === 1 && "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
-                            )}
-                          >
-                            &#9664;
-                          </Button>
-                          <div className="relative flex flex-col items-center gap-1">
-                            <span
-                              aria-hidden="true"
-                              className={cn(
-                                "absolute -top-8 whitespace-nowrap rounded-full border border-primary/30 bg-white px-3 py-1 text-xs font-medium text-primary shadow-sm transition-all duration-200 ease-out",
-                                pageHintVisible
-                                  ? "pointer-events-auto opacity-100 translate-y-0 scale-100"
-                                  : "pointer-events-none opacity-0 -translate-y-1 scale-95"
-                              )}
-                            >
-                              {pageHint}
-                            </span>
-                            <span id="project-page-hint" className="sr-only">
-                              {pageHint}
-                            </span>
-                    <input
-                      id="project-page-input"
-                      type="text"
-                      data-cy="project-task-pagination-input"
-                              inputMode="numeric"
-                              value={pageInput}
-                              onFocus={triggerPageHint}
-                              onBlur={() => {
-                                commitPageInput()
-                                hidePageHint()
-                              }}
-                              onChange={(event) => {
-                                const numericValue = event.target.value.replace(/[^0-9]/g, "")
-                                setPageInput(numericValue)
-                                triggerPageHint()
-                              }}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter") {
-                                  commitPageInput()
-                                  triggerPageHint()
-                                }
-                              }}
-                              className="w-16 select-text rounded-full border-2 border-primary/40 bg-white px-3 py-2 text-center text-base font-semibold text-primary shadow-sm focus:border-primary focus:outline-none"
-                              aria-describedby="project-page-hint"
-                            />
-                          </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    data-cy="project-task-pagination-next"
-                            onClick={() => {
-                              triggerPageHint()
-                              setPage((prev) => Math.min(totalPages, prev + 1))
-                            }}
-                            disabled={page === totalPages}
-                            className={cn(
-                              "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
-                              page === totalPages &&
-                                "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
-                            )}
-                          >
-                            &#9654;
-                          </Button>
-                        </div>
-                      ):null}
+            <TaskPaginationControls
+              page={page}
+              totalPages={totalPages}
+              onPageChange={(nextPage) => setPage(nextPage)}
+            />
+          ) : null}
         </div>
         </div>
 
-        <AlertDialog open={deleteDialogOpen} onOpenChange={handleDialogOpenChange}>
-          <AlertDialogContent className="bg-background border-2 border-primary/30 rounded-[2rem] px-6 py-8 text-center shadow-xl max-w-md mx-auto">
-            <AlertDialogTitle className="text-2xl font-semibold text-foreground">
-              Are you sure?<br />
-              <span className="mt-2 block">
-                You want to delete this task? <br />
-                <span className="mt-5 block">
-                  "{pendingDeleteTask?.title ?? ""}"
-                </span>
-              </span>
-            </AlertDialogTitle>
-            <AlertDialogFooter className="mt-6 flex justify-center gap-20 w-auto mx-auto">
-              <AlertDialogCancel
-                className="rounded-full bg-secondary border-none px-9 py-5 text-lg font-semibold text-secondary-foreground shadow-none transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                onClick={handleCancelDelete}
-                disabled={deletingTask}
-                data-cy="project-task-delete-cancel"
-              >
-                No
-              </AlertDialogCancel>
-              <AlertDialogAction
-                className="rounded-full bg-primary px-9 py-5 text-lg font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                onClick={handleConfirmDelete}
-                disabled={deletingTask}
-                data-cy="project-task-delete-confirm"
-              >
-                {deletingTask ? "Deleting…" : "Yes"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <TaskDeleteDialog
+          open={deleteDialogOpen}
+          onOpenChange={handleDialogOpenChange}
+          taskTitle={pendingDeleteTask?.title}
+          deleting={deletingTask}
+          onConfirm={handleConfirmDelete}
+          onCancel={handleCancelDelete}
+        />
       </div>
     </div>
   )

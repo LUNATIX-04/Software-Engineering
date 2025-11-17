@@ -13,7 +13,6 @@ import {
   GripVertical,
   Palette,
   Plus,
-  Search,
   Wand2,
   X,
 } from "lucide-react"
@@ -38,6 +37,7 @@ import {
 import { Calendar } from "../ui/calendar"
 import { HexColorPicker } from "react-colorful"
 import { DEFAULT_TASK_CARD_COLOR, QUICK_COLOR_OPTIONS } from "@/constants/task-colors"
+import { SearchField } from "@/components/ui/search-field"
 import { ScrollArea, ScrollBar, type ScrollAreaViewportElement } from "@/components/ui/scroll-area"
 import type { DateRange } from "react-day-picker"
 
@@ -51,6 +51,464 @@ type TaskFormValues = {
   cardColor: string
 }
 
+type TaskColorMenuProps = {
+  cardColor: string
+  colorMenuOpen: boolean
+  colorMode: "presets" | "custom"
+  quickColorPreview: string | null
+  setColorMenuOpen: React.Dispatch<React.SetStateAction<boolean>>
+  setColorMode: React.Dispatch<React.SetStateAction<"presets" | "custom">>
+  setCardColor: (color: string) => void
+  setQuickColorPreview: (value: string | null) => void
+}
+
+function TaskColorMenu({
+  cardColor,
+  colorMenuOpen,
+  colorMode,
+  quickColorPreview,
+  setColorMenuOpen,
+  setColorMode,
+  setCardColor,
+  setQuickColorPreview,
+}: TaskColorMenuProps) {
+  const selectionColor = quickColorPreview ?? cardColor ?? DEFAULT_TASK_CARD_COLOR
+
+  const handleColorSelect = React.useCallback(
+    (value: string) => {
+      setCardColor(value)
+      setQuickColorPreview(null)
+      setColorMenuOpen(false)
+    },
+    [setCardColor, setColorMenuOpen, setQuickColorPreview]
+  )
+
+  const handleCustomColorChange = React.useCallback(
+    (value: string) => {
+      const normalized = sanitizeHexColor(value)
+      setCardColor(normalized)
+      setQuickColorPreview(normalized)
+    },
+    [setCardColor, setQuickColorPreview]
+  )
+
+  return (
+    <DropdownMenu
+      open={colorMenuOpen}
+      onOpenChange={(open) => {
+        setColorMenuOpen(open)
+        if (!open) {
+          setColorMode("presets")
+        }
+      }}
+    >
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center justify-between gap-3 rounded-[1.5rem] border border-primary/30 bg-white/90 px-4 py-2 text-sm font-semibold text-primary shadow-[0_6px_0_rgba(144,122,214,0.15)] transition hover:border-primary hover:bg-primary/10 focus-visible:outline-none"
+        >
+          <span className="inline-flex items-center gap-2 select-none">
+            <Palette className="size-4" />
+            Select Color
+          </span>
+          <span
+            className="size-6 rounded-full border-2 border-primary/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]"
+            style={{ backgroundColor: selectionColor }}
+          />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        sideOffset={6}
+        className="w-64 max-h-[24rem] overflow-y-auto rounded-3xl border border-primary/30 bg-white p-4 text-sm font-semibold text-primary shadow-[0_16px_30px_rgba(72,68,110,0.2)]"
+      >
+        <div className="mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-primary/70">
+          <span className="inline-flex items-center gap-1">
+            {colorMode === "presets" ? <Palette className="size-3.5" /> : <Wand2 className="size-3.5" />}
+            {colorMode === "presets" ? "Quick Colors" : "Custom Color"}
+          </span>
+          <button
+            type="button"
+            className="rounded-full border border-transparent px-3 py-1 text-[0.7rem] font-semibold text-primary transition hover:border-primary/30 hover:bg-primary/5"
+            onClick={() => setColorMode((mode) => (mode === "presets" ? "custom" : "presets"))}
+          >
+            {colorMode === "presets" ? (
+              <span className="inline-flex items-center gap-1">
+                <Wand2 className="size-3.5" />
+                Custom
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                <Palette className="size-3.5" />
+                Palette
+              </span>
+            )}
+          </button>
+        </div>
+        {colorMode === "presets" ? (
+          <div className="flex flex-wrap gap-2">
+            {QUICK_COLOR_OPTIONS.map((option) => {
+              const normalizedValue = sanitizeHexColor(option.value)
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  className="flex size-10 items-center justify-center rounded-2xl border-2 border-primary/20 text-[0.65rem] font-semibold transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0"
+                  style={{ backgroundColor: option.value }}
+                  onMouseEnter={() => setQuickColorPreview(normalizedValue)}
+                  onMouseLeave={() =>
+                    setQuickColorPreview((current) => (current === normalizedValue ? null : current))
+                  }
+                  onFocus={() => setQuickColorPreview(normalizedValue)}
+                  onBlur={() =>
+                    setQuickColorPreview((current) => (current === normalizedValue ? null : current))
+                  }
+                  onClick={() => handleColorSelect(normalizedValue)}
+                  aria-label={`Select ${option.label}`}
+                />
+              )
+            })}
+          </div>
+        ) : (
+          <div className="max-h-[18rem] space-y-2 overflow-auto rounded-2xl border border-primary/20 bg-white/60 p-3">
+            <div className="rounded-2xl bg-white p-2">
+              <HexColorPicker
+                color={selectionColor}
+                onChange={handleCustomColorChange}
+                style={{ width: "100%", height: "160px" }}
+              />
+            </div>
+          </div>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+type TaskAssigneeSectionProps = {
+  assigneeLayout: DepartmentLayoutOption
+  assigneeIds: string[]
+  assigneeMetaLookup: Record<string, AssigneeMeta>
+  assigneeOptions: TaskAssigneeOption[]
+  assigneePickerOpen: boolean
+  setAssigneePickerOpen: React.Dispatch<React.SetStateAction<boolean>>
+  assigneeSearch: string
+  setAssigneeSearch: React.Dispatch<React.SetStateAction<string>>
+  assigneeDepartmentFilters: string[]
+  assigneeRoleFilters: string[]
+  priorityRoleFilterActive: boolean
+  availableDepartmentFilters: string[]
+  availableRoleFilters: string[]
+  filteredAssigneeOptions: AssigneeMeta[]
+  handleSelectAssignee: (memberId: string) => void
+  toggleDepartmentFilter: (name: string) => void
+  toggleRoleFilter: (role: string) => void
+  resetAssigneeFilters: () => void
+  handleRemoveAssignee: (memberId: string) => void
+  handleAssigneeDragStart: (event: React.DragEvent<HTMLSpanElement>, index: number) => void
+  handleAssigneeDragOver: (event: React.DragEvent<HTMLSpanElement>, index: number) => void
+  handleAssigneeDrop: (event: React.DragEvent<HTMLSpanElement>, index: number) => void
+  handleAssigneeDragEnd: () => void
+  draggingIndex: number | null
+  dragOverIndex: number | null
+  togglePriorityRoleFilter: () => void
+}
+
+function TaskAssigneeSection({
+  assigneeLayout,
+  assigneeIds,
+  assigneeMetaLookup,
+  assigneeOptions,
+  assigneePickerOpen,
+  setAssigneePickerOpen,
+  assigneeSearch,
+  setAssigneeSearch,
+  assigneeDepartmentFilters,
+  assigneeRoleFilters,
+  priorityRoleFilterActive,
+  availableDepartmentFilters,
+  availableRoleFilters,
+  filteredAssigneeOptions,
+  handleSelectAssignee,
+  toggleDepartmentFilter,
+  toggleRoleFilter,
+  resetAssigneeFilters,
+  handleRemoveAssignee,
+  handleAssigneeDragStart,
+  handleAssigneeDragOver,
+  handleAssigneeDrop,
+  handleAssigneeDragEnd,
+  draggingIndex,
+  dragOverIndex,
+  togglePriorityRoleFilter,
+}: TaskAssigneeSectionProps) {
+  const assigneeChipBaseClass =
+    "flex items-center gap-2 rounded-full border-2 font-semibold select-none cursor-grab active:cursor-grabbing transition-colors"
+  const assigneeChipStyles: Record<DepartmentLayoutOption, string> = {
+    compact: `${assigneeChipBaseClass} px-5 py-2 text-sm`,
+    fullWidth: `${assigneeChipBaseClass} h-14 w-full justify-between pl-12 pr-4 text-base`,
+  }
+  const assigneeChipClass = assigneeChipStyles[assigneeLayout]
+  const chipActionButtonClass =
+    "grid size-6 place-items-center rounded-full bg-white/30 text-current transition hover:bg-white/40 disabled:opacity-40 disabled:hover:bg-white/30"
+  const assigneeContainerClass =
+    assigneeLayout === "fullWidth" ? "mt-3 flex flex-col gap-3" : "mt-3 flex flex-wrap gap-3"
+
+  return (
+    <div className="space-y-4 text-current">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-lg font-semibold w-27 mt-3">Assigned To :</span>
+        </div>
+        <Popover
+          open={assigneePickerOpen && assigneeOptions.length > 0}
+          onOpenChange={(open) => {
+            if (assigneeOptions.length === 0) {
+              setAssigneePickerOpen(false)
+              return
+            }
+            setAssigneePickerOpen(open)
+          }}
+        >
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              disabled={assigneeOptions.length === 0}
+              className="group flex w-full max-w-sm select-none items-center justify-between rounded-full border-2 border-primary/40 bg-white px-6 py-3 text-base font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-white focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <span className="inline-flex items-center gap-2">
+                <Plus className="size-5" />
+                <span className="flex items-center gap-2">
+                  Add Member
+                  <span className="inline-flex min-w-[1.5rem] justify-center rounded-full border border-primary bg-white px-2 py-0.5 text-xs font-bold text-primary group-hover:border-white group-hover:bg-white group-hover:text-primary">
+                    {assigneeIds.length}
+                  </span>
+                </span>
+              </span>
+              <ChevronRight className="size-4" />
+            </button>
+          </PopoverTrigger>
+          {assigneeOptions.length > 0 ? (
+            <PopoverContent
+              align="start"
+              side="right"
+              sideOffset={8}
+              className="w-[22rem] rounded-3xl border border-primary/40 bg-white px-4 py-4 text-sm font-semibold text-[#2F2766] shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
+            >
+              <div className="space-y-4">
+                  <SearchField
+                    wrapperClassName="relative"
+                    value={assigneeSearch}
+                    onChange={(event) => setAssigneeSearch(event.target.value)}
+                    placeholder="Search member"
+                  />
+                {(availableDepartmentFilters.length > 0 || availableRoleFilters.length > 0) && (
+                  <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-primary/60">
+                    {availableDepartmentFilters.length > 0 ? (
+                      <div>
+                        <p className="text-[0.65rem]">Departments</p>
+                        <div className="mt-2 flex flex-wrap gap-2 normal-case text-[0.7rem] font-semibold">
+                          {availableDepartmentFilters.map((dept) => {
+                            const active = assigneeDepartmentFilters.includes(dept)
+                            return (
+                              <button
+                                type="button"
+                                key={dept}
+                                onClick={() => toggleDepartmentFilter(dept)}
+                                className={cn(
+                                  "rounded-full border px-3 py-1 text-xs transition focus:outline-none",
+                                  active
+                                    ? "border-primary bg-primary text-white"
+                                    : "border-primary/30 bg-white text-primary hover:border-primary"
+                                )}
+                              >
+                                <span className="block max-w-[7rem] truncate text-left">{dept}</span>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
+                    {availableRoleFilters.length > 0 ? (
+                      <div className="pt-1">
+                        <p className="text-[0.65rem]">Roles</p>
+                        <div className="mt-2 flex flex-wrap gap-2 normal-case text-[0.7rem] font-semibold">
+                          {availableRoleFilters.map((role) => {
+                            const active = assigneeRoleFilters.includes(role)
+                            return (
+                              <button
+                                type="button"
+                                key={role}
+                                onClick={() => toggleRoleFilter(role)}
+                                className={cn(
+                                  "rounded-full border px-3 py-1 text-xs transition focus:outline-none",
+                                  active
+                                    ? "border-primary bg-primary text-white"
+                                    : "border-primary/30 bg-white text-primary hover:border-primary"
+                                )}
+                              >
+                                {role}
+                              </button>
+                            )
+                          })}
+                          <button
+                            type="button"
+                            onClick={togglePriorityRoleFilter}
+                            className={cn(
+                              "rounded-full border px-3 py-1 text-xs transition focus:outline-none",
+                              priorityRoleFilterActive
+                                ? "border-primary bg-primary text-white"
+                                : "border-primary/30 bg-white text-primary hover:border-primary"
+                            )}
+                          >
+                            Header (Project Owner)
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                    {assigneeDepartmentFilters.length > 0 || assigneeRoleFilters.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={resetAssigneeFilters}
+                        className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary hover:text-primary/80"
+                      >
+                        Reset filters
+                      </button>
+                    ) : null}
+                  </div>
+                )}
+                <div className="asap-scroll [scrollbar-gutter:stable] max-h-64 space-y-1 overflow-y-auto overflow-x-scroll pr-1">
+                  {filteredAssigneeOptions.length > 0 ? (
+                    filteredAssigneeOptions.map((option) => {
+                      const isSelected = assigneeIds.includes(option.id)
+                      return (
+                        <button
+                          type="button"
+                          key={option.id}
+                          onClick={() =>
+                            isSelected ? handleRemoveAssignee(option.id) : handleSelectAssignee(option.id)
+                          }
+                          className={cn(
+                            "flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition",
+                            isSelected
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-transparent bg-white hover:border-primary/30 hover:bg-primary/5"
+                          )}
+                        >
+                          <span className="flex flex-col">
+                            <span className="flex items-center gap-2">
+                              <span
+                                className="size-3 rounded-full border border-black/10"
+                                style={{ backgroundColor: option.chipBackground }}
+                              />
+                              <span>{option.displayLabel}</span>
+                            </span>
+                            {option.departmentName ? (
+                              <span className="pl-5 text-xs font-medium text-primary/70">{option.departmentName}</span>
+                            ) : null}
+                          </span>
+                          {isSelected ? <Check className="size-4 shrink-0" /> : null}
+                        </button>
+                      )
+                    })
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-primary/30 px-4 py-6 text-center text-sm font-medium text-primary/60">
+                      {assigneeOptions.length === 0 ? "No members available" : "No members match your search"}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </PopoverContent>
+          ) : null}
+        </Popover>
+        {assigneeOptions.length === 0 ? (
+          <p className="text-sm font-medium text-destructive/80">No project members can be assigned yet.</p>
+        ) : null}
+      </div>
+      <div className={assigneeContainerClass}>
+        {assigneeIds.length > 0 ? (
+          assigneeIds.map((item, index) => {
+            const meta = assigneeMetaLookup[item]
+            const isDragOver = dragOverIndex === index
+            const isDragging = draggingIndex === index
+            const chipClassName = [
+              assigneeChipClass,
+              isDragOver ? "ring-2 ring-primary/40" : "",
+              isDragging ? "cursor-grabbing opacity-80" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")
+            const chipStyle = meta
+              ? {
+                  backgroundColor: meta.chipBackground,
+                  color: meta.chipTextColor,
+                  borderColor: meta.chipBorderColor,
+                }
+              : undefined
+
+            return (
+              <Tooltip key={item} delayDuration={TOOLTIP_DELAY_DURATION_MS}>
+                <TooltipTrigger asChild>
+                  <span
+                    className={chipClassName}
+                    style={chipStyle}
+                    draggable
+                    aria-grabbed={isDragging}
+                    onDragStart={(event) => handleAssigneeDragStart(event, index)}
+                    onDragOver={(event) => handleAssigneeDragOver(event, index)}
+                    onDrop={(event) => handleAssigneeDrop(event, index)}
+                    onDragEnd={handleAssigneeDragEnd}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <GripVertical
+                        className={cn("size-4 text-current", assigneeLayout === "fullWidth" ? "" : "opacity-70")}
+                        aria-hidden
+                      />
+                      <span className="max-w-[12rem] truncate">{meta?.displayLabel ?? "Unknown member"}</span>
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation()
+                          handleRemoveAssignee(item)
+                        }}
+                        className={`${chipActionButtonClass} rounded-full`}
+                        aria-label={`Remove ${meta?.displayLabel ?? "member"}`}
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent
+                  align="start"
+                  sideOffset={8}
+                  className="w-56 rounded-3xl border border-primary/40 bg-white/95 p-4 text-sm font-semibold text-[#2F2766] shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
+                  style={{ backgroundColor: "#ffffff", color: "#2F2766" }}
+                >
+                  <p className="text-base font-bold text-[#2F2766]">
+                    {meta?.username ?? meta?.label ?? "Unknown member"}
+                  </p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">
+                    {meta?.roleLabel ?? meta?.role ?? "Member"}
+                  </p>
+                  {meta?.departmentName ? (
+                    <p className="text-xs text-primary/70">Department: {meta.departmentName}</p>
+                  ) : null}
+                </TooltipContent>
+              </Tooltip>
+            )
+          })
+        ) : (
+          <div className="min-h-[4rem] rounded-3xl border-2 border-dashed border-primary/30 bg-white/60 px-5 py-4 text-sm font-medium text-primary/70">
+            No members assigned yet.
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 type TaskAssigneeOption = {
   id: string
   label: string
@@ -60,6 +518,15 @@ type TaskAssigneeOption = {
   departmentName: string | null
   departmentColor: string | null
   departmentTextColor: string | null
+}
+
+type AssigneeMeta = TaskAssigneeOption & {
+  roleLabel: string | null
+  displayLabel: string
+  searchText: string
+  chipBackground: string
+  chipTextColor: string
+  chipBorderColor: string
 }
 
 type TaskFormProps = {
@@ -770,20 +1237,6 @@ export function TaskForm({
     draggedAssigneeIndexRef.current = null
   }
 
-  const assigneeChipBaseClass =
-    "flex items-center gap-2 rounded-full border-2 font-semibold select-none cursor-grab active:cursor-grabbing transition-colors"
-  const assigneeChipStyles: Record<DepartmentLayoutOption, string> = {
-    compact: `${assigneeChipBaseClass} px-5 py-2 text-sm`,
-    fullWidth: `${assigneeChipBaseClass} h-14 w-full justify-between pl-12 pr-4 text-base`,
-  }
-  const assigneeChipClass = assigneeChipStyles[assigneeLayout]
-  const chipActionButtonClass =
-    "grid size-6 place-items-center rounded-full bg-white/30 text-current transition hover:bg-white/40 disabled:opacity-40 disabled:hover:bg-white/30"
-  const assigneeContainerClass =
-    assigneeLayout === "fullWidth"
-      ? "mt-3 flex flex-col gap-3"
-      : "mt-3 flex flex-wrap gap-3"
-
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     const normalizedAssignees = assigneeIds.filter(
@@ -830,114 +1283,17 @@ export function TaskForm({
       >
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-3xl font-bold text-current">{heading}</h1>
-          <DropdownMenu
-            open={colorMenuOpen}
-            onOpenChange={(open) => {
-              setColorMenuOpen(open)
-              if (!open) {
-                setColorMode("presets")
-              }
-            }}
-          >
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className="inline-flex items-center justify-between gap-3 rounded-[1.5rem] border border-primary/30 bg-white/90 px-4 py-2 text-sm font-semibold text-primary shadow-[0_6px_0_rgba(144,122,214,0.15)] transition hover:border-primary hover:bg-primary/10 focus-visible:outline-none"
-              >
-                <span className="inline-flex items-center gap-2 select-none">
-                  <Palette className="size-4" />
-                  Select Color
-                </span>
-                <span
-                  className="size-6 rounded-full border-2 border-primary/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]"
-                  style={{ backgroundColor: cardColor || DEFAULT_TASK_CARD_COLOR }}
-                />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              sideOffset={6}
-              className="w-64 max-h-[24rem] overflow-y-auto rounded-3xl border border-primary/30 bg-white p-4 text-sm font-semibold text-primary shadow-[0_16px_30px_rgba(72,68,110,0.2)]"
-            >
-              <div className="mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-primary/70">
-                <span className="inline-flex items-center gap-1">
-                  {colorMode === "presets" ? (
-                    <Palette className="size-3.5" />
-                  ) : (
-                    <Wand2 className="size-3.5" />
-                  )}
-                  {colorMode === "presets" ? "Quick Colors" : "Custom Color"}
-                </span>
-                <button
-                  type="button"
-                  className="rounded-full border border-transparent px-3 py-1 text-[0.7rem] font-semibold text-primary transition hover:border-primary/30 hover:bg-primary/5"
-                  onClick={() =>
-                    setColorMode((mode) => (mode === "presets" ? "custom" : "presets"))
-                  }
-                >
-                  {colorMode === "presets" ? (
-                    <span className="inline-flex items-center gap-1">
-                      <Wand2 className="size-3.5" />
-                      Custom
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1">
-                      <Palette className="size-3.5" />
-                      Palette
-                    </span>
-                  )}
-                </button>
-              </div>
-                    {colorMode === "presets" ? (
-                      <div className="flex flex-wrap gap-2">
-                        {QUICK_COLOR_OPTIONS.map((option) => {
-                          const normalizedValue = sanitizeHexColor(option.value)
-                          return (
-                            <button
-                              key={option.value}
-                              type="button"
-                              className="flex size-10 items-center justify-center rounded-2xl border-2 border-primary/20 text-[0.65rem] font-semibold transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0"
-                              style={{ backgroundColor: option.value }}
-                              onMouseEnter={() => setQuickColorPreview(normalizedValue)}
-                              onMouseLeave={() =>
-                                setQuickColorPreview((current) =>
-                                  current === normalizedValue ? null : current
-                                )
-                              }
-                              onFocus={() => setQuickColorPreview(normalizedValue)}
-                              onBlur={() =>
-                                setQuickColorPreview((current) =>
-                                  current === normalizedValue ? null : current
-                                )
-                              }
-                              onClick={() => {
-                                setCardColor(normalizedValue)
-                                setQuickColorPreview(null)
-                                setColorMenuOpen(false)
-                              }}
-                              aria-label={`Select ${option.label}`}
-                            />
-                          )
-                        })}
-                      </div>
-                    ) : (
-                      <div className="max-h-[18rem] space-y-2 overflow-auto rounded-2xl border border-primary/20 bg-white/60 p-3">
-                        <div className="rounded-2xl bg-white p-2">
-                          <HexColorPicker
-                      color={cardColor || DEFAULT_TASK_CARD_COLOR}
-                            onChange={(color) => {
-                              const normalizedValue = sanitizeHexColor(color)
-                              setCardColor(normalizedValue)
-                              setQuickColorPreview(normalizedValue)
-                            }}
-                      style={{ width: "100%", height: "160px" }}
-                    />
-                  </div>
-                </div>
-              )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+          <TaskColorMenu
+            cardColor={cardColor}
+            colorMenuOpen={colorMenuOpen}
+            colorMode={colorMode}
+            quickColorPreview={quickColorPreview}
+            setColorMenuOpen={setColorMenuOpen}
+            setColorMode={setColorMode}
+            setCardColor={setCardColor}
+            setQuickColorPreview={setQuickColorPreview}
+          />
+        </div>
 
         <Input
           value={title}
@@ -956,272 +1312,34 @@ export function TaskForm({
             className="project-detail-scroll min-h-[10rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-6 py-2 text-base text-[#2F2766] placeholder:text-primary/60 shadow-none focus-visible:outline-none focus-visible:ring-0" />
         </div>
 
-        <div className="space-y-4 text-current">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-center gap-3">
-              <span className="text-lg font-semibold w-27 mt-3">Assigned To :</span>
-            </div>
-            <Popover
-              open={assigneePickerOpen && assigneeOptions.length > 0}
-              onOpenChange={(open) => {
-                if (assigneeOptions.length === 0) {
-                  setAssigneePickerOpen(false)
-                  return
-                }
-                setAssigneePickerOpen(open)
-              } }
-            >
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  disabled={assigneeOptions.length === 0}
-                  className="group flex w-full max-w-sm select-none items-center justify-between rounded-full border-2 border-primary/40 bg-white px-6 py-3 text-base font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-white focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <Plus className="size-5" />
-                    <span className="flex items-center gap-2">
-                      Add Member
-                      <span className="inline-flex min-w-[1.5rem] justify-center rounded-full border border-primary bg-white px-2 py-0.5 text-xs font-bold text-primary group-hover:border-white group-hover:bg-white group-hover:text-primary">
-                        {assigneeIds.length}
-                      </span>
-                    </span>
-                    </span>
-                  <ChevronRight className="size-4" />
-                </button>
-              </PopoverTrigger>
-              {assigneeOptions.length > 0 ? (
-                <PopoverContent
-                  align="start"
-                  side="right"
-                  sideOffset={8}
-                  className="w-[22rem] rounded-3xl border border-primary/40 bg-white px-4 py-4 text-sm font-semibold text-[#2F2766] shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
-                >
-                  <div className="space-y-4">
-                    <div className="relative">
-                      <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-primary/50" />
-                      <Input
-                        value={assigneeSearch}
-                        onChange={(event) => setAssigneeSearch(event.target.value)}
-                        placeholder="Search member"
-                        className="h-11 w-full rounded-full border-2 border-primary/30 bg-white pl-10 pr-4 text-sm font-medium text-[#2F2766] placeholder:text-primary/60 focus:border-primary focus:outline-none" />
-                    </div>
-                    {availableDepartmentFilters.length > 0 || availableRoleFilters.length > 0 ? (
-                      <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-primary/60">
-                        {availableDepartmentFilters.length > 0 ? (
-                          <div>
-                            <p className="text-[0.65rem]">Departments</p>
-                            <div className="mt-2 flex flex-wrap gap-2 normal-case text-[0.7rem] font-semibold">
-                              {availableDepartmentFilters.map((dept) => {
-                                const active = assigneeDepartmentFilters.includes(dept)
-                                return (
-                                  <button
-                                    type="button"
-                                    key={dept}
-                                    onClick={() => toggleDepartmentFilter(dept)}
-                                    className={cn(
-                                      "rounded-full border px-3 py-1 text-xs transition focus:outline-none",
-                                      active
-                                        ? "border-primary bg-primary text-white"
-                                        : "border-primary/30 bg-white text-primary hover:border-primary"
-                                    )}
-                                  >
-                                    <span className="block max-w-[7rem] truncate text-left">
-                                      {dept}
-                                    </span>
-                                  </button>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        ) : null}
-                        {availableRoleFilters.length > 0 ? (
-                          <div className="pt-1">
-                            <p className="text-[0.65rem]">Roles</p>
-                            <div className="mt-2 flex flex-wrap gap-2 normal-case text-[0.7rem] font-semibold">
-                              {availableRoleFilters.map((role) => {
-                                const active = assigneeRoleFilters.includes(role)
-                                return (
-                                  <button
-                                    type="button"
-                                    key={role}
-                                    onClick={() => toggleRoleFilter(role)}
-                                    className={cn(
-                                      "rounded-full border px-3 py-1 text-xs transition focus:outline-none",
-                                      active
-                                        ? "border-primary bg-primary text-white"
-                                        : "border-primary/30 bg-white text-primary hover:border-primary"
-                                    )}
-                                  >
-                                    {role}
-                                  </button>
-                                )
-                              })}
-                              <button
-                                type="button"
-                                onClick={() => setPriorityRoleFilterActive((prev) => !prev)}
-                                className={cn(
-                                  "rounded-full border px-3 py-1 text-xs transition focus:outline-none",
-                                  priorityRoleFilterActive
-                                    ? "border-primary bg-primary text-white"
-                                    : "border-primary/30 bg-white text-primary hover:border-primary"
-                                )}
-                              >
-                                Header (Project Owner)
-                              </button>
-                            </div>
-                          </div>
-                        ) : null}
-                        {assigneeDepartmentFilters.length > 0 || assigneeRoleFilters.length > 0 ? (
-                          <button
-                            type="button"
-                            onClick={resetAssigneeFilters}
-                            className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary hover:text-primary/80"
-                          >
-                            Reset filters
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : null}
-                    <div className="asap-scroll [scrollbar-gutter:stable] max-h-64 space-y-1 overflow-y-auto overflow-x-scroll pr-1">
-                      {filteredAssigneeOptions.length > 0 ? (
-                        filteredAssigneeOptions.map((option) => {
-                          const isSelected = assigneeIds.includes(option.id)
-                          return (
-                            <button
-                              type="button"
-                              key={option.id}
-                              onClick={() => isSelected
-                                ? handleRemoveAssignee(option.id)
-                                : handleSelectAssignee(option.id)}
-                              className={cn(
-                                "flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left text-sm font-semibold transition",
-                                isSelected
-                                  ? "border-primary bg-primary/10 text-primary"
-                                  : "border-transparent bg-white hover:border-primary/30 hover:bg-primary/5"
-                              )}
-                            >
-                              <span className="flex flex-col">
-                                <span className="flex items-center gap-2">
-                                  <span
-                                    className="size-3 rounded-full border border-black/10"
-                                    style={{ backgroundColor: option.chipBackground }} />
-                                  <span>{option.displayLabel}</span>
-                                </span>
-                                {option.departmentName ? (
-                                  <span className="pl-5 text-xs font-medium text-primary/70">
-                                    {option.departmentName}
-                                  </span>
-                                ) : null}
-                              </span>
-                              {isSelected ? <Check className="size-4 shrink-0" /> : null}
-                            </button>
-                          )
-                        })
-                      ) : (
-                        <div className="rounded-2xl border border-dashed border-primary/30 px-4 py-6 text-center text-sm font-medium text-primary/60">
-                          {assigneeOptions.length === 0
-                            ? "No members available"
-                            : "No members match your search"}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </PopoverContent>
-              ) : null}
-            </Popover>
-            {assigneeOptions.length === 0 ? (
-              <p className="text-sm font-medium text-destructive/80">
-                No project members can be assigned yet.
-              </p>
-            ) : null}
-          </div>
-      <div className={assigneeContainerClass}>
-            {assigneeIds.length > 0 ? (
-              assigneeIds.map((item, index) => {
-                const meta = assigneeMetaLookup[item]
-                const isDragOver = dragOverIndex === index
-                const isDragging = draggingIndex === index
-                const chipClassName = [
-                  assigneeChipClass,
-                  isDragOver ? "ring-2 ring-primary/40" : "",
-                  isDragging ? "cursor-grabbing opacity-80" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")
-                const chipStyle = meta
-                  ? {
-                    backgroundColor: meta.chipBackground,
-                    color: meta.chipTextColor,
-                    borderColor: meta.chipBorderColor,
-                  }
-                  : undefined
-
-                return (
-                  <Tooltip key={item} delayDuration={TOOLTIP_DELAY_DURATION_MS}>
-                    <TooltipTrigger asChild>
-                      <span
-                        className={chipClassName}
-                        style={chipStyle}
-                        draggable
-                        aria-grabbed={isDragging}
-                        onDragStart={(event) => handleAssigneeDragStart(event, index)}
-                        onDragOver={(event) => handleAssigneeDragOver(event, index)}
-                        onDrop={(event) => handleAssigneeDrop(event, index)}
-                        onDragEnd={handleAssigneeDragEnd}
-                      >
-                        <span className="inline-flex items-center gap-2">
-                          <GripVertical
-                            className={cn(
-                              "size-4 text-current",
-                              assigneeLayout === "fullWidth" ? "" : "opacity-70"
-                            )}
-                            aria-hidden
-                          />
-                          <span className="max-w-[12rem] truncate">
-                            {meta?.displayLabel ?? "Unknown member"}
-                          </span>
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              handleRemoveAssignee(item)
-                            }}
-                            className={`${chipActionButtonClass} rounded-full`}
-                            aria-label={`Remove ${meta?.displayLabel ?? "member"}`}
-                          >
-                            <X className="size-4" />
-                          </button>
-                        </div>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent
-                      align="start"
-                      sideOffset={8}
-                      className="w-56 rounded-3xl border border-primary/40 bg-white/95 p-4 text-sm font-semibold text-[#2F2766] shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
-                      style={{ backgroundColor: "#ffffff", color: "#2F2766" }}
-                    >
-                      <p className="text-base font-bold text-[#2F2766]">
-                        {meta?.username ?? meta?.label ?? "Unknown member"}
-                      </p>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">
-                        {meta?.roleLabel ?? meta?.role ?? "Member"}
-                      </p>
-                      {meta?.departmentName ? (
-                        <p className="text-xs text-primary/70">Department: {meta.departmentName}</p>
-                      ) : null}
-                    </TooltipContent>
-                  </Tooltip>
-                )
-              })
-            ) : (
-              <div className="min-h-[4rem] rounded-3xl border-2 border-dashed border-primary/30 bg-white/60 px-5 py-4 text-sm font-medium text-primary/70">
-                No members assigned yet.
-              </div>
-            )}
-          </div>
-        </div>
+        <TaskAssigneeSection
+          assigneeLayout={assigneeLayout}
+          assigneeIds={assigneeIds}
+          assigneeMetaLookup={assigneeMetaLookup}
+          assigneeOptions={assigneeOptions}
+          assigneePickerOpen={assigneePickerOpen}
+          setAssigneePickerOpen={setAssigneePickerOpen}
+          assigneeSearch={assigneeSearch}
+          setAssigneeSearch={setAssigneeSearch}
+          assigneeDepartmentFilters={assigneeDepartmentFilters}
+          assigneeRoleFilters={assigneeRoleFilters}
+          priorityRoleFilterActive={priorityRoleFilterActive}
+          availableDepartmentFilters={availableDepartmentFilters}
+          availableRoleFilters={availableRoleFilters}
+          filteredAssigneeOptions={filteredAssigneeOptions}
+          handleSelectAssignee={handleSelectAssignee}
+          toggleDepartmentFilter={toggleDepartmentFilter}
+          toggleRoleFilter={toggleRoleFilter}
+          resetAssigneeFilters={resetAssigneeFilters}
+          handleRemoveAssignee={handleRemoveAssignee}
+          handleAssigneeDragStart={handleAssigneeDragStart}
+          handleAssigneeDragOver={handleAssigneeDragOver}
+          handleAssigneeDrop={handleAssigneeDrop}
+          handleAssigneeDragEnd={handleAssigneeDragEnd}
+          draggingIndex={draggingIndex}
+          dragOverIndex={dragOverIndex}
+          togglePriorityRoleFilter={() => setPriorityRoleFilterActive((prev) => !prev)}
+        />
         {showStatus ? (
           <div className="space-y-4 text-current">
             <span className="text-lg font-semibold">Task Status :</span>

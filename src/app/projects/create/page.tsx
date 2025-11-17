@@ -2,20 +2,21 @@
 
 import { useCallback, useState } from "react"
 import { useRouter } from "next/navigation"
+import { ArrowLeft } from "lucide-react"
 
-import { ProjectForm, type ProjectFormValues } from "@/components/projects/ProjectForm"
 import { Button } from "@/components/ui/button"
-import { usePreferences } from "@/contexts/preferences"
+import { ProjectForm } from "@/components/projects/ProjectForm"
+import type { ProjectFormValues } from "@/components/projects/ProjectForm/types"
 import { createProject } from "@/utils/projects/api"
 import { uploadProjectImage } from "@/utils/projects/media"
 import { useNotifications } from "@/components/notifications/Notification"
-import { ArrowLeft } from "lucide-react"
+import { usePreferences } from "@/contexts/preferences"
 
 export default function CreateProjectPage() {
   const router = useRouter()
   const [submitting, setSubmitting] = useState(false)
-  const { profile } = usePreferences()
   const { notify } = useNotifications()
+  const { profile } = usePreferences()
   const preferredDepartmentLayout = profile?.departmentLayout ?? "fullWidth"
 
   const handleSubmit = useCallback(

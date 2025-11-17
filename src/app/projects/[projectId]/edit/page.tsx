@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { ProjectForm, type ProjectFormValues } from "@/components/projects/ProjectForm"
+import { ProjectForm } from "@/components/projects/ProjectForm"
+import type { ProjectFormValues } from "@/components/projects/ProjectForm/types"
 import { usePreferences } from "@/contexts/preferences"
 import { type ProjectRecord, updateProject } from "@/utils/projects/api"
 import { loadProjectRecord } from "@/utils/projects/prefetch"
@@ -105,18 +106,18 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
           }
         }
 
-      await updateProject(projectId, {
-        title,
-        description: values.detail.trim() || null,
-        departments,
-        imageUrl,
-      })
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent(PROJECT_REFRESH_EVENT, { detail: { projectId } })
-        )
-      }
-      router.push("/projects")
+        await updateProject(projectId, {
+          title,
+          description: values.detail.trim() || null,
+          departments,
+          imageUrl,
+        })
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent(PROJECT_REFRESH_EVENT, { detail: { projectId } })
+          )
+        }
+        router.push("/projects")
       } catch (error) {
         console.error("Failed to update project", error)
         const raw =

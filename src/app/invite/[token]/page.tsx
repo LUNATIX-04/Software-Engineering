@@ -4,23 +4,13 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import type { User } from "@supabase/supabase-js"
 
-import { Button } from "@/components/ui/button"
 import { useNotifications } from "@/components/notifications/Notification"
 import { useAppShellLayout } from "@/components/layout/AppShell"
 import { getSupabaseBrowserClient } from "@/utils/supabase/client"
-import { PROJECT_ROLE } from "@/types/projects"
-
-type InvitePayload = {
-  id: string
-  project: {
-    id: string
-    title: string
-  }
-  role: string
-  departmentId: string | null
-  departmentName?: string | null
-  expiresAt: string | null
-}
+import { InviteForm } from "./components/InviteForm"
+import { InviteOverview } from "./components/InviteOverview"
+import { InviteStatus } from "./components/InviteStatus"
+import type { InvitePayload } from "./types"
 
 type InvitePageProps = {
   params: Promise<{
@@ -308,88 +298,31 @@ export default function InvitePage({ params }: InvitePageProps) {
     router.push(`/auth/traditional?mode=signUp&redirectTo=${encodeURIComponent(redirectTo)}`)
   }
 
-  const content = (() => {
-    if (loading || pageState.checkingMembership) {
-      return <p className="text-lg font-semibold text-primary">Loading invite details…</p>
-    }
-    if (!invite) {
-      return (
-        <div className="space-y-4">
-          <p className="text-lg font-semibold text-destructive">{error ?? "Invite not found."}</p>
-          <Button
-            type="button"
-            variant="outline"
-            className="rounded-full px-6 py-2"
-            onClick={loadInvite}
-          >
-            Retry
-          </Button>
-        </div>
-      )
-    }
-    return (
-      <div className="space-y-6">
-        <div>
-          <p className="text-sm uppercase tracking-[0.2em] text-primary/70">Project Invitation</p>
-          <h1 className="mt-2 text-3xl font-bold text-[#2F2766]">{invite.project.title}</h1>
-          {(() => {
-            const isOwnerHead = invite.role === PROJECT_ROLE.OWNER && Boolean(invite.departmentId)
-            const roleLabel =
-              invite.role === PROJECT_ROLE.OWNER
-                ? isOwnerHead
-                  ? "Header (Project Owner)"
-                  : "Project Owner"
-                : invite.role === PROJECT_ROLE.HEADER
-                  ? "Header"
-                  : "Member"
-            return (
-              <p className="mt-1 text-base text-muted-foreground">
-                Role: <span className="font-semibold text-primary">{roleLabel}</span> <br />
-                Department:{" "}
-                {invite.departmentName ? (
-                  <span className="font-semibold text-primary">{invite.departmentName}</span>
-                ) : (
-                  "No Department"
-                )}
-              </p>
-            )
-          })()}
-          {invite.expiresAt ? (
-            <p className="text-xs text-muted-foreground">
-              Expires on {new Date(invite.expiresAt).toLocaleString()}
-            </p>
-          ) : null}
-        </div>
-        {error ? (
-          <div className="rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-semibold text-destructive">
-            {error}
-          </div>
-        ) : null}
-            <div className="space-y-4">
-              <div className="text-left">
-                <label className="text-sm font-semibold text-[#2F2766]">Project Username</label>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(event) => setUsername(event.target.value)}
-                  className="mt-2 w-full rounded-2xl border-2 border-primary/30 bg-white px-4 py-2 text-base font-semibold text-[#2F2766] shadow-[0_2px_0_rgba(144,122,214,0.15)] focus:border-primary focus:outline-none"
-                  placeholder="How should the team see you?"
-                />
-              </div>
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-                <Button
-                  type="button"
-                  className="rounded-full bg-primary px-8 py-3 text-base font-semibold text-primary-foreground hover:bg-primary/90"
-                  disabled={joining}
-                  onClick={handleJoinProject}
-                >
-                  {joining ? "Joining…" : "Join Project"}
-                </Button>
-              </div>
-            </div>
-          </div>
+  let content: React.ReactNode
+  if (loading || pageState.checkingMembership) {
+    content = <p className="text-lg font-semibold text-primary">Loading invite details…</p>
+  } else if (!invite) {
+    content = (
+      <InviteStatus
+        message={error ?? "Invite not found."}
+        variant={error ? "destructive" : "muted"}
+        onRetry={loadInvite}
+      />
     )
-  })()
+  } else {
+    content = (
+      <div className="space-y-6">
+        <InviteOverview invite={invite} />
+        {error ? <InviteStatus message={error} variant="destructive" /> : null}
+        <InviteForm
+          username={username}
+          onUsernameChange={setUsername}
+          onJoin={handleJoinProject}
+          joining={joining}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-xl flex-col items-center justify-center px-4 py-16 text-center">
