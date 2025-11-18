@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client"
 import type { Elysia } from "elysia"
 
 import { createClient } from "../../utils/supabase/server"
@@ -15,9 +16,32 @@ import { getContrastingTextColor, sanitizeHexColor } from "../../utils/colors"
 
 const TASK_STATUS_VALUES = ["SUBMITTED", "IN_PROGRESS", "BLOCKED"] as const
 const VALID_SUBMISSION_STATUSES = ["SUBMITTED", "REVISION_REQUESTED", "APPROVED"] as const
+const DEFAULT_PAGE_SIZE = 25
+const MAX_PAGE_SIZE = 200
+const CASE_INSENSITIVE_MODE: Prisma.QueryMode = "insensitive"
 
 type SubmissionStatusValue = (typeof VALID_SUBMISSION_STATUSES)[number]
 type TaskStatusEnum = (typeof TASK_STATUS_VALUES)[number]
+
+type TaskScopeFilter = "assignee" | "assigner"
+
+type TaskPagination = {
+  page: number
+  pageSize: number
+}
+
+type TaskQueryFilters = {
+  search?: string
+  departmentIds: string[]
+  departmentNames: string[]
+  statuses: TaskStatusEnum[]
+  scope?: TaskScopeFilter
+  memberId?: string
+}
+
+type ParsedTaskQuery = TaskQueryFilters & {
+  pagination: TaskPagination | null
+}
 
 type TaskWithRelations = {
   id: string
@@ -76,6 +100,177 @@ function parseCardColor(value: unknown): string | undefined {
   const trimmed = value.trim()
   if (!trimmed) return undefined
   return sanitizeHexColor(trimmed)
+}
+
+function collectParamValues(params: URLSearchParams, keys: string[]) {
+  const values = new Set<string>()
+  keys.forEach((key) => {
+    params.getAll(key).forEach((value) => {
+      const trimmed = typeof value === "string" ? value.trim() : ""
+      if (trimmed) {
+        values.add(trimmed)
+      }
+    })
+  })
+  return Array.from(values)
+}
+
+function parsePaginationParams(params: URLSearchParams): TaskPagination | null {
+  const hasPage = params.has("page")
+  const hasPageSize = params.has("pageSize")
+  if (!hasPage && !hasPageSize) {
+    return null
+  }
+  const rawPage = Number(params.get("page"))
+  const rawPageSize = Number(params.get("pageSize"))
+  const page = Number.isFinite(rawPage) ? clampNumber(Math.trunc(rawPage), 1, Number.MAX_SAFE_INTEGER) : 1
+  const pageSize = Number.isFinite(rawPageSize)
+    ? clampNumber(Math.trunc(rawPageSize), 1, MAX_PAGE_SIZE)
+    : DEFAULT_PAGE_SIZE
+  return { page, pageSize }
+}
+
+function parseTaskQueryParams(searchParams: URLSearchParams): ParsedTaskQuery {
+  const searchValue = searchParams.get("search")
+  const search = searchValue ? searchValue.trim() : undefined
+  const departmentIds = collectParamValues(searchParams, ["departmentId", "departmentIds"])
+  const departmentNames = collectParamValues(searchParams, ["department", "departmentName", "departmentNames"])
+  const statusValues = Array.from(
+    new Set(
+      searchParams
+        .getAll("status")
+        .map((value) => value.trim().toUpperCase())
+        .filter((value): value is TaskStatusEnum =>
+          TASK_STATUS_VALUES.includes(value as TaskStatusEnum)
+        )
+    )
+  )
+  const scopeValue = searchParams.get("scope")
+  const normalizedScope = scopeValue ? scopeValue.trim().toLowerCase() : undefined
+  const scope: TaskScopeFilter | undefined =
+    normalizedScope === "assignee" || normalizedScope === "assigner"
+      ? (normalizedScope as TaskScopeFilter)
+      : undefined
+  const memberId = searchParams.get("memberId") ?? searchParams.get("membershipId") ?? undefined
+  const pagination = parsePaginationParams(searchParams)
+
+  return {
+    search: search && search.length > 0 ? search : undefined,
+    departmentIds,
+    departmentNames,
+    statuses: statusValues,
+    scope,
+    memberId: memberId ?? undefined,
+    pagination,
+  }
+}
+
+function buildTaskWhere(projectId: string, filters: TaskQueryFilters): Prisma.ProjectTaskWhereInput {
+  const where: Prisma.ProjectTaskWhereInput = { projectId }
+  const andConditions: Prisma.ProjectTaskWhereInput[] = []
+
+  if (filters.departmentIds.length === 1) {
+    where.departmentId = filters.departmentIds[0]
+  } else if (filters.departmentIds.length > 1) {
+    where.departmentId = { in: filters.departmentIds }
+  } else if (filters.departmentNames.length > 0) {
+    const nameConditions = filters.departmentNames.map((name) => ({
+      department: {
+        is: {
+          name: {
+            equals: name,
+            mode: CASE_INSENSITIVE_MODE,
+          },
+        },
+      },
+    }))
+    andConditions.push({ OR: nameConditions })
+  }
+
+  if (filters.statuses.length === 1) {
+    where.status = filters.statuses[0]
+  } else if (filters.statuses.length > 1) {
+    where.status = { in: filters.statuses }
+  }
+
+  if (filters.scope === "assignee" && filters.memberId) {
+    andConditions.push({
+      assignees: {
+        some: {
+          memberId: filters.memberId,
+        },
+      },
+    })
+  } else if (filters.scope === "assigner" && filters.memberId) {
+    andConditions.push({ createdByMemberId: filters.memberId })
+  }
+
+  if (filters.search) {
+    const normalized = filters.search.trim()
+    if (normalized) {
+      andConditions.push({ OR: createSearchConditions(normalized) })
+    }
+  }
+
+  if (andConditions.length > 0) {
+    where.AND = andConditions
+  }
+
+  return where
+}
+
+function createSearchConditions(term: string): Prisma.ProjectTaskWhereInput[] {
+  return [
+    { title: { contains: term, mode: CASE_INSENSITIVE_MODE } },
+    { detail: { contains: term, mode: CASE_INSENSITIVE_MODE } },
+    {
+      department: {
+        is: {
+          name: { contains: term, mode: CASE_INSENSITIVE_MODE },
+        },
+      },
+    },
+    {
+      createdBy: {
+        is: {
+          username: { contains: term, mode: CASE_INSENSITIVE_MODE },
+        },
+      },
+    },
+    {
+      createdBy: {
+        is: {
+          profile: {
+            is: {
+              fullName: { contains: term, mode: CASE_INSENSITIVE_MODE },
+            },
+          },
+        },
+      },
+    },
+    {
+      assignees: {
+        some: {
+          member: {
+            username: { contains: term, mode: CASE_INSENSITIVE_MODE },
+          },
+        },
+      },
+    },
+    {
+      assignees: {
+        some: {
+          member: {
+            profile: {
+              is: {
+                fullName: { contains: term, mode: CASE_INSENSITIVE_MODE },
+              },
+            },
+          },
+        },
+      },
+    },
+  ]
 }
 
 function resolveCardTextColor(cardColor: string) {
@@ -225,9 +420,12 @@ function serializeSubmission(
   }
 }
 
-function fetchTasks(projectId: string): Promise<TaskWithRelations[]> {
-  return projectTasks.findMany({
-    where: { projectId },
+function fetchTasks(
+  where: Prisma.ProjectTaskWhereInput,
+  pagination?: TaskPagination | null
+): Promise<TaskWithRelations[]> {
+  const query: Parameters<typeof projectTasks.findMany>[0] = {
+    where,
     include: {
       department: {
         select: {
@@ -238,7 +436,7 @@ function fetchTasks(projectId: string): Promise<TaskWithRelations[]> {
         },
       },
       assignees: {
-        include: {
+        select: {
           member: {
             select: {
               id: true,
@@ -267,7 +465,16 @@ function fetchTasks(projectId: string): Promise<TaskWithRelations[]> {
       submissions: {
         orderBy: { createdAt: "desc" },
         take: 1,
-        include: {
+        select: {
+          id: true,
+          status: true,
+          description: true,
+          reviewerComment: true,
+          attachmentMetadata: true,
+          acknowledgedAt: true,
+          ownerAcknowledgedAt: true,
+          createdAt: true,
+          updatedAt: true,
           submittedBy: {
             select: {
               id: true,
@@ -289,7 +496,14 @@ function fetchTasks(projectId: string): Promise<TaskWithRelations[]> {
       { createdAt: "desc" },
       { title: "asc" },
     ],
-  }).then((result) => result as unknown as TaskWithRelations[])
+  }
+
+  if (pagination) {
+    query.skip = (pagination.page - 1) * pagination.pageSize
+    query.take = pagination.pageSize
+  }
+
+  return projectTasks.findMany(query).then((result) => result as unknown as TaskWithRelations[])
 }
 
 async function loadTask(projectId: string, taskId: string): Promise<TaskWithRelations | null> {
@@ -403,7 +617,7 @@ async function fetchSubmission(taskId: string) {
 }
 
 export function registerTaskRoutes(app: Elysia) {
-  app.get("/projects/:projectId/tasks", async ({ params }) => {
+  app.get("/projects/:projectId/tasks", async ({ request, params }) => {
     const supabase = await createClient()
     const {
       data: { user },
@@ -417,8 +631,27 @@ export function registerTaskRoutes(app: Elysia) {
       const message = (error as Error).message === "not_found" ? "Not found" : "Forbidden"
       return new Response(JSON.stringify({ error: message }), { status: 404 })
     }
-    const tasks = await fetchTasks(params.projectId)
-    return new Response(JSON.stringify(tasks.map(serializeTask)))
+    const url = new URL(request.url)
+    const parsedQuery = parseTaskQueryParams(url.searchParams)
+    const { pagination, ...filters } = parsedQuery
+    const where = buildTaskWhere(params.projectId, filters)
+    const [tasks, totalCount] = await Promise.all([
+      fetchTasks(where, pagination),
+      pagination ? projectTasks.count({ where }) : Promise.resolve(null),
+    ])
+    const headers = new Headers({
+      "Content-Type": "application/json",
+    })
+    if (pagination && totalCount !== null) {
+      headers.set("X-Page", String(pagination.page))
+      headers.set("X-Page-Size", String(pagination.pageSize))
+      headers.set("X-Total-Count", String(totalCount))
+      headers.set(
+        "X-Total-Pages",
+        String(Math.max(1, Math.ceil(totalCount / pagination.pageSize)))
+      )
+    }
+    return new Response(JSON.stringify(tasks.map(serializeTask)), { headers })
   })
 
   app.post("/projects/:projectId/tasks", async ({ request, params }) => {
