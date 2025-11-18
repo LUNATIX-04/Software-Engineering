@@ -107,6 +107,733 @@ const getFileTypeIcon = (fileName: string): LucideIcon => {
   return FILE_TYPE_ICON_MAP[extension] ?? FileIcon
 }
 
+type TaskDateInfoItem = {
+  label: string
+  value: string
+  color: string
+}
+
+type TaskDateInfoDialogProps = {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  dateItems: TaskDateInfoItem[]
+  dateRange?: { from: Date; to: Date }
+  startlineDateValue: Date | null
+  todayStart: Date
+  calendarComponents: Record<string, React.ComponentType<any>>
+  remainingTimeLabel: string
+}
+
+function TaskDateInfoDialog({
+  open,
+  onOpenChange,
+  dateItems,
+  dateRange,
+  startlineDateValue,
+  todayStart,
+  calendarComponents,
+  remainingTimeLabel,
+}: TaskDateInfoDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl rounded-[2.5rem] border-2 border-primary/30 bg-white px-8 py-6 text-left shadow-[0_20px_40px_rgba(72,68,110,0.2)]">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold text-[var(--task-hero-text)]">Date Timeline</DialogTitle>
+          <DialogDescription className="text-xs text-[var(--task-subtle-text)]">
+            Overview of today, assign, startline and deadline dates.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
+          <div className="space-y-3">
+            {dateItems.map((item) => (
+              <div key={item.label} className="flex items-center gap-3">
+                <span
+                  className="inline-flex h-3 w-3 rounded-full border border-primary/40"
+                  style={{ backgroundColor: item.color }}
+                />
+                <div>
+                  <p className="text-[0.65rem] uppercase tracking-[0.3em] text-primary/60">{item.label}</p>
+                  <p className="text-sm font-semibold text-[var(--task-hero-text)]">{item.value || "—"}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 w-full max-w-[32rem]">
+              <Calendar
+                mode="range"
+                selected={dateRange}
+                defaultMonth={startlineDateValue ?? new Date()}
+                className="w-full rounded-[1.5rem] border-0 bg-transparent shadow-none"
+                disabled={{ before: startlineDateValue ?? new Date() }}
+                components={calendarComponents}
+              />
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 shadow-inner">
+          <p className="text-[0.65rem] uppercase tracking-[0.3em] text-primary/60">Remaining time</p>
+          <p className="text-sm font-semibold text-[var(--task-hero-text)]">{remainingTimeLabel}</p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+
+
+type AssignerDialogProps = {
+  label: string
+  avatarUrl?: string | null
+  departmentLabel: string
+  roleLabel: string
+  statusNotice?: string | null
+  showStatusNotice: boolean
+  dialogOpen: boolean
+  onTriggerClick: () => void
+  onDialogOpenChange: (open: boolean) => void
+  profile?: ProjectMemberDetail | null
+  loading: boolean
+  error: string | null
+}
+
+function AssignerDialog({
+  label,
+  avatarUrl,
+  departmentLabel,
+  roleLabel,
+  statusNotice,
+  showStatusNotice,
+  dialogOpen,
+  onTriggerClick,
+  onDialogOpenChange,
+  profile,
+  loading,
+  error,
+}: AssignerDialogProps) {
+  return (
+    <>
+      <div className="space-y-2 space-x-2">
+        <div className="inline-flex max-w-max items-center justify-center px-3 py-2 text-lg font-semibold text-[var(--task-hero-text)] pl-8">
+          Assigner
+        </div>
+        <button
+          type="button"
+          onClick={onTriggerClick}
+          className="group -mt-3 flex w-full items-center gap-4 rounded-[1.75rem] border border-primary/30 bg-white/90 px-4 py-3 text-left shadow-[0_6px_15px_rgba(63,52,120,0.08)] transition hover:border-primary/50 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          aria-label={`View details for ${label}`}
+        >
+          <Avatar className="h-11 w-11 shrink-0">
+            {avatarUrl ? (
+              <Image
+                src={avatarUrl}
+                alt={`${label} avatar`}
+                width={44}
+                height={44}
+                className="h-full w-full rounded-full object-cover"
+                priority
+                data-cy="task-assigner-avatar"
+              />
+            ) : (
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                {label.charAt(0).toUpperCase() || "A"}
+              </AvatarFallback>
+            )}
+          </Avatar>
+          <div className="flex flex-1 flex-col gap-0.5">
+            <p className="text-sm font-semibold text-[var(--task-hero-text)]">{label}</p>
+            <p className="text-xs text-[var(--task-subtle-text)]">
+              {departmentLabel} • {roleLabel}
+            </p>
+          </div>
+          {showStatusNotice && statusNotice ? (
+            <div className="rounded-[2rem] border border-primary/30 bg-primary/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-primary">
+              {statusNotice}
+            </div>
+          ) : null}
+        </button>
+      </div>
+      <Dialog open={dialogOpen} onOpenChange={onDialogOpenChange}>
+        <DialogContent className="max-w-2xl rounded-[2.5rem] border-2 border-primary/30 bg-white px-7 py-7 shadow-[0_20px_40px_rgba(72,68,110,0.25)]">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-[var(--task-hero-text)]">View Assigner Details</DialogTitle>
+          </DialogHeader>
+          {loading ? (
+            <p className="mx-auto mt-4 text-sm font-semibold text-[var(--task-subtle-text)]">Loading profile…</p>
+          ) : error ? (
+            <p className="mx-auto mt-4 text-sm font-semibold text-destructive">{error}</p>
+          ) : (
+            <div className="-mt-2 space-y-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-primary/20 bg-primary/5">
+                  <Avatar className="h-20 w-20">
+                    {avatarUrl ? (
+                      <Image
+                        src={avatarUrl}
+                        alt={`${label} avatar`}
+                        width={80}
+                        height={80}
+                        className="h-full w-full rounded-full object-cover"
+                        priority
+                        data-cy="task-assigner-detail-avatar"
+                      />
+                    ) : (
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        {label.charAt(0).toUpperCase() || "A"}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                </div>
+                <div className="flex flex-1 flex-col gap-1 mt-2">
+                  <p className="text-lg font-semibold text-[var(--task-hero-text)]">
+                    {profile?.username ?? label}
+                  </p>
+                  <p className="text-sm font-semibold text-primary/70">
+                    <span className="text-foreground/40">Department : </span>
+                    {departmentLabel}
+                  </p>
+                  <p className="text-sm font-semibold text-primary/70">
+                    <span className="text-foreground/40">Role : </span>
+                    {roleLabel}
+                  </p>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {profile?.email ? (
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-wide text-primary/70">Email</p>
+                    <p className="text-sm text-[var(--task-hero-text)]">{profile.email}</p>
+                  </div>
+                ) : null}
+                <p className="text-sm font-semibold uppercase tracking-wide text-primary/70">About me</p>
+                <div className="asap-scroll max-h-[10rem] -mt-2 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-2 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
+                  {profile?.bio?.length ? profile.bio : "No bio provided."}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+type AssigneeListDialogProps = {
+  assignees: ProjectMemberDetail[]
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  loading: boolean
+  error: string | null
+  onMemberSelect: (member: ProjectMemberDetail) => void
+}
+
+function AssigneeListDialog({
+  assignees,
+  open,
+  onOpenChange,
+  loading,
+  error,
+  onMemberSelect,
+}: AssigneeListDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 bg-white text-primary shadow-sm transition hover:border-primary/60 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          aria-label="View assignee list"
+        >
+          <Info className="size-4" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl rounded-[2.5rem] border-2 border-primary/30 bg-white px-7 py-7 shadow-[0_20px_40px_rgba(72,68,110,0.25)]">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold text-[var(--task-hero-text)]">Assignees</DialogTitle>
+        </DialogHeader>
+        {loading ? (
+          <p className="mx-auto mt-4 text-sm font-semibold text-[var(--task-subtle-text)]">Loading assignees…</p>
+        ) : error ? (
+          <p className="mx-auto mt-4 text-sm font-semibold text-destructive">{error}</p>
+        ) : (
+          <div className="space-y-3">
+            {assignees.map((assignee) => (
+              <button
+                key={assignee.id}
+                type="button"
+                onClick={() => onMemberSelect(assignee)}
+                className="flex w-full items-center gap-3 rounded-[1.25rem] border border-primary/30 px-4 py-3 text-left shadow-[0_6px_0_rgba(63,52,120,0.08)] transition hover:border-primary hover:bg-primary/5 focus-visible:border-primary"
+              >
+                <Avatar className="h-10 w-10">
+                  {assignee.avatarUrl ? (
+                    <Image
+                      src={assignee.avatarUrl}
+                      alt={`${assignee.username || assignee.fullName} avatar`}
+                      width={40}
+                      height={40}
+                      className="h-full w-full rounded-full object-cover"
+                    />
+                  ) : (
+                    <AvatarFallback className="bg-primary text-primary-foreground">
+                      {assignee.username?.charAt(0).toUpperCase() ?? "M"}
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+                <div className="flex flex-1 flex-col gap-0.5">
+                  <p className="text-sm font-semibold text-[var(--task-hero-text)]">
+                    {assignee.username || assignee.fullName || "Assignee"}
+                  </p>
+                  <p className="text-xs text-[var(--task-subtle-text)]">
+                    {assignee.department?.name ?? "No department"} • {getRoleLabel(assignee.role ?? "MEMBER")}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+
+type SubmissionAttachmentEntry = {
+  id: string
+  name: string
+  url: string | null
+  file?: File
+  isExisting: boolean
+}
+
+type TaskSubmissionDialogContentProps = {
+  submissionDescription: string
+  onSubmissionDescriptionChange: (value: string) => void
+  submissionFileEntries: SubmissionAttachmentEntry[]
+  onSubmissionFilesChange: (event: React.ChangeEvent<HTMLInputElement>) => void
+  onRemoveSubmissionFile: (id: string) => void
+  clearSubmissionFiles: () => void
+  submissionError: string | null
+  submittingSubmission: boolean
+  effectiveHasSubmission: boolean
+  hasSubmission: boolean
+  hasPendingSubmissionAcknowledgement: boolean
+  onSubmit: () => Promise<void> | void
+  onClose: () => void
+}
+
+function TaskSubmissionDialogContent({
+  submissionDescription,
+  onSubmissionDescriptionChange,
+  submissionFileEntries,
+  onSubmissionFilesChange,
+  onRemoveSubmissionFile,
+  clearSubmissionFiles,
+  submissionError,
+  submittingSubmission,
+  effectiveHasSubmission,
+  hasSubmission,
+  hasPendingSubmissionAcknowledgement,
+  onSubmit,
+  onClose,
+}: TaskSubmissionDialogContentProps) {
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle className="text-base font-semibold text-[var(--task-hero-text)]">Submit your task</DialogTitle>
+        <DialogDescription className="text-xs text-[var(--task-subtle-text)]">
+          {effectiveHasSubmission
+            ? "Edit your submission to send a new version for approval."
+            : hasSubmission
+              ? "Update your existing submission. Changes will overwrite your previous description and attachments."
+              : "Add a description and upload any relevant files. Files are stored as data URLs for MVP."}
+        </DialogDescription>
+      </DialogHeader>
+      {hasPendingSubmissionAcknowledgement && (
+        <div className="mt-1 rounded-[1.5rem] border border-primary/30 bg-[var(--task-description-bg)] px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.3em] text-primary/80">
+          Sent • awaiting review
+        </div>
+      )}
+      <div className="mt-3 space-y-4">
+        <label className="sr-only" htmlFor="submission-description">
+          Submission description
+        </label>
+        <div className="group/textarea overflow-hidden rounded-[1.25rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.25)]">
+          <Textarea
+            id="submission-description"
+            value={submissionDescription}
+            data-cy="project-task-detail-submission-description"
+            onChange={(event) => onSubmissionDescriptionChange(event.target.value)}
+            placeholder="Explain your submission…"
+            className="min-h-[8rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-4 py-3 text-sm text-[var(--task-subtle-text)] placeholder:text-[var(--task-placeholder)] shadow-none focus-visible:outline-none focus-visible:ring-0"
+          />
+        </div>
+
+        <div className="flex items-center justify-between gap-3 text-xs uppercase tracking-[0.3em] text-primary/60">
+          <span className="text-[var(--task-subtle-text)] text-[0.7rem] font-normal lowercase">
+            {submissionFileEntries.length > 0
+              ? `${submissionFileEntries.length} files selected`
+              : "No files selected yet"}
+          </span>
+          <div className="flex items-center gap-2">
+            {submissionFileEntries.length > 0 && (
+              <button
+                type="button"
+                onClick={clearSubmissionFiles}
+                className="rounded-full border border-primary/30 bg-primary/5 px-4 py-1 text-[0.65rem] font-semibold text-primary transition hover:border-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                data-cy="project-task-detail-submission-clear-files"
+              >
+                Clear
+              </button>
+            )}
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-primary/40 bg-white/80 px-4 py-1 text-[0.65rem] font-semibold text-primary transition hover:border-primary/70 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+              Add File +
+              <input
+                type="file"
+                multiple
+                className="hidden"
+                data-cy="project-task-detail-submission-file-input"
+                onChange={onSubmissionFilesChange}
+              />
+            </label>
+          </div>
+        </div>
+        {submissionFileEntries.length > 0 && (
+          <div className="asap-scroll [scrollbar-gutter:stable] max-h-[14rem] overflow-y-auto pr-1">
+            <ul className="flex flex-wrap gap-3">
+              {submissionFileEntries.map((entry) => {
+                const IconComponent = getFileTypeIcon(entry.name)
+                return (
+                  <li
+                    key={entry.id}
+                    className="flex min-w-[12rem] max-w-[100%] items-center gap-3 rounded-[1rem] border border-primary/30 bg-white px-3 py-2 shadow-[0_1px_6px_rgba(63,52,120,0.15)]"
+                  >
+                    <span className="flex h-10 w-10 items-center justify-center rounded-[0.85rem] bg-primary/10 text-primary">
+                      <IconComponent className="size-5" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-xs font-semibold text-[var(--task-hero-text)]">
+                      {entry.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveSubmissionFile(entry.id)}
+                      aria-label={`Remove ${entry.name}`}
+                      className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-transparent bg-primary/10 text-primary transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                      data-cy={`project-task-detail-submission-file-remove-${entry.id}`}
+                    >
+                      <X className="size-3" aria-hidden="true" />
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )}
+      </div>
+      {submissionError && <p className="mt-2 text-xs font-semibold text-destructive">{submissionError}</p>}
+      <DialogFooter className="mt-4 flex flex-wrap gap-3">
+        <Button
+          type="button"
+          data-cy="project-task-detail-submission-submit"
+          onClick={onSubmit}
+          disabled={submittingSubmission}
+          className={`inline-flex h-12 w-full max-w-xs items-center justify-center rounded-full px-8 text-sm font-semibold text-white shadow-[0_6px_0_rgba(63,52,120,0.2)] transition ${effectiveHasSubmission ? "bg-[var(--task-cta-bg)] hover:bg-[var(--task-cta-hover)]" : "bg-primary hover:bg-primary/90"}`}
+        >
+          {submittingSubmission ? (hasSubmission ? "Updating…" : "Submitting…") : hasSubmission ? "Update Submission" : "Submit Work"}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          data-cy="project-task-detail-submission-cancel"
+          onClick={onClose}
+          disabled={submittingSubmission}
+          className="h-12 rounded-full px-6 text-sm font-semibold uppercase tracking-[0.3em]"
+        >
+          Cancel
+        </Button>
+      </DialogFooter>
+    </>
+  )
+}
+
+type TaskSubmissionPanelProps = {
+  shouldShowWaitingHint: boolean
+  hasSubmission: boolean
+  effectiveHasSubmission: boolean
+  canSubmitTask: boolean
+  submissionDialogOpen: boolean
+  setSubmissionDialogOpen: (open: boolean) => void
+  submissionDialogProps: TaskSubmissionDialogContentProps
+}
+
+function TaskSubmissionPanel({
+  shouldShowWaitingHint,
+  hasSubmission,
+  effectiveHasSubmission,
+  canSubmitTask,
+  submissionDialogOpen,
+  setSubmissionDialogOpen,
+  submissionDialogProps,
+}: TaskSubmissionPanelProps) {
+  return (
+    <div className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-5 shadow-inner">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-base font-semibold text-[var(--task-hero-text)]">Submit your task</p>
+          <p className="text-xs text-[var(--task-subtle-text)]">
+            {shouldShowWaitingHint
+              ? "Edit your submission to send a new version for approval."
+              : hasSubmission
+                ? "Submission recorded. Please wait for the owner or assignee to review and approve it."
+                : "Add a description and upload any relevant files. Files are stored as data URLs for MVP."}
+          </p>
+        </div>
+        {canSubmitTask && (
+          <Dialog open={submissionDialogOpen} onOpenChange={setSubmissionDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                type="button"
+                data-cy="project-task-detail-submission-button"
+                className={`h-11 rounded-full px-6 text-xs font-semibold uppercase tracking-[0.3em] shadow-[0_6px_0_rgba(63,52,120,0.2)] transition ${
+                  effectiveHasSubmission
+                    ? "bg-primary text-white hover:bg-primary/90"
+                    : "bg-[var(--task-description-bg)] text-[var(--task-hero-text)] border border-primary/30 hover:border-primary/60 hover:bg-white"
+                }`}
+              >
+                {hasSubmission ? "Edit Submission" : "Submission"}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-6 shadow-[0_20px_60px_rgba(63,52,120,0.2)]">
+              <TaskSubmissionDialogContent {...submissionDialogProps} />
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
+    </div>
+  )
+}
+
+
+type TaskFeedbackPanelProps = {
+  feedbackMarker: string | null
+  feedbackAcknowledgedMarker: string | null
+  acknowledgingSubmission: boolean
+  lastReviewerComment: string | null
+  handleAcknowledgeSubmission: (message: string) => void
+}
+
+function TaskFeedbackPanel({
+  feedbackMarker,
+  feedbackAcknowledgedMarker,
+  acknowledgingSubmission,
+  lastReviewerComment,
+  handleAcknowledgeSubmission,
+}: TaskFeedbackPanelProps) {
+  return (
+    <div className="rounded-[2rem] border border-primary/30 bg-white/90 px-6 py-5 shadow-inner space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-base font-semibold text-[var(--task-hero-text)]">Review feedback</p>
+        <div className="flex items-center gap-3">
+          {!feedbackMarker && (
+            <span className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/60">
+              Waiting for owner response
+            </span>
+          )}
+          {feedbackMarker && feedbackAcknowledgedMarker === feedbackMarker && (
+            <p className="text-xs uppercase tracking-[0.3em] text-primary/70">Last review: {feedbackMarker}</p>
+          )}
+          {feedbackMarker && feedbackMarker !== feedbackAcknowledgedMarker && (
+            <Button
+              type="button"
+              data-cy="project-task-detail-feedback-acknowledge"
+              onClick={() => handleAcknowledgeSubmission(`You read the ${feedbackMarker} feedback.`)}
+              disabled={acknowledgingSubmission}
+              className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-white shadow-[0_4px_0_rgba(63,52,120,0.2)] transition hover:bg-primary/90 disabled:opacity-60 disabled:hover:bg-primary"
+            >
+              {acknowledgingSubmission ? "Marking..." : "Mark as seen"}
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className="asap-scroll rounded-[1.5rem] min-h-[6rem] max-h-[12rem] overflow-auto border-2 border-primary/30 bg-[var(--task-description-bg)] px-4 py-3 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
+        {lastReviewerComment ?? "No reviewer comment yet."}
+      </div>
+    </div>
+  )
+}
+
+
+type TaskSubmissionDetailsPanelProps = {
+  submissionMarker: string | null
+  hasPendingSubmissionAcknowledgement: boolean
+  acknowledgingSubmission: boolean
+  taskSubmission: TaskSubmission | null | undefined
+  handleAcknowledgeSubmission: (message: string) => void
+}
+
+function TaskSubmissionDetailsPanel({
+  submissionMarker,
+  hasPendingSubmissionAcknowledgement,
+  acknowledgingSubmission,
+  taskSubmission,
+  handleAcknowledgeSubmission,
+}: TaskSubmissionDetailsPanelProps) {
+  return (
+    <div className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-5 shadow-inner space-y-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-2">
+          <p className="text-base font-semibold text-[var(--task-hero-text)]">Submission Details</p>
+          {submissionMarker && (
+            <p className="text-xs uppercase tracking-[0.3em] text-primary/70">
+              {hasPendingSubmissionAcknowledgement ? `New submission: ${submissionMarker}` : `Last submission: ${submissionMarker}`}
+            </p>
+          )}
+        </div>
+        {hasPendingSubmissionAcknowledgement && (
+          <Button
+            type="button"
+            data-cy="project-task-detail-submission-acknowledge"
+            onClick={() => handleAcknowledgeSubmission("The assignee will know you saw the work.")}
+            disabled={acknowledgingSubmission}
+            className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-white shadow-[0_4px_0_rgba(63,52,120,0.2)] transition hover:bg-primary/90 disabled:opacity-60 disabled:hover:bg-primary"
+          >
+            {acknowledgingSubmission ? "Marking..." : "Mark as seen"}
+          </Button>
+        )}
+      </div>
+      <div className="asap-scroll rounded-[1.5rem] min-h-[6rem] max-h-[12rem] overflow-auto border-2 border-primary/30 bg-[var(--task-description-bg)] px-4 py-3 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
+        {taskSubmission?.description ?? "No description provided."}
+      </div>
+      {taskSubmission?.attachments && taskSubmission.attachments.length > 0 && (
+        <div className="space-y-2 text-sm text-primary">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--task-subtle-text)]">Attachments</p>
+          <div className="asap-scroll flex flex-wrap gap-3 max-h-[10rem] overflow-y-auto pr-1">
+            {taskSubmission.attachments.map((attachment) => {
+              const IconComponent = getFileTypeIcon(attachment.name)
+              return (
+                <a
+                  key={attachment.url ?? attachment.name}
+                  href={attachment.url ?? "#"}
+                  download={attachment.name}
+                  target="_blank"
+                  rel="noreferrer"
+                  onClick={(event) => {
+                    if (!attachment.url) {
+                      event.preventDefault()
+                    }
+                  }}
+                  className="flex min-w-[12rem] items-center gap-3 rounded-[1rem] border border-primary/30 bg-white px-3 py-2 text-xs font-semibold text-[var(--task-hero-text)] shadow-[0_1px_6px_rgba(63,52,120,0.15)] transition hover:border-primary/60 hover:shadow-[0_2px_8px_rgba(63,52,120,0.25)]"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-[0.85rem] bg-primary/10 text-primary">
+                    <IconComponent className="size-4" aria-hidden="true" />
+                  </span>
+                  <span className="max-w-[12rem] truncate">{attachment.name}</span>
+                </a>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+
+type TaskReviewSectionProps = {
+  status: TaskStatus
+  setStatus: React.Dispatch<React.SetStateAction<TaskStatus>>
+  statusColors: { background: string; text: string }
+  selectedStatusLabel: string
+  reviewComment: string
+  onReviewCommentChange: (value: string) => void
+  reviewError: string | null
+  handleReviewSubmit: () => Promise<void>
+  reviewing: boolean
+}
+
+function TaskReviewSection({
+  status,
+  setStatus,
+  statusColors,
+  selectedStatusLabel,
+  reviewComment,
+  onReviewCommentChange,
+  reviewError,
+  handleReviewSubmit,
+  reviewing,
+}: TaskReviewSectionProps) {
+  return (
+    <div className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-5 shadow-inner space-y-4">
+      <div className="space-y-1">
+        <p className="text-base font-semibold text-[var(--task-hero-text)]">Review submission</p>
+        <p className="text-xs text-[var(--task-subtle-text)]">Provide feedback and set the task status before sending the response.</p>
+      </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
+        <span className="text-base font-semibold text-[var(--task-hero-text)] sm:flex-shrink-0">Task Status :</span>
+        <div className="w-full sm:flex-1">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between rounded-full border-2 border-primary/40 px-6 py-3 text-sm font-semibold shadow-[0_6px_0_rgba(144,122,214,0.2)] transition hover:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                style={{
+                  backgroundColor: statusColors.background,
+                  color: statusColors.text,
+                  borderColor: statusColors.background,
+                }}
+              >
+                <span className="flex items-center gap-3 text-left">
+                  <span className="h-3 w-3 rounded-full border border-primary/30" style={{ backgroundColor: statusColors.background }} />
+                  <span>{selectedStatusLabel}</span>
+                </span>
+                <ChevronDown className="size-4 shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              align="start"
+              className="w-72 rounded-3xl border border-primary/40 bg-white px-3 py-2 text-sm font-semibold text-primary shadow-[0_10px_30px_rgba(72,68,110,0.2)]"
+            >
+              {Object.entries(TASK_STATUS_LABEL).map(([value, label]) => {
+                const itemColors = TASK_STATUS_COLORS[value as TaskStatus]
+                const isActive = value === status
+                return (
+                  <DropdownMenuItem
+                    key={value}
+                    onSelect={() => setStatus(value as TaskStatus)}
+                    className={`rounded-2xl px-3 py-2 focus:bg-primary/10 focus:text-primary ${isActive ? "bg-primary/10 text-primary" : ""}`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <span className="h-3 w-3 rounded-full border border-primary/30" style={{ backgroundColor: itemColors.background }} />
+                      {label}
+                    </span>
+                  </DropdownMenuItem>
+                )
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+      <div className="group/textarea overflow-hidden rounded-[1.25rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.25)]">
+        <Textarea
+          value={reviewComment}
+          onChange={(event) => onReviewCommentChange(event.target.value)}
+          data-cy="project-task-detail-review-comment"
+          className="project-detail-scroll min-h-[8rem] w-full border-none bg-transparent px-4 py-3 text-sm text-[var(--task-subtle-text)] placeholder:text-[var(--task-placeholder)] shadow-none focus-visible:outline-none focus-visible:ring-0"
+          placeholder="Share feedback…"
+        />
+      </div>
+      {reviewError && <p className="mt-2 text-xs font-semibold text-destructive">{reviewError}</p>}
+      <Button
+        type="button"
+        data-cy="project-task-detail-review-submit"
+        onClick={handleReviewSubmit}
+        disabled={reviewing}
+        className="inline-flex h-12 w-full items-center justify-center rounded-full border border-primary/30 bg-[var(--task-description-bg)] px-8 text-sm font-semibold text-[var(--task-hero-text)] shadow-[0_6px_0_rgba(63,52,120,0.2)] transition hover:bg-[var(--task-description-bg-hover)]"
+      >
+        {reviewing ? "Saving…" : "Save review"}
+      </Button>
+    </div>
+  )
+}
+
 type TaskDetailPageProps = {
   params: Promise<{
     projectId: string
@@ -126,13 +853,6 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [saving, setSaving] = useState(false)
   const [membership, setMembership] = useState<ProjectMembershipSummary | null>(null)
   const [membershipLoading, setMembershipLoading] = useState(true)
-  type SubmissionAttachmentEntry = {
-    id: string
-    name: string
-    url: string | null
-    file?: File
-    isExisting: boolean
-  }
   const [submissionDescription, setSubmissionDescription] = useState("")
   const [submissionFileEntries, setSubmissionFileEntries] = useState<SubmissionAttachmentEntry[]>([])
   const [submittingSubmission, setSubmittingSubmission] = useState(false)
@@ -267,10 +987,15 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     }
   }, [assigneeList, projectId, task?.assignees])
 
-  const handleAssigneeInfoClick = useCallback(() => {
-    setAssigneeDialogOpen(true)
-    void loadAssigneeList()
-  }, [loadAssigneeList])
+  const handleAssigneeDialogOpenChange = useCallback(
+    (open: boolean) => {
+      setAssigneeDialogOpen(open)
+      if (open) {
+        void loadAssigneeList()
+      }
+    },
+    [loadAssigneeList]
+  )
 
   const handleAssigneeDetailView = useCallback((member: ProjectMemberDetail) => {
     setAssigneeDetailTarget(member)
@@ -283,6 +1008,28 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       setAssigneeDetailTarget(null)
     }
   }, [])
+
+  const resolvedAssigneeList = React.useMemo<ProjectMemberDetail[]>(() => {
+    if (assigneeList && assigneeList.length > 0) {
+      return assigneeList
+    }
+    if (!task?.assignees?.length) {
+      return []
+    }
+    return task.assignees.map((assignee) => ({
+      id: assignee.id,
+      projectId,
+      userId: assignee.id,
+      role: PROJECT_ROLE.MEMBER,
+      username: assignee.username,
+      email: null,
+      fullName: assignee.fullName,
+      avatarUrl: assignee.avatarUrl,
+      bio: null,
+      department: task.department,
+      lastSeenAt: null,
+    } as ProjectMemberDetail))
+  }, [assigneeList, projectId, task])
 
   const submissionUpdatedAtRef = React.useRef<string | null>(null)
 
@@ -702,6 +1449,11 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const roleValue = assignerProfile?.role ?? task?.createdBy?.role ?? "MEMBER"
   const assignerRoleLabel = getRoleLabel(roleValue)
   const todayDateLabel = formatDateTime(new Date().toISOString())
+  const todayStart = React.useMemo(() => {
+    const date = new Date()
+    date.setHours(0, 0, 0, 0)
+    return date
+  }, [])
   const assignDateValue = useMemo(() => {
     if (!task?.createdAt) return null
     const parsed = new Date(task.createdAt)
@@ -861,193 +1613,26 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                       shadow-[0_6px_0_rgba(144,122,214,0.15)]"
           >
             <div className="space-y-4 w-full max-w-2xl self-center">
-              <div className="space-y-2 space-x-2">
-                <div className="inline-flex max-w-max items-center justify-center px-3 py-2 text-lg font-semibold text-[var(--task-hero-text)] pl-8">
-                  Assigner
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAssignerClick}
-                  className="group -mt-3 flex w-full items-center gap-4 rounded-[1.75rem] border border-primary/30 bg-white/90 px-4 py-3 text-left shadow-[0_6px_15px_rgba(63,52,120,0.08)] transition hover:border-primary/50 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                  aria-label={`View details for ${assignerLabel}`}
-                >
-                    <Avatar className="h-11 w-11 shrink-0">
-                      {assignerAvatarUrl ? (
-                        <Image
-                          src={assignerAvatarUrl}
-                          alt={`${assignerLabel} avatar`}
-                          width={44}
-                          height={44}
-                          className="h-full w-full rounded-full object-cover"
-                          priority
-                          data-cy="task-assigner-avatar"
-                        />
-                    ) : (
-                      <AvatarFallback className="bg-primary text-primary-foreground">
-                        {assignerLabel.charAt(0).toUpperCase() || "A"}
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-                  <div className="flex flex-1 flex-col gap-0.5">
-                    <p className="text-sm font-semibold text-[var(--task-hero-text)]">{assignerLabel}</p>
-                    <p className="text-xs text-[var(--task-subtle-text)]">
-                      {assignerDepartmentLabel} • {assignerRoleLabel}
-                    </p>
-                  </div>
-                  {!canSubmitTask && assigneeStatusNotice && (
-                    <div className="rounded-[2rem] border border-primary/30 bg-primary/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-primary">
-                      {assigneeStatusNotice}
-                    </div>
-                  )}
-                </button>
-                <Dialog open={assignerDialogOpen} onOpenChange={handleAssignerDialogChange}>
-                  <DialogContent className="max-w-2xl rounded-[2.5rem] border-2 border-primary/30 bg-white px-7 py-7 shadow-[0_20px_40px_rgba(72,68,110,0.25)]">
-                    <DialogHeader>
-                      <DialogTitle className="text-2xl font-bold text-[var(--task-hero-text)]">
-                         View Assigner Details
-                      </DialogTitle>
-                    </DialogHeader>
-                    {assignerProfileLoading ? (
-                      <p className="mx-auto mt-4 text-sm font-semibold text-[var(--task-subtle-text)]">
-                        Loading profile…
-                      </p>
-                    ) : assignerProfileError ? (
-                      <p className="mx-auto mt-4 text-sm font-semibold text-destructive">
-                        {assignerProfileError}
-                      </p>
-                    ) : (
-                      <div className="-mt-2 space-y-5">
-                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-                          <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border-4 border-primary/20 bg-primary/5">
-                            <Avatar className="h-20 w-20">
-                              {assignerAvatarUrl ? (
-                                <Image
-                                  src={assignerAvatarUrl}
-                                  alt={`${assignerLabel} avatar`}
-                                  width={80}
-                                  height={80}
-                                  className="h-full w-full rounded-full object-cover"
-                                  priority
-                                  data-cy="task-assigner-detail-avatar"
-                                />
-                              ) : (
-                                <AvatarFallback className="bg-primary text-primary-foreground">
-                                  {assignerLabel.charAt(0).toUpperCase() || "A"}
-                                </AvatarFallback>
-                              )}
-                            </Avatar>
-                          </div>
-                          <div className="flex flex-1 flex-col gap-1 mt-2">
-                            <p className="text-lg font-semibold text-[var(--task-hero-text)]">
-                              {assignerProfile?.username ?? assignerLabel}
-                            </p>
-                            <p className="text-sm font-semibold  text-primary/70">
-                              <span className="text-foreground/40">Department : </span>{assignerDepartmentLabel}
-                            </p>
-                            <p className="text-sm font-semibold  text-primary/70">
-                               <span className="text-foreground/40">Role : </span>{assignerRoleLabel}
-                            </p>
-                           
-                          </div>
-                        </div>
-                        <div className="space-y-3">
-                          {assignerProfile?.email ? (
-                            <div>
-                              <p className="text-sm font-semibold uppercase tracking-wide text-primary/70">
-                                Email
-                              </p>
-                              <p className="text-sm text-[var(--task-hero-text)]">
-                                {assignerProfile.email}
-                              </p>
-                            </div>
-                          ) : null}
-                          <p className="text-sm font-semibold uppercase tracking-wide text-primary/70">
-                            About me
-                          </p>
-                          <div className="asap-scroll max-h-[10rem]  -mt-2 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-2 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
-                            {assignerProfile?.bio?.length
-                              ? assignerProfile.bio
-                              : "No bio provided."}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </DialogContent>
-                </Dialog>
-              </div>
+              <AssignerDialog
+                label={assignerLabel}
+                avatarUrl={assignerAvatarUrl}
+                departmentLabel={assignerDepartmentLabel}
+                roleLabel={assignerRoleLabel}
+                statusNotice={assigneeStatusNotice}
+                showStatusNotice={!canSubmitTask && Boolean(assigneeStatusNotice)}
+                dialogOpen={assignerDialogOpen}
+                onTriggerClick={handleAssignerClick}
+                onDialogOpenChange={handleAssignerDialogChange}
+                profile={assignerProfile}
+                loading={assignerProfileLoading}
+                error={assignerProfileError}
+              />
               <h2 className="text-lg font-semibold text-[var(--task-hero-text)] pl-8">Task Description</h2>
               <div className="rounded-[1.5rem] -mt-3 min-h-[10rem] max-h-[10rem] asap-scroll border-2 border-primary/30 bg-[var(--task-description-bg)] px-4 py-2 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
                 {description || "No details provided."}
               </div>
             </div>
-            <Dialog open={assigneeDialogOpen} onOpenChange={setAssigneeDialogOpen}>
-            <DialogContent className="max-w-[48rem] rounded-[2.5rem] border-2 border-primary/30 bg-white px-8 py-6 text-left shadow-[0_20px_40px_rgba(72,68,110,0.2)]">
-                <DialogHeader>
-                  <DialogTitle className="text-xl font-bold text-[var(--task-hero-text)]">
-                    Assignee Members
-                  </DialogTitle>
-                </DialogHeader>
-                {assigneeDialogLoading ? (
-                  <p className="mx-auto mt-4 text-sm font-semibold text-[var(--task-subtle-text)]">
-                    Loading assignees…
-                  </p>
-                ) : assigneeDialogError ? (
-                  <p className="mx-auto mt-4 text-sm font-semibold text-destructive">
-                    {assigneeDialogError}
-                  </p>
-                ) : (
-                  <div className="-mt-2 space-y-3 asap-scroll [scrollbar-gutter:stable] max-h-[25rem] overflow-y-auto pr-1">
-                    {(assigneeList && assigneeList.length > 0
-                      ? assigneeList
-                      : task.assignees.map((assignee) => ({
-                          id: assignee.id,
-                          projectId,
-                          userId: assignee.id,
-                          role: PROJECT_ROLE.MEMBER,
-                          username: assignee.username,
-                          email: null,
-                          fullName: assignee.fullName,
-                          avatarUrl: assignee.avatarUrl,
-                          bio: null,
-                          department: task.department,
-                          lastSeenAt: null,
-                        } as ProjectMemberDetail))
-                    ).map((member) => (
-                      <div
-                        key={member.id}
-                        className="flex items-center gap-3 rounded-[1.25rem] border border-primary/30 bg-white px-4 py-3 shadow-[0_6px_12px_rgba(63,52,120,0.08)]"
-                        onClick={() => handleAssigneeDetailView(member)}
-                      >
-                        <Avatar className="h-11 w-11 shrink-0 border border-primary/30 bg-primary/5">
-                          {member.avatarUrl ? (
-                            <Image
-                              src={member.avatarUrl}
-                              alt={`${member.username} avatar`}
-                              width={44}
-                              height={44}
-                              className="h-full w-full object-cover rounded-full"
-                              data-cy="task-assignee-avatar"
-                            />
-                          ) : (
-                            <AvatarFallback className="bg-primary text-primary-foreground">
-                              {member.username.charAt(0).toUpperCase()}
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                        <div className="flex flex-1 flex-col gap-0.5">
-                          <p className="text-sm font-semibold text-[var(--task-hero-text)]">
-                            {member.username}
-                          </p>
-                          <p className="text-[0.65rem] uppercase tracking-[0.3em] text-primary/70">
-                            {member.department?.name ?? "Unassigned"} • {getRoleLabel(member.role)}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </DialogContent>
-            </Dialog>
+
             <Dialog open={assigneeDetailOpen} onOpenChange={handleAssigneeDetailClose}>
               <DialogContent className="max-w-2xl rounded-[2.5rem] border-2 border-primary/30 bg-white px-7 py-7 shadow-[0_20px_40px_rgba(72,68,110,0.25)]">
                 <DialogHeader>
@@ -1120,14 +1705,14 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                 <div className="flex items-center gap-2">
                   <p className="font-semibold ml-0 text-[var(--task-hero-text)]">Assigned To</p>
                   {task.assignees.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleAssigneeInfoClick}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-primary/30 bg-white text-primary shadow-sm transition hover:border-primary/60 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                      aria-label="View assignee list"
-                    >
-                      <Info className="size-4" />
-                    </button>
+                  <AssigneeListDialog
+                    assignees={resolvedAssigneeList}
+                    open={assigneeDialogOpen}
+                    onOpenChange={handleAssigneeDialogOpenChange}
+                    loading={assigneeDialogLoading}
+                    error={assigneeDialogError}
+                    onMemberSelect={handleAssigneeDetailView}
+                  />
                   )}
                 </div>
                 <div className="asap-scroll max-h-6 overflow-x-auto text-sm font-normal text-[var(--task-hero-text)]">
@@ -1149,222 +1734,45 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                 <p className="text-sm font-normal text-[var(--task-hero-text)]">{deadlineDateLabel}</p>
               </div>
             </div>
-            <Dialog open={dateInfoOpen} onOpenChange={setDateInfoOpen}>
-              <DialogContent className="max-w-3xl rounded-[2.5rem] border-2 border-primary/30 bg-white px-8 py-6 text-left shadow-[0_20px_40px_rgba(72,68,110,0.2)]">
-                <DialogHeader>
-                  <DialogTitle className="text-xl font-bold text-[var(--task-hero-text)]">
-                    Date Timeline
-                  </DialogTitle>
-                  <DialogDescription className="text-xs text-[var(--task-subtle-text)]">
-                    Overview of today, assign, startline and deadline dates.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
-                  <div className="space-y-3">
-                    {dateItems.map((item) => (
-                      <div key={item.label} className="flex items-center gap-3">
-                        <span
-                          className="inline-flex h-3 w-3 rounded-full border border-primary/40"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <div>
-                          <p className="text-[0.65rem] uppercase tracking-[0.3em] text-primary/60">
-                            {item.label}
-                          </p>
-                          <p className="text-sm font-semibold text-[var(--task-hero-text)]">
-                            {item.value || "—"}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="space-y-3">
-                <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 w-full max-w-[32rem]">
-      <Calendar
-        mode="range"
-        selected={dateRange}
-        defaultMonth={startlineDateValue ?? new Date()}
-        className="w-full rounded-[1.5rem] border-0 bg-transparent shadow-none"
-        disabled={{ before: startlineDateValue ?? new Date() }}
-        components={calendarComponents}
-      />
-                    </div>
-            </div>
-          </div>
-          <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 shadow-inner">
-            <p className="text-[0.65rem] uppercase tracking-[0.3em] text-primary/60">
-              Remaining time
-            </p>
-            <p className="text-sm font-semibold text-[var(--task-hero-text)]">
-              {remainingTimeLabel}
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
+            <TaskDateInfoDialog
+              open={dateInfoOpen}
+              onOpenChange={setDateInfoOpen}
+              dateItems={dateItems}
+              dateRange={dateRange}
+              startlineDateValue={startlineDateValue}
+              todayStart={todayStart}
+              calendarComponents={calendarComponents}
+              remainingTimeLabel={remainingTimeLabel}
+            />
 
             <div className="space-y-6 w-full max-w-2xl">
-              {!viewerIsAssigner && isAssigneeMember && (
-                <>
-                  <div className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-5 shadow-inner">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-base font-semibold text-[var(--task-hero-text)]">Submit your task</p>
-                      <p className="text-xs text-[var(--task-subtle-text)]">
-                        {shouldShowWaitingHint
-                          ? "Edit your submission to send a new version for approval."
-                          : hasSubmission
-                            ? "Submission recorded. Please wait for the owner or assignee to review and approve it."
-                            : "Add a description and upload any relevant files. Files are stored as data URLs for MVP."}
-                      </p>
-                      </div>
-                      {canSubmitTask && (
-                      <Dialog open={submissionDialogOpen} onOpenChange={setSubmissionDialogOpen}>
-                          <DialogTrigger asChild>
-                            <Button
-                              type="button"
-                              data-cy="project-task-detail-submission-button"
-                              className={`h-11 rounded-full px-6 text-xs font-semibold uppercase tracking-[0.3em] shadow-[0_6px_0_rgba(63,52,120,0.2)] transition ${
-                              effectiveHasSubmission
-                                ? "bg-primary text-white hover:bg-primary/90"
-                                : "bg-[var(--task-description-bg)] text-[var(--task-hero-text)] border border-primary/30 hover:border-primary/60 hover:bg-white"
-                            }`}
-                          >
-                            {hasSubmission ? "Edit Submission" : "Submission"}
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-6 shadow-[0_20px_60px_rgba(63,52,120,0.2)]">
-                          <DialogHeader>
-                            <DialogTitle className="text-base font-semibold text-[var(--task-hero-text)]">
-                              Submit your task
-                            </DialogTitle>
-                            <DialogDescription className="text-xs text-[var(--task-subtle-text)]">
-                              {shouldShowWaitingHint
-                                ? "Edit your submission to send a new version for approval."
-                                : hasSubmission
-                                  ? "Update your existing submission. Changes will overwrite your previous description and attachments."
-                                  : "Add a description and upload any relevant files. Files are stored as data URLs for MVP."}
-                            </DialogDescription>
-                      </DialogHeader>
-                      {hasPendingSubmissionAcknowledgement && (
-                        <div className="mt-1 rounded-[1.5rem] border border-primary/30 bg-[var(--task-description-bg)] px-4 py-2 text-[0.7rem] font-semibold uppercase tracking-[0.3em] text-primary/80">
-                          Sent • awaiting review
-                        </div>
-                      )}
-                          <div className="mt-3 space-y-4">
-                            <label className="sr-only" htmlFor="submission-description">
-                              Submission description
-                            </label>
-                            <div className="group/textarea overflow-hidden rounded-[1.25rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.25)]">
-                            <Textarea
-                              id="submission-description"
-                              value={submissionDescription}
-                              data-cy="project-task-detail-submission-description"
-                                onChange={(event) => setSubmissionDescription(event.target.value)}
-                                placeholder="Explain your submission…"
-                                className="min-h-[8rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-4 py-3 text-sm text-[var(--task-subtle-text)] placeholder:text-[var(--task-placeholder)] shadow-none focus-visible:outline-none focus-visible:ring-0"
-                              />
-                            </div>
 
-                            <div className="flex items-center justify-between gap-3 text-xs uppercase tracking-[0.3em] text-primary/60">
-                              <span className="text-[var(--task-subtle-text)] text-[0.7rem] font-normal lowercase">
-                                {submissionFileEntries.length > 0
-                                  ? `${submissionFileEntries.length} files selected`
-                                  : "No files selected yet"}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                {submissionFileEntries.length > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setSubmissionFileEntries([])}
-                                    className="rounded-full border border-primary/30 bg-primary/5 px-4 py-1 text-[0.65rem] font-semibold text-primary transition hover:border-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                                    data-cy="project-task-detail-submission-clear-files"
-                                  >
-                                    Clear
-                                  </button>
-                                )}
-                                <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-primary/40 bg-white/80 px-4 py-1 text-[0.65rem] font-semibold text-primary transition hover:border-primary/70 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-                                  Add File +
-                                  <input
-                                    type="file"
-                                    multiple
-                                    className="hidden"
-                                    data-cy="project-task-detail-submission-file-input"
-                                    onChange={handleSubmissionFilesChange}
-                                  />
-                                </label>
-                              </div>
-                            </div>
-                            {submissionFileEntries.length > 0 && (
-                              <div className="asap-scroll [scrollbar-gutter:stable] max-h-[14rem] overflow-y-auto pr-1">
-                                <ul className="flex flex-wrap gap-3">
-                                  {submissionFileEntries.map((entry) => {
-                                    const IconComponent = getFileTypeIcon(entry.name)
-                                    return (
-                                      <li
-                                        key={entry.id}
-                                        className="flex min-w-[12rem] max-w-[100%] items-center gap-3 rounded-[1rem] border border-primary/30 bg-white px-3 py-2 shadow-[0_1px_6px_rgba(63,52,120,0.15)]"
-                                      >
-                                        <span className="flex h-10 w-10 items-center justify-center rounded-[0.85rem] bg-primary/10 text-primary">
-                                          <IconComponent className="size-5" aria-hidden="true" />
-                                        </span>
-                                        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-[var(--task-hero-text)]">
-                                          {entry.name}
-                                        </span>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRemoveSubmissionFile(entry.id)}
-                                          aria-label={`Remove ${entry.name}`}
-                                          className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-transparent bg-primary/10 text-primary transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                                          data-cy={`project-task-detail-submission-file-remove-${entry.id}`}
-                                        >
-                                          <X className="size-3" aria-hidden="true" />
-                                        </button>
-                                      </li>
-                                    )
-                                  })}
-                                </ul>
-                              </div>
-                            )}
-                          </div>
-                          {submissionError && (
-                            <p className="mt-2 text-xs font-semibold text-destructive">{submissionError}</p>
-                          )}
-                          <DialogFooter className="mt-4 flex flex-wrap gap-3">
-                          <Button
-                            type="button"
-                            data-cy="project-task-detail-submission-submit"
-                            onClick={handleSubmissionSubmit}
-                            disabled={submittingSubmission}
-                            className={`inline-flex h-12 w-full max-w-xs items-center justify-center rounded-full px-8 text-sm font-semibold text-white shadow-[0_6px_0_rgba(63,52,120,0.2)] transition ${
-                                effectiveHasSubmission ? "bg-[var(--task-cta-bg)] hover:bg-[var(--task-cta-hover)]" : "bg-primary hover:bg-primary/90"
-                              }`}
-                            >
-                              {submittingSubmission
-                                ? hasSubmission
-                                  ? "Updating…"
-                                  : "Submitting…"
-                                : hasSubmission
-                                  ? "Update Submission"
-                                  : "Submit Work"}
-                            </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            data-cy="project-task-detail-submission-cancel"
-                              onClick={() => setSubmissionDialogOpen(false)}
-                              disabled={submittingSubmission}
-                              className="h-12 rounded-full px-6 text-sm font-semibold uppercase tracking-[0.3em]"
-                            >
-                              Cancel
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                      )}
-                    </div>
-                  </div>
-                </>
+              {!viewerIsAssigner && isAssigneeMember && (
+                <TaskSubmissionPanel
+                  shouldShowWaitingHint={shouldShowWaitingHint}
+                  hasSubmission={hasSubmission}
+                  effectiveHasSubmission={effectiveHasSubmission}
+                  canSubmitTask={canSubmitTask}
+                  submissionDialogOpen={submissionDialogOpen}
+                  setSubmissionDialogOpen={setSubmissionDialogOpen}
+                  submissionDialogProps={{
+                    submissionDescription,
+                    onSubmissionDescriptionChange: setSubmissionDescription,
+                    submissionFileEntries,
+                    onSubmissionFilesChange: handleSubmissionFilesChange,
+                    onRemoveSubmissionFile: handleRemoveSubmissionFile,
+                    clearSubmissionFiles: () => setSubmissionFileEntries([]),
+                    submissionError,
+                    submittingSubmission,
+                    effectiveHasSubmission,
+                    hasSubmission,
+                    hasPendingSubmissionAcknowledgement,
+                    onSubmit: handleSubmissionSubmit,
+                    onClose: () => setSubmissionDialogOpen(false),
+                  }}
+                />
               )}
+
               {viewerIsAssigner && !canSubmitTask && !ownerViewingSubmission &&(
                 <div className="rounded-[2rem] border border-dashed border-primary/40 bg-white/70 px-6 py-5 text-sm font-medium text-[var(--task-hero-text)] shadow-inner">
                   <p className="text-base font-semibold text-primary">Awaiting Submission</p>
@@ -1373,190 +1781,43 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                   </p>
                 </div>
               )}
+
               {!viewerIsAssigner && assignedMemberWaitingReview && (
-                <div className="rounded-[2rem] border border-primary/30 bg-white/90 px-6 py-5 shadow-inner space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-base font-semibold text-[var(--task-hero-text)]">Review feedback</p>
-                    <div className="flex items-center gap-3">
-                      {!feedbackMarker && (
-                        <span className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/60">
-                          Waiting for owner response
-                        </span>
-                      )}
-                      {feedbackMarker && feedbackAcknowledgedMarker === feedbackMarker && (
-                        <p className="text-xs uppercase tracking-[0.3em] text-primary/70">
-                          Last review: {feedbackMarker}
-                        </p>
-                      )}
-                      {feedbackMarker && feedbackMarker !== feedbackAcknowledgedMarker && (
-                        <Button
-                          type="button"
-                          data-cy="project-task-detail-feedback-acknowledge"
-                          onClick={() =>
-                            handleAcknowledgeSubmission(`You read the ${feedbackMarker} feedback.`)
-                          }
-                          disabled={acknowledgingSubmission}
-                          className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-white shadow-[0_4px_0_rgba(63,52,120,0.2)] transition hover:bg-primary/90 disabled:opacity-60 disabled:hover:bg-primary"
-                        >
-                          {acknowledgingSubmission ? "Marking..." : "Mark as seen"}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="asap-scroll rounded-[1.5rem] min-h-[6rem] max-h-[12rem] overflow-auto border-2 border-primary/30 bg-[var(--task-description-bg)] px-4 py-3 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
-                    {lastReviewerComment ?? "No reviewer comment yet."}
-                  </div>
-                </div>
-              )}
-              {viewerIsAssigner && ownerViewingSubmission && (
-                <div className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-5 shadow-inner space-y-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-2">
-                      <p className="text-base font-semibold text-[var(--task-hero-text)]">Submission Details</p>
-                      {submissionMarker && (
-                        <p className="text-xs uppercase tracking-[0.3em] text-primary/70">
-                          {hasPendingSubmissionAcknowledgement
-                            ? `New submission: ${submissionMarker}`
-                            : `Last submission: ${submissionMarker}`}
-                        </p>
-                      )}
-                    </div>
-                    {hasPendingSubmissionAcknowledgement && (
-                      <Button
-                        type="button"
-                        data-cy="project-task-detail-submission-acknowledge"
-                        onClick={() =>
-                          handleAcknowledgeSubmission("The assignee will know you saw the work.")
-                        }
-                        disabled={acknowledgingSubmission}
-                        className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-white shadow-[0_4px_0_rgba(63,52,120,0.2)] transition hover:bg-primary/90 disabled:opacity-60 disabled:hover:bg-primary"
-                      >
-                        {acknowledgingSubmission ? "Marking..." : "Mark as seen"}
-                      </Button>
-                    )}
-                  </div>
-                  <div className="asap-scroll rounded-[1.5rem] min-h-[6rem] max-h-[12rem] overflow-auto border-2 border-primary/30 bg-[var(--task-description-bg)] px-4 py-3 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
-                    {task.submission?.description ?? "No description provided."}
-                  </div>
-                  {task.submission?.attachments && task.submission.attachments.length > 0 && (
-                    <div className="space-y-2 text-sm text-primary">
-                      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--task-subtle-text)]">
-                        Attachments
-                      </p>
-                      <div className="asap-scroll flex flex-wrap gap-3 max-h-[10rem] overflow-y-auto pr-1">
-                        {task.submission.attachments.map((attachment) => {
-                          const IconComponent = getFileTypeIcon(attachment.name)
-                          return (
-                            <a
-                              key={attachment.url ?? attachment.name}
-                              href={attachment.url ?? "#"}
-                              download={attachment.name}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(event) => {
-                                if (!attachment.url) {
-                                  event.preventDefault()
-                                }
-                              }}
-                              className="flex min-w-[12rem] items-center gap-3 rounded-[1rem] border border-primary/30 bg-white px-3 py-2 text-xs font-semibold text-[var(--task-hero-text)] shadow-[0_1px_6px_rgba(63,52,120,0.15)] transition hover:border-primary/60 hover:shadow-[0_2px_8px_rgba(63,52,120,0.25)]"
-                            >
-                              <span className="flex h-8 w-8 items-center justify-center rounded-[0.85rem] bg-primary/10 text-primary">
-                                <IconComponent className="size-4" aria-hidden="true" />
-                              </span>
-                              <span className="max-w-[12rem] truncate">{attachment.name}</span>
-                            </a>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <TaskFeedbackPanel
+                  feedbackMarker={feedbackMarker}
+                  feedbackAcknowledgedMarker={feedbackAcknowledgedMarker}
+                  acknowledgingSubmission={acknowledgingSubmission}
+                  lastReviewerComment={lastReviewerComment}
+                  handleAcknowledgeSubmission={handleAcknowledgeSubmission}
+                />
               )}
 
-              {viewerIsAssigner && canReviewSubmission && (
-                <div className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-5 shadow-inner space-y-4">
-                  <div className="space-y-1">
-                    <p className="text-base font-semibold text-[var(--task-hero-text)]">Review submission</p>
-                    <p className="text-xs text-[var(--task-subtle-text)]">
-                      Provide feedback and set the task status before sending the response.
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-                    <span className="text-base font-semibold text-[var(--task-hero-text)] sm:flex-shrink-0">Task Status :</span>
-                    <div className="w-full sm:flex-1">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            type="button"
-                            className="flex w-full items-center justify-between rounded-full border-2 border-primary/40 px-6 py-3 text-sm font-semibold shadow-[0_6px_0_rgba(144,122,214,0.2)] transition hover:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                            style={{
-                              backgroundColor: statusColors.background,
-                              color: statusColors.text,
-                              borderColor: statusColors.background,
-                            }}
-                          >
-                            <span className="flex items-center gap-3 text-left">
-                              <span
-                                className="h-3 w-3 rounded-full border border-primary/30"
-                                style={{ backgroundColor: statusColors.background }}
-                              />
-                              <span>{selectedStatusLabel}</span>
-                            </span>
-                            <ChevronDown className="size-4 shrink-0" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="start"
-                          className="w-72 rounded-3xl border border-primary/40 bg-white px-3 py-2 text-sm font-semibold text-primary shadow-[0_10px_30px_rgba(72,68,110,0.2)]"
-                        >
-                          {Object.entries(TASK_STATUS_LABEL).map(([value, label]) => {
-                            const itemColors = TASK_STATUS_COLORS[value as TaskStatus]
-                            const isActive = value === status
-                            return (
-                              <DropdownMenuItem
-                                key={value}
-                                onSelect={() => setStatus(value as TaskStatus)}
-                                className={`rounded-2xl px-3 py-2 focus:bg-primary/10 focus:text-primary ${
-                                  isActive ? "bg-primary/10 text-primary" : ""
-                                }`}
-                              >
-                                <span className="flex items-center gap-3">
-                                  <span
-                                    className="h-3 w-3 rounded-full border border-primary/30"
-                                    style={{ backgroundColor: itemColors.background }}
-                                  />
-                                  {label}
-                                </span>
-                              </DropdownMenuItem>
-                            )
-                          })}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                  <div className="group/textarea overflow-hidden rounded-[1.25rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.25)]">
-                  <Textarea
-                    value={reviewComment}
-                    onChange={(event) => setReviewComment(event.target.value)}
-                    data-cy="project-task-detail-review-comment"
-                      className="project-detail-scroll min-h-[8rem] w-full border-none bg-transparent px-4 py-3 text-sm text-[var(--task-subtle-text)] placeholder:text-[var(--task-placeholder)] shadow-none focus-visible:outline-none focus-visible:ring-0"
-                      placeholder="Share feedback…"
-                    />
-                  </div>
-                  {reviewError && (
-                    <p className="mt-2 text-xs font-semibold text-destructive">{reviewError}</p>
-                  )}
-                  <Button
-                    type="button"
-                    data-cy="project-task-detail-review-submit"
-                    onClick={handleReviewSubmit}
-                    disabled={reviewing}
-                    className="inline-flex h-12 w-full items-center justify-center rounded-full border border-primary/30 bg-[var(--task-description-bg)] px-8 text-sm font-semibold text-[var(--task-hero-text)] shadow-[0_6px_0_rgba(63,52,120,0.2)] transition hover:bg-[var(--task-description-bg-hover)]"
-                  >
-                    {reviewing ? "Saving…" : "Save review"}
-                  </Button>
-                </div>
+
+              {viewerIsAssigner && ownerViewingSubmission && (
+                <TaskSubmissionDetailsPanel
+                  submissionMarker={submissionMarker}
+                  hasPendingSubmissionAcknowledgement={hasPendingSubmissionAcknowledgement}
+                  acknowledgingSubmission={acknowledgingSubmission}
+                  taskSubmission={task.submission}
+                  handleAcknowledgeSubmission={handleAcknowledgeSubmission}
+                />
               )}
+
+
+              {viewerIsAssigner && canReviewSubmission && (
+                <TaskReviewSection
+                  status={status}
+                  setStatus={setStatus}
+                  statusColors={statusColors}
+                  selectedStatusLabel={selectedStatusLabel}
+                  reviewComment={reviewComment}
+                  onReviewCommentChange={setReviewComment}
+                  reviewError={reviewError}
+                  handleReviewSubmit={handleReviewSubmit}
+                  reviewing={reviewing}
+                />
+              )}
+
             </div>
           </section>
         </div>

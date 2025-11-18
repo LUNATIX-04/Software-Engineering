@@ -26,6 +26,10 @@ type ProjectOwnerDialogProps = {
   handleSaveOwners: () => void
   setOwnerSearch: (value: string) => void
   setSelectedOwnersSearch: (value: string) => void
+  mode?: "project" | "projects"
+  title?: string
+  description?: string
+  subtitle?: string | null
 }
 
 export function ProjectOwnerDialog({
@@ -46,17 +50,28 @@ export function ProjectOwnerDialog({
   handleSaveOwners,
   setOwnerSearch,
   setSelectedOwnersSearch,
+  mode = "project",
+  title,
+  description,
+  subtitle,
 }: ProjectOwnerDialogProps) {
+  const defaultTitle = mode === "projects" ? "Change Projects Owners" : "Change Project Owners"
+  const defaultDescription =
+    mode === "projects"
+      ? "Select one or more members to manage projects across your workspace."
+      : "Select one or more members to act as project owners. Owners can manage every aspect of the project."
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl rounded-[2rem] border-2 border-primary/30 bg-white px-8 py-8 shadow-xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-[#2F2766]">Change Project Owners</DialogTitle>
+          <DialogTitle className="text-xl font-bold text-[#2F2766]">{title ?? defaultTitle}</DialogTitle>
+          {subtitle ? (
+            <p className="mt-1 text-sm font-semibold text-primary">{subtitle}</p>
+          ) : null}
         </DialogHeader>
         <div className="space-y-5">
           <p className="text-sm text-muted-foreground">
-            Select one or more members to act as project owners. Owners can manage every aspect of the
-            project.
+            {description ?? defaultDescription}
           </p>
           {ownerError ? <p className="text-sm font-semibold text-destructive">{ownerError}</p> : null}
           <div className="space-y-3">

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Check, PlusCircle, X } from "lucide-react"
+import { Check, PlusCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { SearchField } from "@/components/ui/search-field"
@@ -12,7 +12,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { ProjectOwnerDialog } from "@/components/layout/AppShell/ProjectOwnerDialog"
 import { CreateProjectCard, ProjectCard } from "@/components/projects"
 import {
   deleteProject,
@@ -29,6 +29,175 @@ import { useNotifications } from "@/components/notifications/Notification"
 import { cn } from "@/lib/utils"
 
 const BASE_PAGE_SIZE_OPTIONS = [3, 9, 18, 36, 64, 96, 136, 172]
+
+type ProjectsPaginationControlsProps = {
+  page: number
+  totalPages: number
+  pageInput: string
+  setPageInput: (value: string) => void
+  onPageChange: (value: number) => void
+  pageHint: string
+  onPageInputCommit: () => void
+}
+
+function ProjectsPaginationControls({
+  page,
+  totalPages,
+  pageInput,
+  setPageInput,
+  onPageChange,
+  pageHint,
+  onPageInputCommit,
+}: ProjectsPaginationControlsProps) {
+  const controlsRef = useRef<HTMLDivElement | null>(null)
+  const hintTimeoutRef = useRef<number | null>(null)
+  const [pageHintVisible, setPageHintVisible] = useState(false)
+
+  const clearPageHintTimeout = useCallback(() => {
+    if (hintTimeoutRef.current) {
+      window.clearTimeout(hintTimeoutRef.current)
+      hintTimeoutRef.current = null
+    }
+  }, [])
+
+  const hidePageHint = useCallback(() => {
+    clearPageHintTimeout()
+    setPageHintVisible(false)
+  }, [clearPageHintTimeout])
+
+  const triggerPageHint = useCallback(() => {
+    setPageHintVisible(true)
+    clearPageHintTimeout()
+    hintTimeoutRef.current = window.setTimeout(() => {
+      setPageHintVisible(false)
+      hintTimeoutRef.current = null
+    }, 2000)
+  }, [clearPageHintTimeout])
+
+  useEffect(() => {
+    if (!pageHintVisible) {
+      return
+    }
+    const pointerEventName =
+      typeof window !== "undefined" && "PointerEvent" in window ? "pointerdown" : "mousedown"
+
+    const handlePointerDown = (event: Event) => {
+      if (!controlsRef.current?.contains(event.target as Node)) {
+        hidePageHint()
+      } else {
+        triggerPageHint()
+      }
+    }
+
+    const handleFocusIn = (event: FocusEvent) => {
+      if (!controlsRef.current?.contains(event.target as Node)) {
+        hidePageHint()
+      } else {
+        triggerPageHint()
+      }
+    }
+
+    document.addEventListener(pointerEventName, handlePointerDown as EventListener)
+    document.addEventListener("focusin", handleFocusIn)
+
+    return () => {
+      document.removeEventListener(pointerEventName, handlePointerDown as EventListener)
+      document.removeEventListener("focusin", handleFocusIn)
+    }
+  }, [hidePageHint, pageHintVisible, triggerPageHint])
+
+  const handlePrev = () => {
+    triggerPageHint()
+    onPageChange(Math.max(1, page - 1))
+  }
+
+  const handleNext = () => {
+    triggerPageHint()
+    onPageChange(Math.min(totalPages, page + 1))
+  }
+
+  return (
+    <div
+      ref={controlsRef}
+      className="mt-auto mb-4 flex select-none items-center justify-center gap-4 pt-4"
+      onFocus={triggerPageHint}
+      onBlur={(event) => {
+        const nextTarget = event.relatedTarget as HTMLElement | null
+        if (!nextTarget || !controlsRef.current?.contains(nextTarget)) {
+          hidePageHint()
+        }
+      }}
+    >
+      <Button
+        type="button"
+        variant="ghost"
+        data-cy="project-pagination-prev"
+        onClick={handlePrev}
+        disabled={page === 1}
+        className={cn(
+          "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
+          page === 1 && "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
+        )}
+      >
+        &#9664;
+      </Button>
+      <div className="relative flex flex-col items-center gap-1">
+        <span
+          aria-hidden="true"
+          className={cn(
+            "absolute -top-8 whitespace-nowrap rounded-full border border-primary/30 bg-white px-3 py-1 text-xs font-medium text-primary shadow-sm transition-all duration-200 ease-out",
+            pageHintVisible
+              ? "pointer-events-auto opacity-100 translate-y-0 scale-100"
+              : "pointer-events-none opacity-0 -translate-y-1 scale-95"
+          )}
+        >
+          {pageHint}
+        </span>
+        <span id="project-page-hint" className="sr-only">
+          {pageHint}
+        </span>
+        <input
+          id="project-page-input"
+          data-cy="project-pagination-input"
+          type="text"
+          inputMode="numeric"
+          value={pageInput}
+          onFocus={triggerPageHint}
+          onBlur={() => {
+            onPageInputCommit()
+            hidePageHint()
+          }}
+          onChange={(event) => {
+            const numericValue = event.target.value.replace(/[^0-9]/g, "")
+            setPageInput(numericValue)
+            triggerPageHint()
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              onPageInputCommit()
+              triggerPageHint()
+            }
+          }}
+          className="w-16 select-text rounded-full border-2 border-primary/40 bg-white px-3 py-2 text-center text-base font-semibold text-primary shadow-sm focus:border-primary focus:outline-none"
+          aria-describedby="project-page-hint"
+        />
+      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        data-cy="project-pagination-next"
+        onClick={handleNext}
+        disabled={page === totalPages}
+        className={cn(
+          "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
+          page === totalPages && "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
+        )}
+      >
+        &#9654;
+      </Button>
+    </div>
+  )
+}
 export default function ProjectsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [projects, setProjects] = useState<ProjectRecord[]>([])
@@ -41,10 +210,7 @@ export default function ProjectsPage() {
     BASE_PAGE_SIZE_OPTIONS[1] ?? BASE_PAGE_SIZE_OPTIONS[0]
   )
   const [pageInput, setPageInput] = useState("1")
-  const [pageHintVisible, setPageHintVisible] = useState(false)
   const [pageSizeMenuOpen, setPageSizeMenuOpen] = useState(false)
-  const paginationControlsRef = useRef<HTMLDivElement | null>(null)
-  const pageHintTimeoutRef = useRef<number | null>(null)
   const router = useRouter()
   const { notify } = useNotifications()
   const [ownerDialogProjectId, setOwnerDialogProjectId] = useState<string | null>(null)
@@ -141,69 +307,6 @@ export default function ProjectsPage() {
     const startIndex = (page - 1) * pageSize
     return filteredProjects.slice(startIndex, startIndex + pageSize)
   }, [filteredProjects, page, pageSize])
-
-  const clearPageHintTimeout = useCallback(() => {
-    if (pageHintTimeoutRef.current) {
-      window.clearTimeout(pageHintTimeoutRef.current)
-      pageHintTimeoutRef.current = null
-    }
-  }, [])
-
-  const hidePageHint = useCallback(() => {
-    clearPageHintTimeout()
-    setPageHintVisible(false)
-  }, [clearPageHintTimeout])
-
-  const triggerPageHint = useCallback(() => {
-    if (typeof window === "undefined") {
-      return
-    }
-    setPageHintVisible(true)
-    clearPageHintTimeout()
-    pageHintTimeoutRef.current = window.setTimeout(() => {
-      setPageHintVisible(false)
-      pageHintTimeoutRef.current = null
-    }, 2000)
-  }, [clearPageHintTimeout])
-
-  useEffect(() => {
-    if (!pageHintVisible) {
-      return
-    }
-
-    const handlePointerDown = (event: Event) => {
-      if (!paginationControlsRef.current?.contains(event.target as Node)) {
-        hidePageHint()
-      } else {
-        triggerPageHint()
-      }
-    }
-
-    const handleFocusIn = (event: FocusEvent) => {
-      if (!paginationControlsRef.current?.contains(event.target as Node)) {
-        hidePageHint()
-      } else {
-        triggerPageHint()
-      }
-    }
-
-    const pointerEventName =
-      typeof window !== "undefined" && "PointerEvent" in window ? "pointerdown" : "mousedown"
-
-    document.addEventListener(pointerEventName, handlePointerDown as EventListener)
-    document.addEventListener("focusin", handleFocusIn)
-
-    return () => {
-      document.removeEventListener(pointerEventName, handlePointerDown as EventListener)
-      document.removeEventListener("focusin", handleFocusIn)
-    }
-  }, [hidePageHint, pageHintVisible, triggerPageHint])
-
-  useEffect(() => {
-    return () => {
-      clearPageHintTimeout()
-    }
-  }, [clearPageHintTimeout])
 
   const handleDelete = useCallback(
     async (projectId: string) => {
@@ -366,7 +469,7 @@ export default function ProjectsPage() {
     >
       <div className="flex flex-col gap-4 mt-10 sm:flex-row sm:items-center sm:justify-between">
         <SearchField
-          wrapperClassName="ml-5 w-[clamp(20rem,30vw,40rem)] max-w-xl sm:max-w-lg"
+          wrapperClassName="w-full max-w-md sm:mr-auto"
           placeholder="Search"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -407,6 +510,7 @@ export default function ProjectsPage() {
                         }
                         setPageSize(sizeOption)
                         setPage(1)
+                        setPageSizeMenuOpen(false)
                       }}
                     >
                       <span>{sizeOption}</span>
@@ -497,7 +601,15 @@ export default function ProjectsPage() {
                     } catch (error) {
                       const raw =
                         error instanceof Error ? error.message : "Unable to leave this project."
-                      setLeaveError(raw)
+                      if (raw.includes("Transfer ownership before leaving")) {
+                        notify({
+                          title: "Transfer ownership before leaving",
+                          description: raw,
+                          variant: "destructive",
+                        })
+                      } else {
+                        setLeaveError(raw)
+                      }
                     }
                   }}
                   canEdit={isOwner}
@@ -517,235 +629,42 @@ export default function ProjectsPage() {
         </div>
 
         {!projectsLoading && filteredProjects.length > 0 ? (
-          <div
-            ref={paginationControlsRef}
-            className="mt-auto mb-4 flex select-none items-center justify-center gap-4 pt-4"
-            onFocus={triggerPageHint}
-            onBlur={(event) => {
-              const nextTarget = event.relatedTarget as HTMLElement | null
-              if (!nextTarget || !paginationControlsRef.current?.contains(nextTarget)) {
-                hidePageHint()
-              }
-            }}
-          >
-            <Button
-              type="button"
-              variant="ghost"
-              data-cy="project-pagination-prev"
-              onClick={() => {
-                triggerPageHint()
-                setPage((prev) => Math.max(1, prev - 1))
-              }}
-              disabled={page === 1}
-              className={cn(
-                "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
-                page === 1 && "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
-              )}
-            >
-              &#9664;
-            </Button>
-            <div className="relative flex flex-col items-center gap-1">
-              <span
-                aria-hidden="true"
-                className={cn(
-                  "absolute -top-8 whitespace-nowrap rounded-full border border-primary/30 bg-white px-3 py-1 text-xs font-medium text-primary shadow-sm transition-all duration-200 ease-out",
-                  pageHintVisible
-                    ? "pointer-events-auto opacity-100 translate-y-0 scale-100"
-                    : "pointer-events-none opacity-0 -translate-y-1 scale-95"
-                )}
-              >
-                {pageHint}
-              </span>
-              <span id="project-page-hint" className="sr-only">
-                {pageHint}
-              </span>
-            <input
-              id="project-page-input"
-              data-cy="project-pagination-input"
-              type="text"
-              inputMode="numeric"
-                value={pageInput}
-                onFocus={triggerPageHint}
-                onBlur={() => {
-                  commitPageInput()
-                  hidePageHint()
-                }}
-                onChange={(event) => {
-                  const numericValue = event.target.value.replace(/[^0-9]/g, "")
-                  setPageInput(numericValue)
-                  triggerPageHint()
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    commitPageInput()
-                    triggerPageHint()
-                  }
-                }}
-                className="w-16 select-text rounded-full border-2 border-primary/40 bg-white px-3 py-2 text-center text-base font-semibold text-primary shadow-sm focus:border-primary focus:outline-none"
-                aria-describedby="project-page-hint"
-              />
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              data-cy="project-pagination-next"
-              onClick={() => {
-                triggerPageHint()
-                setPage((prev) => Math.min(totalPages, prev + 1))
-              }}
-              disabled={page === totalPages}
-              className={cn(
-                "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
-                page === totalPages &&
-                  "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
-              )}
-            >
-              &#9654;
-            </Button>
-          </div>
+          <ProjectsPaginationControls
+            page={page}
+            totalPages={totalPages}
+            pageInput={pageInput}
+            setPageInput={setPageInput}
+            onPageChange={(value) => setPage(value)}
+            pageHint={pageHint}
+            onPageInputCommit={commitPageInput}
+          />
         ) : null}
       </div>
-      <Dialog
+      <ProjectOwnerDialog
         open={ownerDialogOpen}
         onOpenChange={(open) => {
           if (!open) {
             setOwnerDialogProjectId(null)
           }
         }}
-      >
-        <DialogContent className="max-w-2xl rounded-[2rem] border-2 border-primary/30 bg-white px-8 py-8 shadow-xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#2F2766]">
-              Change Project Owners
-              {ownerDialogProject ? (
-                <span className="mt-1 block text-xl font-semibold text-primary">
-                  {ownerDialogProject.title}
-                </span>
-              ) : null}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6">
-            <p className="text-sm text-muted-foreground">
-              Select one or more members to act as project owners.
-            </p>
-            {ownerError ? (
-              <p className="text-sm font-semibold text-destructive">{ownerError}</p>
-            ) : null}
-            <div className="space-y-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
-                  Selected owners
-                </p>
-                <SearchField
-                  wrapperClassName="w-full max-w-xs"
-                  value={selectedOwnersSearch}
-                  data-cy="project-owner-selected-search-input"
-                  onChange={(event) => setSelectedOwnersSearch(event.target.value)}
-                  placeholder="Search username"
-                  className="py-2 pl-9 pr-3 text-sm font-semibold text-[#2F2766] placeholder:text-primary/40"
-                />
-              </div>
-              {selectedOwners.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-primary/30 bg-white px-4 py-5 text-sm text-muted-foreground">
-                  Choose members from the list below to make them owners.
-                </div>
-              ) : (
-                <div className="rounded-3xl border border-primary/30 bg-white px-4 py-3">
-                  <div className="asap-scroll max-h-32 overflow-y-auto pr-2 [scrollbar-gutter:stable] space-y-2">
-                    {filteredSelectedOwners.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-primary/30 bg-white px-4 py-5 text-sm text-muted-foreground">
-                        No selected owners match your search.
-                      </div>
-                    ) : (
-                      filteredSelectedOwners.map((owner) => (
-                        <button
-                          key={owner.id}
-                          type="button"
-                          data-cy="project-owner-selected-item"
-                          onClick={() => toggleOwnerSelection(owner.id)}
-                          className="flex w-full items-center justify-between rounded-2xl border border-primary/30 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:border-primary"
-                        >
-                          <span className="truncate">{owner.username}</span>
-                          <X className="size-4 shrink-0" />
-                        </button>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="space-y-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">
-                  All members
-                </p>
-                <SearchField
-                  wrapperClassName="w-full max-w-xs"
-                  value={ownerSearch}
-                  data-cy="project-owner-search-input"
-                  onChange={(event) => setOwnerSearch(event.target.value)}
-                  placeholder="Search username"
-                  className="py-2 pl-9 pr-3 text-sm font-semibold text-[#2F2766] placeholder:text-primary/40"
-                />
-              </div>
-              <div className="asap-scroll [scrollbar-gutter:stable] max-h-40 space-y-3 overflow-y-auto pr-1">
-                {ownersLoading ? (
-                  <p className="text-sm text-muted-foreground">Loading project members…</p>
-                ) : ownerCandidates.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    This project does not have any members yet.
-                  </p>
-                ) : filteredOwnerCandidates.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No members match your search.</p>
-                ) : (
-                  filteredOwnerCandidates.map((candidate) => {
-                    const isSelected = ownerSelection.has(candidate.id)
-                    return (
-                      <button
-                        key={candidate.id}
-                        type="button"
-                        data-cy="project-owner-candidate-item"
-                        onClick={() => toggleOwnerSelection(candidate.id)}
-                        className={cn(
-                          "flex w-full items-center justify-between rounded-2xl border border-primary/20 bg-white px-4 py-3 text-left text-sm font-semibold text-[#2F2766] transition hover:border-primary hover:bg-primary/5",
-                          isSelected && "border-primary bg-primary/10"
-                        )}
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-semibold">{candidate.username}</span>
-                          <span className="text-xs text-muted-foreground">{candidate.role}</span>
-                        </div>
-                        {isSelected ? <Check className="size-4 text-primary" /> : null}
-                      </button>
-                    )
-                  })
-                )}
-              </div>
-            </div>
-            <div className="flex justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                data-cy="project-owner-cancel-button"
-                className="rounded-full px-6 py-2 text-sm font-semibold"
-                onClick={() => setOwnerDialogProjectId(null)}
-                disabled={ownersSaving}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="button"
-                data-cy="project-owner-save-button"
-                className="rounded-full bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
-                disabled={ownersSaving || ownerSelection.size === 0}
-                onClick={handleSaveOwners}
-              >
-                {ownersSaving ? "Saving…" : "Save"}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+        departmentLayout="fullWidth"
+        ownerError={ownerError}
+        ownerCandidates={ownerCandidates}
+        ownerSelection={ownerSelection}
+        selectedOwners={selectedOwners}
+        filteredOwnerCandidates={filteredOwnerCandidates}
+        filteredSelectedOwners={filteredSelectedOwners}
+        ownerSearch={ownerSearch}
+        selectedOwnersSearch={selectedOwnersSearch}
+        ownersLoading={ownersLoading}
+        ownersSaving={ownersSaving}
+        toggleOwnerSelection={toggleOwnerSelection}
+        handleSaveOwners={handleSaveOwners}
+        setOwnerSearch={setOwnerSearch}
+        setSelectedOwnersSearch={setSelectedOwnersSearch}
+        mode="projects"
+        subtitle={ownerDialogProject?.title ?? null}
+      />
     </div>
   )
 }

@@ -695,6 +695,215 @@ const TASK_STATUS_COLORS: Record<TaskStatus, { background: string; text: string 
   },
 }
 
+const TIME_SCROLLER_HEIGHT_CLASS = "h-[8rem]"
+
+type TaskTimeScrollerColumnProps = {
+  label: string
+  target: "start" | "end"
+  parsedTime: { hours: number; minutes: number } | null
+  timeOptions: { hours: number[]; minutes: number[] }
+  hoursViewportRef: React.RefObject<ScrollAreaViewportElement | null>
+  minutesViewportRef: React.RefObject<ScrollAreaViewportElement | null>
+  handleTimeSlotSelect: (
+    type: "hour" | "minute",
+    value: number,
+    target: "start" | "end"
+  ) => void
+  timeScrollerHeightClass: string
+}
+
+function TaskTimeScrollerColumn({
+  label,
+  target,
+  parsedTime,
+  timeOptions,
+  hoursViewportRef,
+  minutesViewportRef,
+  handleTimeSlotSelect,
+  timeScrollerHeightClass,
+}: TaskTimeScrollerColumnProps) {
+  const containerClassName =
+    target === "start"
+      ? "order-2 flex w-full max-w-[9rem] flex-col gap-4 text-primary lg:order-1 lg:self-stretch"
+      : "order-3 flex w-full max-w-[9rem] flex-col gap-4 text-primary lg:self-stretch"
+
+  const renderScroller = (
+    title: string,
+    type: "hour" | "minute",
+    values: number[],
+    selectedValue: number | undefined,
+    viewportRef: React.RefObject<ScrollAreaViewportElement | null>
+  ) => (
+    <div>
+      <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">{title}</p>
+      <ScrollArea
+        className={cn(
+          "asap-scroll mt-2 w-full rounded-[1rem] border border-primary/20 bg-white/90 shadow-[0_4px_0_rgba(144,122,214,0.15)] overflow-x-scroll",
+          timeScrollerHeightClass
+        )}
+        viewportRef={viewportRef}
+      >
+        <div className="flex flex-col gap-2 p-1 pr-1">
+          {values.map((value) => (
+            <Button
+              key={value}
+              type="button"
+              data-scroll-target={`${target}-${type}-${value}`}
+              variant={selectedValue === value ? "default" : "ghost"}
+              className={cn(
+                "w-full rounded-full border border-primary/20 text-sm font-semibold",
+                selectedValue === value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-primary hover:bg-primary/10"
+              )}
+              onClick={() => handleTimeSlotSelect(type, value, target)}
+            >
+              {value.toString().padStart(2, "0")}
+            </Button>
+          ))}
+        </div>
+        <ScrollBar orientation="vertical" />
+      </ScrollArea>
+    </div>
+  )
+
+  return (
+    <div className={containerClassName}>
+      <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">{label}</p>
+      {renderScroller("Hours", "hour", timeOptions.hours, parsedTime?.hours ?? undefined, hoursViewportRef)}
+      {renderScroller(
+        "Minutes",
+        "minute",
+        timeOptions.minutes,
+        parsedTime?.minutes ?? undefined,
+        minutesViewportRef
+      )}
+    </div>
+  )
+}
+
+type TaskTimelinePanelProps = {
+  formattedStartLabel: string
+  formattedDeadlineLabel: string
+  handleResetDeadline: () => void
+  calendarSelectedRange: DateRange | undefined
+  calendarMonth: Date
+  handleCalendarSelect: (range?: DateRange) => void
+  setCalendarMonth: React.Dispatch<React.SetStateAction<Date>>
+  timeOptions: { hours: number[]; minutes: number[] }
+  parsedStartTime: { hours: number; minutes: number } | null
+  parsedDeadlineTime: { hours: number; minutes: number } | null
+  handleTimeSlotSelect: (
+    type: "hour" | "minute",
+    value: number,
+    target: "start" | "end"
+  ) => void
+  startHourViewportRef: React.RefObject<ScrollAreaViewportElement | null>
+  startMinuteViewportRef: React.RefObject<ScrollAreaViewportElement | null>
+  endHourViewportRef: React.RefObject<ScrollAreaViewportElement | null>
+  endMinuteViewportRef: React.RefObject<ScrollAreaViewportElement | null>
+  todayStart: Date
+  timeScrollerHeightClass: string
+}
+
+function TaskTimelinePanel({
+  formattedStartLabel,
+  formattedDeadlineLabel,
+  handleResetDeadline,
+  calendarSelectedRange,
+  calendarMonth,
+  handleCalendarSelect,
+  setCalendarMonth,
+  timeOptions,
+  parsedStartTime,
+  parsedDeadlineTime,
+  handleTimeSlotSelect,
+  startHourViewportRef,
+  startMinuteViewportRef,
+  endHourViewportRef,
+  endMinuteViewportRef,
+  todayStart,
+  timeScrollerHeightClass,
+}: TaskTimelinePanelProps) {
+  return (
+    <div className="mt-0 flex w-full flex-col gap-10 pr-6 md:pr-3">
+      <div className="flex w-full max-w-full flex-col gap-6 rounded-[3rem] border-2 border-primary/40 bg-white/90 px-6 py-6 shadow-[0_6px_0_rgba(144,122,214,0.2)]">
+        <div className="rounded-[2rem] border border-primary/20 bg-white/80 p-5">
+          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-start">
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">Startline</p>
+              <p className="text-base font-semibold text-[#2F2766]">{formattedStartLabel}</p>
+            </div>
+            <div className="space-y-2 md:text-right">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">Deadline</p>
+                <p className="text-base font-semibold text-[#2F2766]">{formattedDeadlineLabel}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              className="inline-flex select-none items-center gap-2 rounded-full border border-primary/30 px-4 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary transition hover:border-primary hover:bg-primary/10"
+            >
+              <CalendarDays className="size-4" />
+              Full Calendar
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={handleResetDeadline}
+            className="inline-flex select-none items-center rounded-full border border-primary/30 px-4 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary transition hover:border-primary hover:bg-primary/10"
+          >
+            Reset date &amp; time
+          </button>
+        </div>
+        <div className="relative flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,0.35fr)_minmax(0,1fr)_minmax(0,0.35fr)] lg:items-start">
+          <TaskTimeScrollerColumn
+            label="Startline"
+            target="start"
+            parsedTime={parsedStartTime}
+            timeOptions={timeOptions}
+            hoursViewportRef={startHourViewportRef}
+            minutesViewportRef={startMinuteViewportRef}
+            handleTimeSlotSelect={handleTimeSlotSelect}
+            timeScrollerHeightClass={timeScrollerHeightClass}
+          />
+          <Calendar
+            className="order-1 w-full rounded-[1.5rem] min-h-[22rem] lg:order-2"
+            classNames={{
+              day: "relative w-full h-full p-0 text-center [&:last-child[data-selected=true]_button]:rounded-r-md group/day aspect-square select-none text-primary data-[outside=true]:text-primary/40",
+            }}
+            mode="range"
+            selected={calendarSelectedRange}
+            month={calendarMonth}
+            onSelect={handleCalendarSelect}
+            onMonthChange={setCalendarMonth}
+            captionLayout="dropdown"
+            fromYear={todayStart.getFullYear()}
+            toYear={2100}
+            fixedWeeks
+            initialFocus
+            fromDate={todayStart}
+          />
+          <TaskTimeScrollerColumn
+            label="Deadline"
+            target="end"
+            parsedTime={parsedDeadlineTime}
+            timeOptions={timeOptions}
+            hoursViewportRef={endHourViewportRef}
+            minutesViewportRef={endMinuteViewportRef}
+            handleTimeSlotSelect={handleTimeSlotSelect}
+            timeScrollerHeightClass={timeScrollerHeightClass}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function TaskForm({
   heading,
   submitLabel,
@@ -1404,207 +1613,25 @@ export function TaskForm({
         </div>
       </form>
 
-      <div className="mt-0 flex w-full flex-col gap-10 pr-6 md:pr-3"> {/*Calendar Set*/}
-        <div className="flex w-full max-w-full flex-col gap-6 rounded-[3rem] border-2 border-primary/40 bg-white/90 px-6 py-6 shadow-[0_6px_0_rgba(144,122,214,0.2)]">
-          <div className="rounded-[2rem] border border-primary/20 bg-white/80 p-5">
-            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-start">
-              <div className="space-y-1">
-                <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">
-                  Startline
-                </p>
-                <p className="text-base font-semibold text-[#2F2766]">{formattedStartLabel}</p>
-              </div>
-              <div className="space-y-2 md:text-right">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">
-                    Deadline
-                  </p>
-                  <p className="text-base font-semibold text-[#2F2766]">{formattedDeadlineLabel}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                className="inline-flex select-none items-center gap-2 rounded-full border border-primary/30 px-4 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary transition hover:border-primary hover:bg-primary/10"
-              >
-                <CalendarDays className="size-4" />
-                Full Calendar
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={handleResetDeadline}
-              className="inline-flex select-none items-center rounded-full border border-primary/30 px-4 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary transition hover:border-primary hover:bg-primary/10"
-            >
-              Reset date &amp; time
-            </button>
-          </div>
-          <div className="relative flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,0.35fr)_minmax(0,1fr)_minmax(0,0.35fr)] lg:items-start">
-            <div className="order-2 flex w-full max-w-[9rem] flex-col gap-4 text-primary lg:order-1 lg:self-stretch">
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">
-                Startline
-              </p>
-              <div>
-                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
-                  Hours
-                </p>
-              <ScrollArea
-                className={cn(
-                  "asap-scroll mt-2 w-full rounded-[1rem] border border-primary/20 bg-white/90 shadow-[0_4px_0_rgba(144,122,214,0.15)] overflow-x-scroll",
-                  TIME_SCROLLER_HEIGHT_CLASS
-                )}
-                viewportRef={startHourViewportRef}
-              >
-                  <div className="flex flex-col gap-2 p-1 pr-1">
-                    {timeOptions.hours.map((hour) => (
-                    <Button
-                        key={hour}
-                        type="button"
-                        data-scroll-target={`start-hour-${hour}`}
-                        variant={parsedStartTime?.hours === hour ? "default" : "ghost"}
-                        className={cn(
-                          "w-full rounded-full border border-primary/20 text-sm font-semibold",
-                          parsedStartTime?.hours === hour
-                            ? "bg-primary text-primary-foreground"
-                            : "text-primary hover:bg-primary/10"
-                        )}
-                        onClick={() => handleTimeSlotSelect("hour", hour, "start")}
-                      >
-                        {hour.toString().padStart(2, "0")}
-                      </Button>
-                    ))}
-                  </div>
-                  <ScrollBar orientation="vertical" />
-                </ScrollArea>
-              </div>
-              <div>
-                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
-                  Minutes
-                </p>
-              <ScrollArea
-                className={cn(
-                  "asap-scroll mt-2 w-full rounded-[1rem] border border-primary/20 bg-white/90 shadow-[0_4px_0_rgba(144,122,214,0.15)] overflow-x-scroll",
-                  TIME_SCROLLER_HEIGHT_CLASS
-                )}
-                viewportRef={startMinuteViewportRef}
-              >
-                  <div className="flex flex-col gap-2 p-1 pr-1">
-                    {timeOptions.minutes.map((minute) => (
-                      <Button
-                        key={minute}
-                        type="button"
-                        data-scroll-target={`start-minute-${minute}`}
-                        variant={parsedStartTime?.minutes === minute ? "default" : "ghost"}
-                        className={cn(
-                          "w-full rounded-full border border-primary/20 text-sm font-semibold",
-                          parsedStartTime?.minutes === minute
-                            ? "bg-primary text-primary-foreground"
-                            : "text-primary hover:bg-primary/10"
-                        )}
-                        onClick={() => handleTimeSlotSelect("minute", minute, "start")}
-                      >
-                        {minute.toString().padStart(2, "0")}
-                      </Button>
-                    ))}
-                  </div>
-                  <ScrollBar orientation="vertical" />
-                </ScrollArea>
-              </div>
-            </div>
-            <Calendar
-              className="order-1 w-full rounded-[1.5rem] min-h-[22rem] lg:order-2"
-              classNames={{
-                day: "relative w-full h-full p-0 text-center [&:last-child[data-selected=true]_button]:rounded-r-md group/day aspect-square select-none text-primary data-[outside=true]:text-primary/40",
-              }}
-              mode="range"
-              selected={calendarSelectedRange}
-              month={calendarMonth}
-              onSelect={handleCalendarSelect}
-              onMonthChange={setCalendarMonth}
-              captionLayout="dropdown"
-              fromYear={todayStart.getFullYear()}
-              toYear={2100}
-              fixedWeeks
-              initialFocus
-              fromDate={todayStart}
-            />
-            <div className="order-3 flex w-full max-w-[9rem] flex-col gap-4 text-primary lg:self-stretch">
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">
-                Deadline
-              </p>
-              <div>
-                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
-                  Hours
-                </p>
-              <ScrollArea
-                className={cn(
-                  "asap-scroll mt-2 w-full rounded-[1rem] border border-primary/20 bg-white/90 shadow-[0_4px_0_rgba(144,122,214,0.15)] overflow-x-scroll",
-                  TIME_SCROLLER_HEIGHT_CLASS
-                )}
-                viewportRef={endHourViewportRef}
-              >
-                  <div className="flex flex-col gap-2 p-1 pr-1">
-                    {timeOptions.hours.map((hour) => (
-                      <Button
-                        key={hour}
-                        type="button"
-                        data-scroll-target={`end-hour-${hour}`}
-                        variant={parsedDeadlineTime?.hours === hour ? "default" : "ghost"}
-                        className={cn(
-                          "w-full rounded-full border border-primary/20 text-sm font-semibold",
-                          parsedDeadlineTime?.hours === hour
-                            ? "bg-primary text-primary-foreground"
-                            : "text-primary hover:bg-primary/10"
-                        )}
-                        onClick={() => handleTimeSlotSelect("hour", hour, "end")}
-                      >
-                        {hour.toString().padStart(2, "0")}
-                      </Button>
-                    ))}
-                  </div>
-                  <ScrollBar orientation="vertical" />
-                </ScrollArea>
-              </div>
-              <div>
-                <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
-                  Minutes
-                </p>
-              <ScrollArea
-                className={cn(
-                  "asap-scroll mt-2 w-full rounded-[1rem] border border-primary/20 bg-white/90 shadow-[0_4px_0_rgba(144,122,214,0.15)] overflow-x-scroll",
-                  TIME_SCROLLER_HEIGHT_CLASS
-                )}
-                viewportRef={endMinuteViewportRef}
-              >
-                  <div className="flex flex-col gap-2 p-2 pr-3">
-                    {timeOptions.minutes.map((minute) => (
-                      <Button
-                        key={minute}
-                        type="button"
-                        data-scroll-target={`end-minute-${minute}`}
-                        variant={parsedDeadlineTime?.minutes === minute ? "default" : "ghost"}
-                        className={cn(
-                          "w-full rounded-full border border-primary/20 text-sm font-semibold",
-                          parsedDeadlineTime?.minutes === minute
-                            ? "bg-primary text-primary-foreground"
-                            : "text-primary hover:bg-primary/10"
-                        )}
-                        onClick={() => handleTimeSlotSelect("minute", minute, "end")}
-                      >
-                        {minute.toString().padStart(2, "0")}
-                      </Button>
-                    ))}
-                  </div>
-                  <ScrollBar orientation="vertical" />
-                </ScrollArea>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <TaskTimelinePanel
+        formattedStartLabel={formattedStartLabel}
+        formattedDeadlineLabel={formattedDeadlineLabel}
+        handleResetDeadline={handleResetDeadline}
+        calendarSelectedRange={calendarSelectedRange}
+        calendarMonth={calendarMonth}
+        handleCalendarSelect={handleCalendarSelect}
+        setCalendarMonth={setCalendarMonth}
+        timeOptions={timeOptions}
+        parsedStartTime={parsedStartTime}
+        parsedDeadlineTime={parsedDeadlineTime}
+        handleTimeSlotSelect={handleTimeSlotSelect}
+        startHourViewportRef={startHourViewportRef}
+        startMinuteViewportRef={startMinuteViewportRef}
+        endHourViewportRef={endHourViewportRef}
+        endMinuteViewportRef={endMinuteViewportRef}
+        todayStart={todayStart}
+        timeScrollerHeightClass={TIME_SCROLLER_HEIGHT_CLASS}
+      />
     </div>
   )
 }

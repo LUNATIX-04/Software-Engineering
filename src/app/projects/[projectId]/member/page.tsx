@@ -156,6 +156,10 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     }
     return unique as SelectableMemberDepartment[]
   }, [remoteDepartments])
+  const assignableDepartmentOptions = useMemo<SelectableMemberDepartment[]>(
+    () => departmentOptions.filter((option) => option !== ADD_DEPARTMENT_LABEL),
+    [departmentOptions]
+  )
   const viewerDepartmentName = useMemo(() => {
     if (!membership?.departmentId) {
       return null
@@ -486,14 +490,14 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
         return undefined
       }
       if (membership.role === "OWNER") {
-        return departmentOptions
+        return assignableDepartmentOptions
       }
       if (membership.role === "HEADER" && viewerDepartmentName && canEditMember(member)) {
         return [viewerDepartmentName]
       }
       return undefined
     },
-    [canEditMember, departmentOptions, membership, viewerDepartmentName]
+    [canEditMember, assignableDepartmentOptions, membership, viewerDepartmentName]
   )
 
   const canKickMemberTarget = useCallback(
@@ -737,11 +741,12 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       if (previous.department === trimmedLabel) {
         return
       }
+      if (trimmedLabel === ADD_DEPARTMENT_LABEL) {
+        return
+      }
       const resolvedDepartment =
-        trimmedLabel === ADD_DEPARTMENT_LABEL
-          ? null
-          : remoteDepartments.find((dept) => dept.name === trimmedLabel) ?? null
-      if (trimmedLabel !== ADD_DEPARTMENT_LABEL && !resolvedDepartment) {
+        remoteDepartments.find((dept) => dept.name === trimmedLabel) ?? null
+      if (!resolvedDepartment) {
         notify({
           title: "Department not found",
           description: "Please choose a valid department.",
@@ -769,7 +774,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       try {
         await updateProjectMember(projectId, {
           memberId,
-          departmentId: trimmedLabel === ADD_DEPARTMENT_LABEL ? null : nextDepartmentId,
+          departmentId: nextDepartmentId,
           role: shouldDemoteHeader ? PROJECT_ROLE.MEMBER : undefined,
         })
         if (wasDepartmentHead && previous.departmentId) {
@@ -812,9 +817,9 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   const filterCount = (activeDepartments.length || 0) + (activeRoles.length || 0)
 
   return (
-    <div className="mx-auto overflow-hidden w-full px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
+    <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
       <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
-        <div className="sticky top-1 z-10 -ml-0.1 flex flex-shrink-0 items-start justify-start lg:-mt-0">
+        <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
           <Button
             type="button"
             variant="ghost"
@@ -826,8 +831,8 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
             <ArrowLeft className="size-6" aria-hidden="true" />
           </Button>
         </div>
-        
-        <div className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)]"
+        <div
+          className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10"
           style={{ minHeight: containerMinHeight }}
         >
           <section className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -910,7 +915,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                   onClick={openInviteDialog}
                   data-cy="project-member-invite-link-button"
                 >
-                  <span className="inline-flex items-center gap-2">
+                  <span className="inline-flex items-center gap-2 select-none">
                     <Link2 className="size-4" />
                     Invite Link
                   </span>

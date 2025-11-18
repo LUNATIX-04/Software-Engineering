@@ -670,7 +670,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     activeDepartmentFilters.length > 0 ? activeDepartmentFilters.length : null
 
   return (
-    <div className="mx-auto overflow-hidden w-full px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
+    <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
       <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
           <Button
@@ -683,50 +683,55 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
             <ArrowLeft className="size-6" aria-hidden="true" />
           </Button>
         </div>
-
-        <div className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-10 px-[clamp(1.5rem,3vw,3.5rem)]"
-            style={{ minHeight: containerMinHeight }} >
-          <header className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex w-full flex-col gap-4 sm:flex-row sm:items-center sm:gap-6">
+        <div
+          className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10"
+          style={{ minHeight: containerMinHeight }}
+        >
+          <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex w-full flex-col gap-4 lg:flex-1 lg:flex-row lg:flex-nowrap lg:items-center lg:gap-4">
               <SearchField
-                wrapperClassName="w-full sm:max-w-xs"
+                wrapperClassName="w-full lg:flex-1 lg:min-w-[16rem]"
                 placeholder="Search"
                 value={search}
                 data-cy="project-task-search-input"
                 onChange={(event) => setSearch(event.target.value)}
               />
-              <TaskFilterMenu
-                open={departmentFilterMenuOpen}
-                onOpenChange={setDepartmentFilterMenuOpen}
-                onClose={() => setDepartmentFilterMenuOpen(false)}
-                filterActive={filterActive}
-                filterSummaryText={filterSummaryText}
-                filterSummaryTitle={filterSummaryTitle}
-                filterBadgeCount={filterBadgeCount}
-                departmentOptions={departmentOptions}
-                departmentColorMap={departmentColorMap}
-                activeDepartmentFilters={activeDepartmentFilters}
-                onToggleDepartmentFilter={handleToggleDepartmentFilter}
-                taskScope={taskScope}
-                onTaskScopeChange={handleTaskScopeChange}
-                isScopeSelectionDisabled={isTaskScopeSelectionDisabled}
-                onResetFilters={handleResetFilters}
-              />
+              <div className="sm:flex-shrink-0">
+                <TaskFilterMenu
+                  open={departmentFilterMenuOpen}
+                  onOpenChange={setDepartmentFilterMenuOpen}
+                  onClose={() => setDepartmentFilterMenuOpen(false)}
+                  filterActive={filterActive}
+                  filterSummaryText={filterSummaryText}
+                  filterSummaryTitle={filterSummaryTitle}
+                  filterBadgeCount={filterBadgeCount}
+                  departmentOptions={departmentOptions}
+                  departmentColorMap={departmentColorMap}
+                  activeDepartmentFilters={activeDepartmentFilters}
+                  onToggleDepartmentFilter={handleToggleDepartmentFilter}
+                  taskScope={taskScope}
+                  onTaskScopeChange={handleTaskScopeChange}
+                  isScopeSelectionDisabled={isTaskScopeSelectionDisabled}
+                  onResetFilters={handleResetFilters}
+                />
+              </div>
+              <div className="sm:flex-shrink-0">
+                <TaskPageSizeSelector
+                  pageSize={pageSize}
+                  pageSizeOptions={pageSizeOptions}
+                  totalCount={filteredTasks.length}
+                  onPageSizeChange={(sizeOption) => {
+                    if (sizeOption === pageSize) {
+                      return
+                    }
+                    setPageSize(sizeOption)
+                    setPage(1)
+                  }}
+                />
+              </div>
             </div>
-            <div className="flex w-full flex-col gap-4 sm:w-auto sm:flex-row sm:items-center sm:justify-end sm:gap-4">
-              <TaskPageSizeSelector
-                pageSize={pageSize}
-                pageSizeOptions={pageSizeOptions}
-                totalCount={filteredTasks.length}
-                onPageSizeChange={(sizeOption) => {
-                  if (sizeOption === pageSize) {
-                    return
-                  }
-                  setPageSize(sizeOption)
-                  setPage(1)
-                }}
-              />
-              {canManageTasks && (
+            {canManageTasks ? (
+              <div className="flex w-full justify-start lg:w-auto lg:justify-end">
                 <Button
                   type="button"
                   variant="outline"
@@ -736,8 +741,8 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                   <PlusCircle className="size-5" aria-hidden="true" />
                   Create Task
                 </Button>
-              )}
-            </div>
+              </div>
+            ) : null}
           </header>
 
         <div className="flex flex-1 min-h-0 flex-col">

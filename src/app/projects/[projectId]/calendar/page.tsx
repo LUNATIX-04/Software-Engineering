@@ -45,13 +45,15 @@ export default function ProjectCalendarFullPage({
             <ArrowLeft className="size-6" aria-hidden="true" />
           </Button>
         </div>
+        <div className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10">
           <div
-            className="ml-5 mt-7 w-full rounded-[2rem] border border-primary/30 bg-white/95 p-4 shadow-[0_5px_6px_rgba(63,52,120,0.25)]"
+            className="w-full rounded-[2rem] border border-primary/30 bg-white/95 p-4 shadow-[0_5px_6px_rgba(63,52,120,0.25)]"
             data-cy="project-calendar-body-wrapper"
           >
             <Calendar projectId={projectId} />
           </div>
         </div>
+      </div>
     </div>
   )
 }

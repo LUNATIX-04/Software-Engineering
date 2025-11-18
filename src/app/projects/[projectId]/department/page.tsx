@@ -802,7 +802,7 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
             </Button>
           </div>
 
-          <div className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-10 px-[clamp(1.5rem,3vw,3.5rem)]">
+          <div className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10">
             <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <SearchField
                 wrapperClassName="w-full max-w-md sm:mr-auto"

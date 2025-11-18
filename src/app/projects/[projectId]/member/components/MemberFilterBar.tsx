@@ -55,10 +55,10 @@ export function MemberFilterBar({
   onResetFilters,
 }: MemberFilterBarProps) {
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-3 md:flex-1">
+      <div className="flex flex-wrap items-center gap-2">
         <SearchField
-          wrapperClassName="w-full max-w-xs"
+          wrapperClassName="w-full sm:max-w-md"
           aria-label="Search members"
           placeholder="Search"
           value={search}

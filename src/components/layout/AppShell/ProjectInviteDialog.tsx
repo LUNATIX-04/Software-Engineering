@@ -53,6 +53,16 @@ export function ProjectInviteDialog({
     handleDeleteInviteLink,
   } = manager
 
+  const departmentSelectionAvailable = isHeaderViewer
+    ? Boolean(viewerDepartmentId)
+    : Boolean(inviteDepartmentId && availableInviteDepartments.length > 0)
+
+  const inviteButtonDisabled =
+    inviteSaving ||
+    !departmentSelectionAvailable ||
+    (!isHeaderViewer && inviteDepartments.length === 0) ||
+    (!isHeaderViewer && inviteRoleHeadExclusive && availableInviteDepartments.length === 0)
+
   return (
     <Dialog open={inviteDialogOpen} onOpenChange={closeInviteDialog}>
       <DialogContent className="max-w-2xl rounded-[2rem] border-2 border-primary/30 bg-white px-8 py-8 shadow-xl">
@@ -101,7 +111,7 @@ export function ProjectInviteDialog({
               <Button
                 type="button"
                 className="h-11 rounded-full bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:w-auto"
-                disabled={inviteSaving}
+                disabled={inviteButtonDisabled}
                 onClick={handleCreateInviteLink}
                 data-cy="project-invite-generate-link"
               >
@@ -169,6 +179,10 @@ export function ProjectInviteDialog({
                 <div className="text-xs text-muted-foreground">Loading departments…</div>
               ) : inviteDepartmentsError ? (
                 <div className="text-xs text-destructive">{inviteDepartmentsError}</div>
+              ) : inviteDepartments.length === 0 ? (
+                <div className="text-xs text-muted-foreground">
+                  Create a department before inviting teammates.
+                </div>
               ) : inviteRoleHeadExclusive && availableInviteDepartments.length === 0 ? (
                 <div className="text-xs text-muted-foreground">All departments already have a head.</div>
               ) : (
@@ -179,7 +193,7 @@ export function ProjectInviteDialog({
                         {viewerDepartmentId
                           ? inviteDepartments.find((dept) => dept.id === viewerDepartmentId)?.name ??
                             "Department"
-                          : "No department"}
+                          : "Department"}
                       </span>
                       <ChevronDown className="size-4 text-primary/30" />
                     </div>
@@ -196,7 +210,7 @@ export function ProjectInviteDialog({
                             {inviteDepartmentId
                               ? inviteDepartments.find((dept) => dept.id === inviteDepartmentId)?.name ??
                                 "Department"
-                              : "No department"}
+                              : "Department"}
                           </span>
                           <ChevronDown className="size-4 text-primary/70" />
                         </Button>
@@ -205,18 +219,6 @@ export function ProjectInviteDialog({
                         align="start"
                         className="w-60 rounded-3xl border border-primary/30 bg-white px-2 py-2 text-sm font-semibold text-[#2F2766] shadow-[0_12px_30px_rgba(72,68,110,0.15)]"
                       >
-                        {inviteRoleHeadExclusive ? null : (
-                          <DropdownMenuItem
-                            data-cy="project-invite-department-option-none"
-                            onSelect={() => manager.setInviteDepartmentId(null)}
-                            className="flex items-center justify-between rounded-2xl px-3 py-2 hover:bg-primary/10 hover:text-primary focus:bg-primary/10 focus:text-primary"
-                          >
-                            <span>No department</span>
-                            {!inviteDepartmentId ? (
-                              <Check className="size-4 text-primary" />
-                            ) : null}
-                          </DropdownMenuItem>
-                        )}
                         {availableInviteDepartments.map((dept) => {
                           const isActive = inviteDepartmentId === dept.id
                           return (

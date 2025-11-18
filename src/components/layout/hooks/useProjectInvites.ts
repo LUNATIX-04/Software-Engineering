@@ -204,7 +204,7 @@ export function useProjectInvites({
   }, [activeProjectId, inviteDepartmentId, inviteDialogOpen])
 
   useEffect(() => {
-    if (!inviteRoleOption.headExclusive) {
+    if (isHeaderViewer) {
       return
     }
     if (!availableInviteDepartments.length) {
@@ -215,14 +215,26 @@ export function useProjectInvites({
       return
     }
     setInviteDepartmentId(availableInviteDepartments[0]?.id ?? null)
-  }, [availableInviteDepartments, inviteDepartmentId, inviteRoleOption.headExclusive])
+  }, [availableInviteDepartments, inviteDepartmentId, isHeaderViewer])
 
   const handleCreateInviteLink = useCallback(async () => {
     if (!activeProjectId) {
       return
     }
-    if (inviteRoleOption.headExclusive && !inviteDepartmentId && !isHeaderViewer) {
-      setInviteError("You need a department before creating invites.")
+    if (!isHeaderViewer && !availableInviteDepartments.length) {
+      setInviteError(
+        inviteRoleOption.headExclusive
+          ? "All departments already have a head."
+          : "Create a department before inviting teammates."
+      )
+      return
+    }
+    if (!isHeaderViewer && !inviteDepartmentId) {
+      setInviteError("Select a department before creating invite links.")
+      return
+    }
+    if (isHeaderViewer && !viewerDepartmentId) {
+      setInviteError("You need to belong to a department before creating invite links.")
       return
     }
     if (inviteRoleKey === "header" && inviteRoleOption.requiresOwner && !viewerDepartmentId) {
