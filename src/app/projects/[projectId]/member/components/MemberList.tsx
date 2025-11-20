@@ -6,7 +6,7 @@ import { TOOLTIP_DELAY_DURATION_MS } from "@/constants/ui"
 import { MemberCard } from "@/components/projects/MemberCard"
 
 import type { MemberRecord } from "../types"
-import type { MemberDepartment } from "@/components/projects/MemberCard"
+import type { MemberDepartment, MemberRole } from "@/components/projects/MemberCard"
 import type { ProjectMembershipSummary } from "@/utils/projects/api"
 
 export type MemberListProps = {
@@ -14,6 +14,7 @@ export type MemberListProps = {
   membersLoading: boolean
   membersError: string | null
   paginatedMembers: MemberRecord[]
+  onRoleChange: (memberId: string, role: MemberRole) => void
   kickingMemberId: string | null
   departmentStyles: Record<string, { background: string; text: string }>
   departmentHeadMap: Record<string, string | null>
@@ -30,6 +31,7 @@ export function MemberList({
   membersLoading,
   membersError,
   paginatedMembers,
+  onRoleChange,
   kickingMemberId,
   departmentStyles,
   departmentHeadMap,
@@ -92,6 +94,12 @@ export function MemberList({
                   avatarUrl={member.avatarUrl}
                   role={member.role}
                   roleLabel={roleLabel}
+                  roleOptions={isReadOnly ? undefined : (member.rawRole === "OWNER" ? [] : ["Header", "Member"])}
+                  onRoleSelect={
+                    isReadOnly || member.rawRole === "OWNER"
+                      ? undefined
+                      : (role) => onRoleChange(member.id, role)
+                  }
                   department={member.department}
                   availableDepartments={isReadOnly ? undefined : memberDepartmentOptions}
                   onDepartmentSelect={

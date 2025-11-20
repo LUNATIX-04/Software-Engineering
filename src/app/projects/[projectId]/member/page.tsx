@@ -241,7 +241,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     if (!projectId) {
       return
     }
-    setMembersLoading(true)
+    setMembersLoading((prev) => prev || members.length === 0)
     setMembersError(null)
     try {
       const remoteMembers = await loadProjectMembers(projectId)
@@ -257,7 +257,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     } finally {
       setMembersLoading(false)
     }
-  }, [projectId, redirectToProjects])
+  }, [members.length, projectId, redirectToProjects])
 
   useEffect(() => {
     const cached = getCachedProjectMembers(projectId)
@@ -541,12 +541,98 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       if (!membership) {
         return false
       }
-      if (member.rawRole === "OWNER" && membership.role !== "OWNER") {
+      if (membership.role !== "OWNER") {
         return false
       }
-      return membership.role === "OWNER"
+      // Owners cannot change their own ownership role via this screen.
+      return member.rawRole !== "OWNER"
     },
     [membership]
+  )
+
+  const handleSetMemberRole = useCallback(
+    async (memberId: string, nextRole: MemberRole) => {
+      if (!projectId || !membership || membership.role !== PROJECT_ROLE.OWNER) {
+        return
+      }
+
+      const target = members.find((member) => member.id === memberId)
+      if (!target || target.rawRole === PROJECT_ROLE.OWNER) {
+        return
+      }
+
+      const desiredRawRole =
+        nextRole === "Header" ? PROJECT_ROLE.HEADER : PROJECT_ROLE.MEMBER
+
+      const prevMembers = members
+
+      // Prepare optimistic state and potential demotions to keep a single header.
+      const existingHeaders = members.filter(
+        (member) => member.rawRole === PROJECT_ROLE.HEADER && member.id !== memberId
+      )
+
+      const optimisticMembers = members.map((member) => {
+        if (member.id === memberId) {
+          return {
+            ...member,
+            rawRole: desiredRawRole,
+            role: ROLE_LABEL_MAP[desiredRawRole] ?? member.role,
+          }
+        }
+        if (desiredRawRole === PROJECT_ROLE.HEADER && existingHeaders.some((hdr) => hdr.id === member.id)) {
+          return {
+            ...member,
+            rawRole: PROJECT_ROLE.MEMBER,
+            role: ROLE_LABEL_MAP[PROJECT_ROLE.MEMBER],
+          }
+        }
+        return member
+      })
+
+      setMembers(optimisticMembers)
+
+      try {
+        // Update target role first.
+        await updateProjectMember(projectId, {
+          memberId,
+          role: desiredRawRole,
+        })
+
+        // Demote other headers if needed.
+        if (desiredRawRole === PROJECT_ROLE.HEADER && existingHeaders.length > 0) {
+          await Promise.all(
+            existingHeaders.map((header) =>
+              updateProjectMember(projectId, {
+                memberId: header.id,
+                role: PROJECT_ROLE.MEMBER,
+              })
+            )
+          )
+        }
+
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent(PROJECT_REFRESH_EVENT, {
+              detail: {
+                projectId,
+                source: "member-role-change",
+                origin: "member-page",
+              },
+            })
+          )
+        }
+      } catch (error) {
+        console.error("Failed to update member role", error)
+        // Revert on error
+        setMembers(prevMembers)
+        notify({
+          title: "Update failed",
+          description: "Unable to change the member role right now.",
+          variant: "destructive",
+        })
+      }
+    },
+    [members, membership, notify, projectId]
   )
 
   const resolveDepartmentOptions = useCallback(
@@ -554,15 +640,9 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       if (!membership) {
         return undefined
       }
-      if (membership.role === "OWNER") {
-        return assignableDepartmentOptions
-      }
-      if (membership.role === "HEADER" && viewerDepartmentName && canEditMember(member)) {
-        return [viewerDepartmentName]
-      }
-      return undefined
+      return membership.role === "OWNER" ? assignableDepartmentOptions : undefined
     },
-    [canEditMember, assignableDepartmentOptions, membership, viewerDepartmentName]
+    [assignableDepartmentOptions, membership]
   )
 
   const canKickMemberTarget = useCallback(
@@ -874,7 +954,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   const filterCount = (activeDepartments.length || 0) + (activeRoles.length || 0)
 
   return (
-    <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
+    <div className="asap-scroll page-fade w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
       <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <BackButton dataCy="project-member-back-button" ariaLabel={backAriaLabel} />
         <div
@@ -977,15 +1057,16 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
               style={{ maxHeight: cardListMaxHeight }}
             >
               <MemberList
-                membership={membership}
-                membersLoading={membersLoading}
-                membersError={membersError}
-                paginatedMembers={paginatedMembers}
-                kickingMemberId={kickingMemberId}
-                departmentStyles={departmentStyles}
-                departmentHeadMap={departmentHeadMap}
-                resolveDepartmentOptions={resolveDepartmentOptions}
-                handleSetMemberDepartment={handleSetMemberDepartment}
+              membership={membership}
+              membersLoading={membersLoading}
+              membersError={membersError}
+              paginatedMembers={paginatedMembers}
+              onRoleChange={handleSetMemberRole}
+              kickingMemberId={kickingMemberId}
+              departmentStyles={departmentStyles}
+              departmentHeadMap={departmentHeadMap}
+              resolveDepartmentOptions={resolveDepartmentOptions}
+              handleSetMemberDepartment={handleSetMemberDepartment}
                 requestKickMember={requestKickMember}
                 openMemberDetails={openMemberDetails}
                 canEditMember={canEditMember}

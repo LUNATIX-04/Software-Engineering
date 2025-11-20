@@ -20,6 +20,8 @@ import type {
   SelectableMemberDepartment,
 } from "@/components/projects/MemberCard"
 import { ADD_DEPARTMENT_LABEL } from "@/constants/departments"
+import { useNotifications } from "@/components/notifications/Notification"
+import { useEffect } from "react"
 
 export type MemberFilterBarProps = {
   availableRoles: MemberRole[]
@@ -54,6 +56,18 @@ export function MemberFilterBar({
   onToggleDepartmentFilter,
   onResetFilters,
 }: MemberFilterBarProps) {
+  const { notify } = useNotifications()
+
+  useEffect(() => {
+    if (departmentsError) {
+      notify({
+        title: "Department filters failed",
+        description: departmentsError,
+        variant: "destructive",
+      })
+    }
+  }, [departmentsError, notify])
+
   return (
     <div className="flex flex-col gap-3 md:flex-1">
       <div className="flex flex-wrap items-center gap-2">
@@ -164,16 +178,6 @@ export function MemberFilterBar({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {departmentsError ? (
-        <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-2 text-xs font-semibold text-destructive">
-          {departmentsError}
-        </div>
-      ) : null}
-      {departmentsLoading ? (
-        <span className="text-xs font-semibold uppercase tracking-wide text-primary/60">
-          Updating departments...
-        </span>
-      ) : null}
     </div>
   )
 }

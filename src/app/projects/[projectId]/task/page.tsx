@@ -25,6 +25,7 @@ import {
   loadProjectTasks,
   prefetchProjectBundle,
   refreshProjectCache,
+  getCachedProjectTasks,
 } from "@/utils/projects/prefetch"
 import { PROJECT_ROLE } from "@/types/projects"
 import BackButton from "@/components/navigation/BackButton"
@@ -67,7 +68,8 @@ const ALL_DEPARTMENTS_LABEL = "All Departments"
 export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const { projectId } = React.use(params)
   const router = useRouter()
-  const [tasks, setTasks] = useState<TaskRecord[]>([])
+  const cachedTasks = getCachedProjectTasks(projectId)?.tasks ?? []
+  const [tasks, setTasks] = useState<TaskRecord[]>(cachedTasks)
   const [search, setSearch] = useState("")
   const [activeDepartmentFilters, setActiveDepartmentFilters] = useState<string[]>([])
   const [taskScope, setTaskScope] = useState<TaskScope>("all")
@@ -111,7 +113,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       }
     })
   }, [])
-  const [tasksLoading, setTasksLoading] = useState(true)
+  const [tasksLoading, setTasksLoading] = useState(cachedTasks.length === 0)
   const [tasksError, setTasksError] = useState<string | null>(null)
   const [remoteDepartments, setRemoteDepartments] = useState<RemoteDepartment[]>([])
   const [departmentsLoading, setDepartmentsLoading] = useState(true)
@@ -279,7 +281,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     }
     const controller = new AbortController()
     taskFetchControllerRef.current = controller
-    setTasksLoading(true)
+    setTasksLoading((prev) => prev || tasks.length === 0)
     try {
       setTasksError(null)
       const result = await loadProjectTasks(projectId, {
@@ -530,7 +532,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     setTaskScope("all")
   }, [])
 
-  const isTaskScopeSelectionDisabled = membershipLoading || !membershipId
+  const isScopeSelectionDisabled = membershipLoading || !membershipId
   const handleTaskScopeChange = useCallback(
     (nextScope: TaskScope) => {
       if (nextScope !== "all" && !membershipId) {
@@ -646,7 +648,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     activeDepartmentFilters.length > 0 ? activeDepartmentFilters.length : null
 
   return (
-    <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
+    <div className="asap-scroll page-fade w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
       <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <BackButton dataCy="project-task-back-button" ariaLabel="Back to projects" />
         <div
@@ -656,13 +658,13 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
           <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex w-full flex-col gap-4 lg:flex-1 lg:flex-row lg:flex-nowrap lg:items-center lg:gap-4">
               <SearchField
-                wrapperClassName="w-full lg:flex-1 lg:min-w-[16rem]"
+                wrapperClassName="w-full sm:max-w-md lg:flex-1"
                 placeholder="Search"
                 value={search}
                 data-cy="project-task-search-input"
                 onChange={(event) => setSearch(event.target.value)}
               />
-              <div className="sm:flex-shrink-0">
+              <div className="flex w-full flex-row flex-wrap items-center gap-3 lg:w-auto lg:flex-nowrap">
                 <TaskFilterMenu
                   open={departmentFilterMenuOpen}
                   onOpenChange={setDepartmentFilterMenuOpen}
@@ -677,11 +679,13 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                   onToggleDepartmentFilter={handleToggleDepartmentFilter}
                   taskScope={taskScope}
                   onTaskScopeChange={handleTaskScopeChange}
-                  isScopeSelectionDisabled={isTaskScopeSelectionDisabled}
+                  isScopeSelectionDisabled={isScopeSelectionDisabled}
                   onResetFilters={handleResetFilters}
                 />
               </div>
-              <div className="sm:flex-shrink-0">
+            </div>
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-end lg:w-auto">
+              <div className="flex items-center gap-3">
                 <TaskPageSizeSelector
                   pageSize={pageSize}
                   pageSizeOptions={pageSizeOptions}
@@ -694,21 +698,19 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                     setPage(1)
                   }}
                 />
+                {canManageTasks ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push(`/projects/${projectId}/task/create`)}
+                    className="inline-flex h-12 items-center justify-center rounded-full border-primary/40 bg-white px-5 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/10"
+                  >
+                    <PlusCircle className="size-5" aria-hidden="true" />
+                    Create Task
+                  </Button>
+                ) : null}
               </div>
             </div>
-            {canManageTasks ? (
-              <div className="flex w-full justify-start lg:w-auto lg:justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push(`/projects/${projectId}/task/create`)}
-                  className="inline-flex h-12 w-full select-none items-center justify-center gap-2 rounded-full border-primary/40 bg-white px-6 text-base font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-primary-foreground sm:w-auto"
-                >
-                  <PlusCircle className="size-5" aria-hidden="true" />
-                  Create Task
-                </Button>
-              </div>
-            ) : null}
           </header>
 
         <div className="flex flex-1 min-h-0 flex-col">
@@ -732,7 +734,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                 {tasksError}
               </div>
             ) : null}
-            {tasksLoading ? (
+            {tasksLoading && paginatedTasks.length === 0 ? (
               <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
                 Loading tasks…
               </div>

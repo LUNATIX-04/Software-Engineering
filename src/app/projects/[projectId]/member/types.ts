@@ -7,6 +7,8 @@ export type MemberRecord = {
   email: string | null
   role: MemberRole
   rawRole: ProjectMemberDetail["role"]
+  projectId?: string
+  userId?: string
   department: MemberDepartment
   departmentId: string | null
   avatarUrl: string | null

@@ -54,6 +54,8 @@ export type MemberCardProps = {
   avatarUrl?: string | null
   role: MemberRole
   roleLabel?: string
+  roleOptions?: MemberRole[]
+  onRoleSelect?: (role: MemberRole) => void
   department: MemberDepartment
   availableDepartments?: SelectableMemberDepartment[]
   onDepartmentSelect?: (department: SelectableMemberDepartment) => void
@@ -72,6 +74,8 @@ export function MemberCard({
   avatarUrl,
   role,
   roleLabel,
+  roleOptions,
+  onRoleSelect,
   department,
   availableDepartments,
   onDepartmentSelect,
@@ -85,6 +89,7 @@ export function MemberCard({
 }: MemberCardProps) {
   const departmentStyle = getDepartmentStyle(department, departmentColors)
   const [departmentMenuOpen, setDepartmentMenuOpen] = useState(false)
+  const [roleMenuOpen, setRoleMenuOpen] = useState(false)
   const dataCySuffix = typeof dataCyIndex === "number" ? `-${dataCyIndex}` : ""
   const buildDataCy = (base: string) => `${base}${dataCySuffix}`
 
@@ -137,10 +142,53 @@ export function MemberCard({
         </div>
       </div>
       <div className="flex flex-1 flex-wrap items-center justify-end gap-3">
-        <MemberChip
-          label={roleLabel ?? role}
-          className={cn("h-[2.5rem] min-w-[13rem]", ROLE_STYLES[role])}
-        />
+        {roleOptions && roleOptions.length > 0 && onRoleSelect ? (
+          <div
+            onClick={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            <DropdownMenu open={roleMenuOpen} onOpenChange={setRoleMenuOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex h-[2.5rem] min-w-[13rem] select-none items-center justify-center gap-2 rounded-full border-2 border-primary/40 px-5 py-2 text-sm font-semibold shadow-[0_4px_0_rgba(144,122,214,0.2)] transition focus:outline-none hover:border-primary hover:bg-primary/10",
+                    ROLE_STYLES[role]
+                  )}
+                  data-cy={buildDataCy("member-card-role-trigger")}
+                >
+                  {roleLabel ?? role}
+                  <ChevronDown className="size-4" aria-hidden="true" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-48 rounded-3xl border border-primary/30 bg-white text-sm font-semibold text-primary shadow-[0_10px_30px_rgba(72,68,110,0.2)]">
+                {roleOptions.map((option) => (
+                  <DropdownMenuItem
+                    key={option}
+                    onSelect={(event) => {
+                      event.preventDefault()
+                      onRoleSelect(option)
+                      setRoleMenuOpen(false)
+                    }}
+                    className="flex items-center justify-between rounded-2xl px-3 py-2 focus:bg-primary/10 focus:text-primary"
+                    data-cy={buildDataCy(`member-card-role-${option.toLowerCase().replace(/\\s+/g, "-")}`)}
+                  >
+                    {option}
+                    {option === roleLabel || (option === role && !roleLabel) ? (
+                      <Check className="size-4" aria-hidden="true" />
+                    ) : null}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        ) : (
+          <MemberChip
+            label={roleLabel ?? role}
+            className={cn("h-[2.5rem] min-w-[13rem]", ROLE_STYLES[role])}
+          />
+        )}
         {readOnly || !onDepartmentSelect || !availableDepartments?.length ? (
           <span
             className={cn(
