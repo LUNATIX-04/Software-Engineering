@@ -53,6 +53,8 @@ export default function TaskCardMenu({
   onEdit,
   onDelete,
   colorControls,
+  onTriggerMouseEnter,
+  onTriggerMouseLeave,
 }: TaskCardMenuProps) {
   const hasColorControls = Boolean(colorControls && colorControls.commitColorChange)
 

@@ -38,7 +38,6 @@ import {
   loadProjectDepartments,
   loadProjectMembers,
   loadProjectMembership,
-  prefetchProjectBundle,
   refreshProjectCache,
 } from "@/utils/projects/prefetch"
 import { PROJECT_ROLE } from "@/types/projects"
@@ -136,17 +135,6 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     })
     router.replace("/projects")
   }, [notify, router])
-
-  useEffect(() => {
-    if (!projectId) {
-      return
-    }
-    prefetchProjectBundle(projectId, { taskPageSize: BASE_PAGE_SIZE_OPTIONS[1] }).catch(
-      (prefetchError) => {
-        console.error("Project prefetch failed", prefetchError)
-      }
-    )
-  }, [projectId])
 
   const departmentStyles = useMemo(() => {
     if (remoteDepartments.length === 0) {
@@ -536,6 +524,11 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     setActiveRoles([])
   }
 
+  const isOwnerRole = useCallback(
+    (member: Pick<MemberRecord, "rawRole">) => member.rawRole === PROJECT_ROLE.OWNER,
+    []
+  )
+
   const canEditMember = useCallback(
     (member: MemberRecord) => {
       if (!membership) {
@@ -545,9 +538,9 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
         return false
       }
       // Owners cannot change their own ownership role via this screen.
-      return member.rawRole !== "OWNER"
+      return !isOwnerRole(member)
     },
-    [membership]
+    [isOwnerRole, membership]
   )
 
   const handleSetMemberRole = useCallback(
@@ -874,6 +867,9 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       if (!previous) {
         return
       }
+      if (isOwnerRole(previous)) {
+        return
+      }
       const trimmedLabel = departmentLabel.trim()
       if (previous.department === trimmedLabel) {
         return
@@ -954,7 +950,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   const filterCount = (activeDepartments.length || 0) + (activeRoles.length || 0)
 
   return (
-    <div className="asap-scroll page-fade w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
+    <div className="asap-scroll overflow-hidden page-fade w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
       <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <BackButton dataCy="project-member-back-button" ariaLabel={backAriaLabel} />
         <div

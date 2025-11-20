@@ -4,6 +4,7 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { TOOLTIP_DELAY_DURATION_MS } from "@/constants/ui"
 
 import { MemberCard } from "@/components/projects/MemberCard"
+import { ProgressBar } from "@/components/ui/progress-bar"
 
 import type { MemberRecord } from "../types"
 import type { MemberDepartment, MemberRole } from "@/components/projects/MemberCard"
@@ -52,8 +53,9 @@ export function MemberList({
 
   if (membersLoading) {
     return (
-      <div className="rounded-2xl border border-primary/20 bg-primary/5 px-6 py-5 text-sm text-primary">
-        Loading members…
+      <div className="flex flex-col gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-6 py-5 text-center text-sm text-primary">
+        <span className="text-base font-semibold">Loading members…</span>
+        <ProgressBar />
       </div>
     )
   }
@@ -84,41 +86,43 @@ export function MemberList({
         const isSelf = member.id === membership?.id
         const canKickThisMember = canKickMemberTarget(member)
         return (
-          <Tooltip key={member.id} delayDuration={TOOLTIP_DELAY_DURATION_MS}>
-            <TooltipTrigger asChild>
-              <div className="w-full">
-                <MemberCard
-                  dataCyIndex={index}
-                  name={member.name}
-                  email={member.email}
-                  avatarUrl={member.avatarUrl}
-                  role={member.role}
-                  roleLabel={roleLabel}
-                  roleOptions={isReadOnly ? undefined : (member.rawRole === "OWNER" ? [] : ["Header", "Member"])}
-                  onRoleSelect={
-                    isReadOnly || member.rawRole === "OWNER"
-                      ? undefined
-                      : (role) => onRoleChange(member.id, role)
-                  }
-                  department={member.department}
-                  availableDepartments={isReadOnly ? undefined : memberDepartmentOptions}
-                  onDepartmentSelect={
-                    isReadOnly || !memberDepartmentOptions
-                      ? undefined
-                      : (department) => handleSetMemberDepartment(member.id, department)
-                  }
-                  readOnly={isReadOnly}
-                  departmentColors={departmentStyles}
-                  onKick={canKickThisMember && !isSelf ? () => requestKickMember(member) : undefined}
-                  kickDisabled={kickingMemberId === member.id}
-                  onClick={() => openMemberDetails(member)}
-                />
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="top" sideOffset={6}>
-              Click to view member details
-            </TooltipContent>
-          </Tooltip>
+          <div key={member.id}>
+            <Tooltip delayDuration={TOOLTIP_DELAY_DURATION_MS}>
+              <TooltipTrigger asChild>
+                <div className="w-full page-slide">
+                  <MemberCard
+                    dataCyIndex={index}
+                    name={member.name}
+                    email={member.email}
+                    avatarUrl={member.avatarUrl}
+                    role={member.role}
+                    roleLabel={roleLabel}
+                    roleOptions={isReadOnly ? undefined : (member.rawRole === "OWNER" ? [] : ["Header", "Member"])}
+                    onRoleSelect={
+                      isReadOnly || member.rawRole === "OWNER"
+                        ? undefined
+                        : (role) => onRoleChange(member.id, role)
+                    }
+                    department={member.department}
+                    availableDepartments={isReadOnly ? undefined : memberDepartmentOptions}
+                    onDepartmentSelect={
+                      isReadOnly || !memberDepartmentOptions
+                        ? undefined
+                        : (department) => handleSetMemberDepartment(member.id, department)
+                    }
+                    readOnly={isReadOnly}
+                    departmentColors={departmentStyles}
+                    onKick={canKickThisMember && !isSelf ? () => requestKickMember(member) : undefined}
+                    kickDisabled={kickingMemberId === member.id}
+                    onClick={() => openMemberDetails(member)}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top" sideOffset={6}>
+                Click to view member details
+              </TooltipContent>
+            </Tooltip>
+          </div>
         )
       })}
     </>

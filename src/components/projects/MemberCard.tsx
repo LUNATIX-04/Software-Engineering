@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { useState } from "react"
+import { useState, type CSSProperties } from "react"
 import { Check, ChevronDown, Footprints, UserRound } from "lucide-react"
 
 import {
@@ -21,10 +21,39 @@ export type MemberRole = "Project Owner" | "Header" | "Member"
 export type MemberDepartment = string
 export type SelectableMemberDepartment = MemberDepartment
 
-const ROLE_STYLES: Record<MemberRole, string> = {
-  "Project Owner": "bg-primary text-primary-foreground border-primary/60 shadow-[0_4px_0_rgba(70,52,142,0.35)]",
-  Header: "bg-[#C6B5FF] text-[#2F2766]",
-  Member: "bg-[#F6F0FF] text-[#2F2766]",
+type RoleStyle = {
+  className: string
+  style: CSSProperties
+}
+
+const ROLE_SHARED_CLASS =
+  "bg-[var(--role-bg)] text-[var(--role-text)] shadow-[0_4px_0_var(--role-shadow)]"
+
+const ROLE_STYLES: Record<MemberRole, RoleStyle> = {
+  "Project Owner": {
+    className: ROLE_SHARED_CLASS,
+    style: {
+      "--role-bg": "var(--primary)",
+      "--role-text": "var(--primary-foreground)",
+      "--role-shadow": "color-mix(in srgb, var(--primary) 32%, transparent)",
+    } as CSSProperties,
+  },
+  Header: {
+    className: ROLE_SHARED_CLASS,
+    style: {
+      "--role-bg": "var(--primary-soft)",
+      "--role-text": "var(--foreground)",
+      "--role-shadow": "color-mix(in srgb, var(--primary-soft) 40%, transparent)",
+    } as CSSProperties,
+  },
+  Member: {
+    className: ROLE_SHARED_CLASS,
+    style: {
+      "--role-bg": "var(--muted)",
+      "--role-text": "var(--foreground)",
+      "--role-shadow": "color-mix(in srgb, var(--primary) 22%, transparent)",
+    } as CSSProperties,
+  },
 }
 
 type DepartmentColorOverrides = Record<string, { background: string; text: string }>
@@ -92,11 +121,12 @@ export function MemberCard({
   const [roleMenuOpen, setRoleMenuOpen] = useState(false)
   const dataCySuffix = typeof dataCyIndex === "number" ? `-${dataCyIndex}` : ""
   const buildDataCy = (base: string) => `${base}${dataCySuffix}`
+  const roleStyle = ROLE_STYLES[role] ?? ROLE_STYLES.Member
 
   return (
     <article
       className={cn(
-        "relative flex flex-col gap-4 rounded-[3rem] border-2 border-primary/30 bg-white px-6 py-5 shadow-[0_4px_0_rgba(144,122,214,0.15)] transition hover:shadow-[0_6px_0_rgba(144,122,214,0.2)] hover:bg-primary/10 sm:flex-row sm:items-center sm:gap-6 sm:px-8 sm:py-6",
+        "relative flex flex-col gap-4 rounded-[3rem] border-2 border-primary/30 bg-card px-6 py-5 shadow-[0_4px_0_color-mix(in_srgb,var(--primary)_18%,transparent)] transition hover:shadow-[0_6px_0_color-mix(in_srgb,var(--primary)_26%,transparent)] hover:bg-primary/10 sm:flex-row sm:items-center sm:gap-6 sm:px-8 sm:py-6",
         onClick && "cursor-pointer",
         className
       )}
@@ -113,7 +143,7 @@ export function MemberCard({
             }
             onKick()
           }}
-          className="absolute right-5 top-5 inline-flex size-9 items-center justify-center rounded-full border-2 border-primary/30 bg-white text-primary shadow-sm transition hover:border-primary hover:bg-primary/10 disabled:opacity-60"
+          className="absolute right-5 top-5 inline-flex size-9 items-center justify-center rounded-full border-2 border-primary/30 bg-card text-primary shadow-sm transition hover:border-primary hover:bg-primary/10 disabled:opacity-60"
           aria-label={`Remove ${name} from project`}
           disabled={kickDisabled}
           data-cy={buildDataCy("member-card-kick-button")}
@@ -132,11 +162,11 @@ export function MemberCard({
             data-cy="member-card-avatar"
           />
         ) : (
-          <div className="flex size-[3rem] items-center justify-center rounded-full bg-[#D9C9FF] text-[#2F2766]">
+          <div className="flex size-[3rem] items-center justify-center rounded-full bg-primary/20 text-primary">
             <UserRound className="size-6" />
           </div>
         )}
-        <div className="flex flex-col text-[#2F2766]">
+        <div className="flex flex-col text-foreground">
           <span className="text-lg font-semibold">{name}</span>
           {email ? <span className="text-sm opacity-80">{email}</span> : null}
         </div>
@@ -153,16 +183,18 @@ export function MemberCard({
                 <button
                   type="button"
                   className={cn(
-                    "inline-flex h-[2.5rem] min-w-[13rem] select-none items-center justify-center gap-2 rounded-full border-2 border-primary/40 px-5 py-2 text-sm font-semibold shadow-[0_4px_0_rgba(144,122,214,0.2)] transition focus:outline-none hover:border-primary hover:bg-primary/10",
-                    ROLE_STYLES[role]
+                    "inline-flex h-[2.5rem] min-w-[13rem] select-none items-center justify-center gap-2 rounded-full border-2 border-primary/40 px-5 py-2 text-sm font-semibold transition focus:outline-none hover:border-primary hover:bg-primary/10",
+                    ROLE_SHARED_CLASS,
+                    roleStyle.className
                   )}
+                  style={roleStyle.style}
                   data-cy={buildDataCy("member-card-role-trigger")}
                 >
                   {roleLabel ?? role}
                   <ChevronDown className="size-4" aria-hidden="true" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-48 rounded-3xl border border-primary/30 bg-white text-sm font-semibold text-primary shadow-[0_10px_30px_rgba(72,68,110,0.2)]">
+              <DropdownMenuContent className="w-48 rounded-3xl border border-primary/30 bg-card text-sm font-semibold text-primary shadow-[0_10px_30px_color-mix(in_srgb,var(--primary)_25%,transparent)]">
                 {roleOptions.map((option) => (
                   <DropdownMenuItem
                     key={option}
@@ -186,15 +218,16 @@ export function MemberCard({
         ) : (
           <MemberChip
             label={roleLabel ?? role}
-            className={cn("h-[2.5rem] min-w-[13rem]", ROLE_STYLES[role])}
+            className={cn("h-[2.5rem] min-w-[13rem]", ROLE_SHARED_CLASS, roleStyle.className)}
+            style={roleStyle.style}
           />
         )}
         {readOnly || !onDepartmentSelect || !availableDepartments?.length ? (
           <span
             className={cn(
-              "inline-flex h-[2.5rem] min-w-[14rem] select-none items-center justify-center gap-2 rounded-full border-2 border-primary/40 px-5 py-2 text-sm font-semibold shadow-[0_4px_0_rgba(144,122,214,0.2)]",
+              "inline-flex h-[2.5rem] min-w-[14rem] select-none items-center justify-center gap-2 rounded-full border-2 border-primary/40 px-5 py-2 text-sm font-semibold shadow-[0_4px_0_color-mix(in_srgb,var(--primary)_20%,transparent)]",
               department === ADD_DEPARTMENT_LABEL
-                ? "bg-white text-primary/80"
+                ? "bg-card text-primary/80"
                 : "text-foreground"
             )}
             style={
@@ -214,9 +247,9 @@ export function MemberCard({
               <button
                 type="button"
                 className={cn(
-                  "inline-flex h-[2.5rem] min-w-[14rem] select-none items-center justify-center gap-2 rounded-full border-2 border-primary/40 px-5 py-2 text-sm font-semibold shadow-[0_4px_0_rgba(144,122,214,0.2)] transition focus:outline-none hover:border-primary hover:bg-primary/10",
+                  "inline-flex h-[2.5rem] min-w-[14rem] select-none items-center justify-center gap-2 rounded-full border-2 border-primary/40 px-5 py-2 text-sm font-semibold shadow-[0_4px_0_color-mix(in_srgb,var(--primary)_20%,transparent)] transition focus:outline-none hover:border-primary hover:bg-primary/10",
                   department === ADD_DEPARTMENT_LABEL
-                    ? "bg-white text-primary/80 hover:border-primary hover:text-primary"
+                    ? "bg-card text-primary/80 hover:border-primary hover:text-primary"
                     : "text-foreground",
                   departmentMenuOpen &&
                     (department === ADD_DEPARTMENT_LABEL
@@ -242,7 +275,7 @@ export function MemberCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-44 select-none rounded-3xl border border-primary/40 bg-white px-2 py-2 text-sm font-semibold text-[#2F2766] shadow-[0_10px_30px_rgba(72,68,110,0.2)]"
+              className="w-44 select-none rounded-3xl border border-primary/40 bg-card px-2 py-2 text-sm font-semibold text-foreground shadow-[0_10px_30px_color-mix(in_srgb,var(--primary)_25%,transparent)]"
               onClick={(event) => event.stopPropagation()}
               onPointerDown={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
@@ -282,15 +315,17 @@ export function MemberCard({
 type MemberChipProps = {
   label: string
   className?: string
+  style?: CSSProperties
 }
 
-function MemberChip({ label, className }: MemberChipProps) {
+function MemberChip({ label, className, style }: MemberChipProps) {
   return (
     <span
       className={cn(
-        "inline-flex min-w-[9.5rem] h-[3rem] items-center justify-center rounded-full border-2 border-primary/30 px-5 py-2 text-sm font-semibold shadow-[0_4px_0_rgba(144,122,214,0.2)]",
+        "inline-flex min-w-[9.5rem] h-[3rem] items-center justify-center rounded-full border-2 border-primary/30 px-5 py-2 text-sm font-semibold",
         className
       )}
+      style={style}
     >
       {label}
     </span>

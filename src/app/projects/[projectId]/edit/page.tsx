@@ -153,14 +153,16 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
       return null
     }
     return (
-      <ProjectForm
-        heading="Edit Project"
-        submitLabel={submitting ? "Saving" : "Save"}
-        initialValues={initialValues}
-        departmentChipVariant={preferredDepartmentLayout}
-        onSubmit={handleSubmit}
-        submitting={submitting}
-      />
+      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <ProjectForm
+          heading="Edit Project"
+          submitLabel={submitting ? "Saving" : "Save"}
+          initialValues={initialValues}
+          departmentChipVariant={preferredDepartmentLayout}
+          onSubmit={handleSubmit}
+          submitting={submitting}
+        />
+      </div>
     )
   }
 

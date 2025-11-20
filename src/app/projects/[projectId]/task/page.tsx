@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation"
 import { PlusCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { ProgressBar } from "@/components/ui/progress-bar"
 import { SearchField } from "@/components/ui/search-field"
 import {
   TASK_STATUS_LABEL,
@@ -18,17 +19,17 @@ import { TaskCard } from "@/components/tasks/TaskCard"
 import { getContrastingTextColor, sanitizeHexColor } from "@/utils/colors"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import type { ProjectDepartmentRecord } from "@/utils/projects/departments"
-import type { ProjectMembershipSummary, TaskScopeFilter } from "@/utils/projects/api"
+import { fetchProjectDepartments } from "@/utils/projects/departments"
 import {
-  loadProjectDepartments,
-  loadProjectMembership,
-  loadProjectTasks,
-  prefetchProjectBundle,
-  refreshProjectCache,
-  getCachedProjectTasks,
-} from "@/utils/projects/prefetch"
+  fetchProjectMembership,
+  fetchProjectTasks,
+  type ProjectMembershipSummary,
+  type TaskScopeFilter,
+} from "@/utils/projects/api"
 import { PROJECT_ROLE } from "@/types/projects"
 import BackButton from "@/components/navigation/BackButton"
+import { isRemovalError } from "@/utils/projects/removal"
+import { Skeleton } from "@/components/ui/skeleton"
 
 import TaskDeleteDialog from "./components/TaskDeleteDialog"
 import TaskFilterMenu from "./components/TaskFilterMenu"
@@ -68,8 +69,12 @@ const ALL_DEPARTMENTS_LABEL = "All Departments"
 export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const { projectId } = React.use(params)
   const router = useRouter()
-  const cachedTasks = getCachedProjectTasks(projectId)?.tasks ?? []
-  const [tasks, setTasks] = useState<TaskRecord[]>(cachedTasks)
+  const redirectToProjects = useCallback(() => {
+    router.replace("/projects")
+  }, [router])
+  const initialPageSize = BASE_PAGE_SIZE_OPTIONS[1] ?? BASE_PAGE_SIZE_OPTIONS[0]
+  const [tasks, setTasks] = useState<TaskRecord[]>([])
+  const [hasLoadedTasks, setHasLoadedTasks] = useState(false)
   const [search, setSearch] = useState("")
   const [activeDepartmentFilters, setActiveDepartmentFilters] = useState<string[]>([])
   const [taskScope, setTaskScope] = useState<TaskScope>("all")
@@ -77,9 +82,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const [pendingDeleteTask, setPendingDeleteTask] = useState<TaskRecord | null>(null)
   const [deletingTask, setDeletingTask] = useState(false)
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(
-    BASE_PAGE_SIZE_OPTIONS[1] ?? BASE_PAGE_SIZE_OPTIONS[0]
-  )
+  const [pageSize, setPageSize] = useState(initialPageSize)
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState<number | null>(null)
   const colorRollbackRef = useRef<Record<string, { cardColor: string; cardTextColor: string }>>({})
@@ -113,7 +116,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       }
     })
   }, [])
-  const [tasksLoading, setTasksLoading] = useState(cachedTasks.length === 0)
+  const [tasksLoading, setTasksLoading] = useState(true)
   const [tasksError, setTasksError] = useState<string | null>(null)
   const [remoteDepartments, setRemoteDepartments] = useState<RemoteDepartment[]>([])
   const [departmentsLoading, setDepartmentsLoading] = useState(true)
@@ -123,16 +126,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const [departmentFilterMenuOpen, setDepartmentFilterMenuOpen] = useState(false)
   const membershipId = membership?.id ?? null
   const canManageTasks = Boolean(membership && membership.role !== PROJECT_ROLE.MEMBER)
-
-  useEffect(() => {
-    if (!projectId) {
-      return
-    }
-    const defaultPageSize = BASE_PAGE_SIZE_OPTIONS[1] ?? BASE_PAGE_SIZE_OPTIONS[0]
-    prefetchProjectBundle(projectId, { taskPageSize: defaultPageSize }).catch((prefetchError) => {
-      console.error("Project prefetch failed", prefetchError)
-    })
-  }, [projectId])
+  const showCreateTaskButton = membershipLoading || canManageTasks
 
   const departmentOptions = useMemo(() => {
     const sorted = [...remoteDepartments].sort(
@@ -261,71 +255,77 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     setDepartmentsLoading(true)
     try {
       setDepartmentsError(null)
-      const data = await loadProjectDepartments(projectId)
+      const data = await fetchProjectDepartments(projectId)
       setRemoteDepartments(normalizeDepartments(data))
     } catch (error) {
       console.error(error)
       setDepartmentsError("Unable to load departments")
+      if (isRemovalError(error)) {
+        redirectToProjects()
+      }
     } finally {
       setDepartmentsLoading(false)
     }
-  }, [projectId])
+  }, [projectId, redirectToProjects])
 
   const fetchTasks = useCallback(
     async (nextPage = page, nextPageSize = pageSize) => {
-    if (!projectId) {
-      return
-    }
-    if (taskFetchControllerRef.current) {
-      taskFetchControllerRef.current.abort()
-    }
-    const controller = new AbortController()
-    taskFetchControllerRef.current = controller
-    setTasksLoading((prev) => prev || tasks.length === 0)
-    try {
-      setTasksError(null)
-      const result = await loadProjectTasks(projectId, {
-        search: search.trim() || undefined,
-        departmentNames: activeDepartmentFilters,
-        scope: taskScope !== "all" ? (taskScope as TaskScopeFilter) : undefined,
-        memberId: taskScope !== "all" ? membershipId ?? undefined : undefined,
-        page: nextPage,
-        pageSize: nextPageSize,
-        signal: controller.signal,
-      })
-      if (controller.signal.aborted) {
+      if (!projectId) {
         return
       }
-      setTasks(applyPendingCardColorOverrides(result.tasks))
-      setTotalCount(result.totalCount ?? result.tasks.length)
-      const computedTotalPages =
-        result.totalPages ??
-        (result.totalCount && result.pageSize
-          ? Math.max(1, Math.ceil(result.totalCount / result.pageSize))
-          : 1)
-      setTotalPages(computedTotalPages)
-      if (result.page && result.page !== page) {
-        setPage(result.page)
+      if (taskFetchControllerRef.current) {
+        taskFetchControllerRef.current.abort()
       }
-      if (result.pageSize && result.pageSize !== pageSize) {
-        setPageSize(result.pageSize)
+      const controller = new AbortController()
+      taskFetchControllerRef.current = controller
+      setHasLoadedTasks(false)
+      setTasksLoading(true)
+      try {
+        setTasksError(null)
+        const result = await fetchProjectTasks(projectId, {
+          search: search.trim() || undefined,
+          departmentNames: activeDepartmentFilters,
+          scope: taskScope !== "all" ? (taskScope as TaskScopeFilter) : undefined,
+          memberId: taskScope !== "all" ? membershipId ?? undefined : undefined,
+          page: nextPage,
+          pageSize: nextPageSize,
+          signal: controller.signal,
+        })
+        if (controller.signal.aborted) {
+          return
+        }
+        setTasks(applyPendingCardColorOverrides(result.tasks))
+        setTotalCount(result.totalCount ?? result.tasks.length)
+        const computedTotalPages =
+          result.totalPages ??
+          (result.totalCount && result.pageSize
+            ? Math.max(1, Math.ceil(result.totalCount / result.pageSize))
+            : 1)
+        setTotalPages(computedTotalPages)
+        if (result.page && result.page !== page) {
+          setPage(result.page)
+        }
+        if (result.pageSize && result.pageSize !== pageSize) {
+          setPageSize(result.pageSize)
+        }
+      } catch (error) {
+        if ((error as Error)?.name === "AbortError") {
+          return
+        }
+        console.error(error)
+        if (isRemovalError(error)) {
+          redirectToProjects()
+          return
+        }
+        setTasksError(error instanceof Error ? error.message : "Unable to load tasks")
+      } finally {
+        if (taskFetchControllerRef.current === controller) {
+          taskFetchControllerRef.current = null
+          setHasLoadedTasks(true)
+          setTasksLoading(false)
+        }
       }
-    } catch (error) {
-      if ((error as Error)?.name === "AbortError") {
-        return
-      }
-      console.error(error)
-      setTasks([])
-      setTotalCount(0)
-      setTotalPages(1)
-      setTasksError(error instanceof Error ? error.message : "Unable to load tasks")
-    } finally {
-      if (taskFetchControllerRef.current === controller) {
-        taskFetchControllerRef.current = null
-      }
-      setTasksLoading(false)
-    }
-  },
+    },
     [
       projectId,
       search,
@@ -335,24 +335,30 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       page,
       pageSize,
       applyPendingCardColorOverrides,
+      redirectToProjects,
     ]
   )
 
-  const fetchMembership = useCallback(async () => {
+  const reloadMembership = useCallback(async () => {
     if (!projectId) {
+      setMembership(null)
+      setMembershipLoading(false)
       return
     }
     setMembershipLoading(true)
     try {
-      const data = await loadProjectMembership(projectId)
-      setMembership(data ?? null)
+      const membershipRecord = await fetchProjectMembership(projectId)
+      setMembership(membershipRecord ?? null)
     } catch (error) {
-      console.error(error)
+      console.error("Failed to load membership", error)
       setMembership(null)
+      if (isRemovalError(error)) {
+        redirectToProjects()
+      }
     } finally {
       setMembershipLoading(false)
     }
-  }, [projectId])
+  }, [projectId, redirectToProjects])
 
   useEffect(() => {
     fetchDepartments()
@@ -363,8 +369,8 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   }, [projectId, fetchTasks])
 
   useEffect(() => {
-    fetchMembership()
-  }, [projectId, fetchMembership])
+    reloadMembership()
+  }, [projectId, reloadMembership])
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -382,11 +388,11 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       }
       fetchDepartments()
       fetchTasks()
-      fetchMembership()
+      reloadMembership()
     }
     window.addEventListener(PROJECT_REFRESH_EVENT, handleProjectRefresh)
     return () => window.removeEventListener(PROJECT_REFRESH_EVENT, handleProjectRefresh)
-  }, [fetchDepartments, fetchMembership, fetchTasks, projectId])
+  }, [fetchDepartments, fetchTasks, projectId, reloadMembership])
 
   useEffect(() => {
     if (!membershipId && taskScope !== "all") {
@@ -410,22 +416,21 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       if (refreshInFlightRef.current) return
       refreshInFlightRef.current = true
       try {
-        await refreshProjectCache(projectId)
-        await Promise.all([fetchDepartments(), fetchTasks(), fetchMembership()])
+        await Promise.all([fetchDepartments(), fetchTasks(), reloadMembership()])
       } catch (error) {
         console.error("Task page refresh failed", error)
       } finally {
         refreshInFlightRef.current = false
       }
     }
-    refreshTimerRef.current = window.setInterval(runRefresh, 15000)
+    //refreshTimerRef.current = window.setInterval(runRefresh, 15000)
     return () => {
       if (refreshTimerRef.current) {
         window.clearInterval(refreshTimerRef.current)
         refreshTimerRef.current = null
       }
     }
-  }, [fetchDepartments, fetchMembership, fetchTasks, projectId])
+  }, [fetchDepartments, fetchTasks, projectId, reloadMembership])
 
   const handleTaskColorChange = useCallback(
     async (taskId: string, color: string) => {
@@ -647,8 +652,22 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const filterBadgeCount =
     activeDepartmentFilters.length > 0 ? activeDepartmentFilters.length : null
 
+  const TaskCardSkeleton = () => (
+    <div className="task-card relative flex flex-col gap-4 rounded-[3rem] border-2 border-primary/30 bg-white px-8 py-6 shadow-[0_4px_0_rgba(144,122,214,0.15)] sm:flex-row sm:items-center sm:gap-6">
+      <div className="flex min-w-0 flex-1 flex-col gap-3 pr-16">
+        <Skeleton className="h-6 w-1/3 bg-primary/20" />
+        <Skeleton className="h-4 w-1/4 bg-primary/10" />
+        <Skeleton className="h-4 w-3/4 bg-primary/10" />
+      </div>
+      <div className="flex items-center gap-3 self-start sm:self-auto">
+        <Skeleton className="h-10 w-32 rounded-full bg-primary/10" />
+        <Skeleton className="h-9 w-9 rounded-full bg-primary/10" />
+      </div>
+    </div>
+  )
+
   return (
-    <div className="asap-scroll page-fade w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
+    <div className="asap-scroll overflow-hidden page-fade w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
       <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <BackButton dataCy="project-task-back-button" ariaLabel="Back to projects" />
         <div
@@ -698,12 +717,13 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                     setPage(1)
                   }}
                 />
-                {canManageTasks ? (
+                {showCreateTaskButton ? (
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => router.push(`/projects/${projectId}/task/create`)}
-                    className="inline-flex h-12 items-center justify-center rounded-full border-primary/40 bg-white px-5 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/10"
+                    disabled={membershipLoading || !canManageTasks}
+                    className="inline-flex h-12 items-center justify-center rounded-full border-primary/40 bg-white px-5 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/10 disabled:opacity-60"
                   >
                     <PlusCircle className="size-5" aria-hidden="true" />
                     Create Task
@@ -713,95 +733,101 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
             </div>
           </header>
 
-        <div className="flex flex-1 min-h-0 flex-col">
-          <div
-            className={cn(
-              "-mr-3 -mt-5 rounded-[3rem] border-2 border-primary/40 bg-white/80 px-6 py-6 shadow-[0_6px_0_rgba(144,122,214,0.15)]",
-              paginatedTasks.length > 0 ? "flex-1" : "flex-none"
-            )}
-          >
+          <div className="flex flex-1 min-h-0 flex-col">
             <div
               className={cn(
-                "projects-scroll [scrollbar-gutter:stable] flex flex-col space-y-3 px-0.5 py-2 pb-2"
+                "-mr-3 -mt-5 rounded-[3rem] border-2 border-primary/40 bg-white/80 px-6 py-6 shadow-[0_6px_0_rgba(144,122,214,0.15)]",
+                paginatedTasks.length > 0 ? "flex-1" : "flex-none"
               )}
-              style={{
-                maxHeight: cardListMaxHeight,
-                minHeight: cardListMaxHeight,
-              }}
             >
-            {tasksError ? (
-              <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                {tasksError}
+              <div
+                className={cn(
+                  "projects-scroll [scrollbar-gutter:stable] flex flex-col space-y-3 px-0.5 py-2 pb-2"
+                )}
+                style={{
+                  maxHeight: cardListMaxHeight,
+                  minHeight: cardListMaxHeight,
+                }}
+              >
+                {tasksError ? (
+                  <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                    {tasksError}
+                  </div>
+                ) : null}
+                {(!hasLoadedTasks || tasksLoading) ? (
+                  <div className="flex min-h-[11rem] flex-col items-center justify-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-6 py-6 text-center text-sm text-primary">
+                    <span className="text-base font-semibold">Loading task...</span>
+                    <div className="w-full max-w-sm">
+                      <ProgressBar />
+                    </div>
+                  </div>
+                ) : null}
+                {paginatedTasks.map((task, index) => (
+                  <div key={task.id}>
+                    <TaskCard
+                      title={task.title}
+                      deadline={task.dueDate ? format(new Date(task.dueDate), "dd/MM/yyyy") : "—"}
+                      taskId={task.id}
+                      assignees={
+                        task.assignees.length > 0
+                          ? task.assignees.map(
+                              (assignee) => assignee.username || assignee.fullName || "Member"
+                            )
+                          : []
+                      }
+                      statusLabel={TASK_STATUS_LABEL[task.status]}
+                      statusClassName={TASK_STATUS_STYLE[task.status]}
+                      departments={
+                        taskDepartmentMeta[task.id]?.departments ??
+                        (task.department
+                          ? [
+                              {
+                                id: task.department.id,
+                                name: task.department.name,
+                                color: task.department.color,
+                                textColor: task.department.textColor,
+                              },
+                            ]
+                          : [])
+                      }
+                      cardColor={task.cardColor}
+                      cardTextColor={task.cardTextColor}
+                      onColorChange={(color) => handleTaskColorChange(task.id, color)}
+                      onOpen={() => handleOpenTask(task.id)}
+                      onEdit={() => handleEditTask(task.id)}
+                      onDelete={() => handleDeleteTaskRequest(task)}
+                      showActions={canManageTasks}
+                      dataCyIndex={index}
+                    />
+                  </div>
+                ))}
+                {paginatedTasks.length === 0 &&
+                hasLoadedTasks &&
+                !tasksLoading &&
+                !tasksError ? (
+                  <div className="flex min-h-[11rem] flex-col items-center justify-center rounded-[2.5rem] border border-dashed border-primary/30 bg-white/60 p-10 text-center text-primary">
+                    <p className="text-lg font-semibold" data-cy="project-task-empty-title">
+                      No tasks found
+                    </p>
+                    <p
+                      className="mt-2 text-sm text-primary/70"
+                      data-cy="project-task-empty-help"
+                    >
+                      Try adjusting the search or department filter.
+                    </p>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-            {tasksLoading && paginatedTasks.length === 0 ? (
-              <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-primary">
-                Loading tasks…
-              </div>
-            ) : null}
-            {paginatedTasks.map((task, index) => (
-            <TaskCard
-              key={task.id}
-              title={task.title}
-              deadline={task.dueDate ? format(new Date(task.dueDate), "dd/MM/yyyy") : "—"}
-              taskId={task.id}
-              assignees={
-                task.assignees.length > 0
-                  ? task.assignees.map(
-                      (assignee) => assignee.username || assignee.fullName || "Member"
-                    )
-                  : []
-              }
-              statusLabel={TASK_STATUS_LABEL[task.status]}
-              statusClassName={TASK_STATUS_STYLE[task.status]}
-              departments={
-                taskDepartmentMeta[task.id]?.departments ??
-                (task.department
-                  ? [
-                      {
-                        id: task.department.id,
-                        name: task.department.name,
-                        color: task.department.color,
-                        textColor: task.department.textColor,
-                      },
-                    ]
-                  : [])
-              }
-              cardColor={task.cardColor}
-              cardTextColor={task.cardTextColor}
-              onColorChange={(color) => handleTaskColorChange(task.id, color)}
-              onOpen={() => handleOpenTask(task.id)}
-              onEdit={() => handleEditTask(task.id)}
-              onDelete={() => handleDeleteTaskRequest(task)}
-              showActions={canManageTasks}
-              dataCyIndex={index}
-            />
-            ))}
-
-            {paginatedTasks.length === 0 ? (
-              <div className="flex min-h-[11rem] flex-col items-center justify-center rounded-[2.5rem] border border-dashed border-primary/30 bg-white/60 p-10 text-center text-primary">
-                <p className="text-lg font-semibold" data-cy="project-task-empty-title">
-                  No tasks found
-                </p>
-                <p
-                  className="mt-2 text-sm text-primary/70"
-                  data-cy="project-task-empty-help"
-                >
-                  Try adjusting the search or department filter.
-                </p>
-              </div>
-            ) : null}
             </div>
-          </div>
 
-          {!tasksLoading && (totalCount ?? tasks.length) > 0 ? (
-            <TaskPaginationControls
-              page={page}
-              totalPages={totalPages}
-              onPageChange={(nextPage) => setPage(nextPage)}
-            />
-          ) : null}
-        </div>
+            {!tasksLoading && (totalCount ?? tasks.length) > 0 ? (
+              <TaskPaginationControls
+                page={page}
+                totalPages={totalPages}
+                onPageChange={(nextPage) => setPage(nextPage)}
+              />
+            ) : null}
+          </div>
         </div>
 
         <TaskDeleteDialog

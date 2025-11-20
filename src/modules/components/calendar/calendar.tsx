@@ -9,6 +9,7 @@ import {
   fetchProjectMembership,
   fetchProjectTasks,
 } from "@/utils/projects/api"
+import { ProgressBar } from "@/components/ui/progress-bar"
 import type { TaskRecord, TaskStatus } from "@/app/projects/[projectId]/task/data"
 import type { IEvent, IUser } from "@/modules/components/calendar/interfaces"
 import type { TEventColor } from "@/modules/components/calendar/types"
@@ -183,10 +184,11 @@ export function Calendar({ projectId }: CalendarProps) {
     <div className="flex flex-col gap-3" data-cy="project-calendar-root">
       {loading && (
         <div
-          className="px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground"
+          className="flex flex-col gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-primary"
           data-cy="project-calendar-loading"
         >
-          Loading tasks…
+          <span>Loading tasks…</span>
+          <ProgressBar />
         </div>
       )}
       {error && (

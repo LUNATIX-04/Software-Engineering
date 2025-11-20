@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Check, PlusCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { ProgressBar } from "@/components/ui/progress-bar"
 import { SearchField } from "@/components/ui/search-field"
 import {
   DropdownMenu,
@@ -227,7 +228,17 @@ export default function ProjectsPage() {
     setProjectsError(null)
     try {
       const data = await fetchProjects()
-      setProjects(data)
+      const sorted = [...data].sort((a, b) => {
+        const parse = (value: string | undefined | null) => {
+          if (!value) return 0
+          const parsed = Date.parse(value)
+          return Number.isFinite(parsed) ? parsed : 0
+        }
+        const scoreA = parse(a.lastActivity) || parse(a.updatedAt) || parse(a.createdAt)
+        const scoreB = parse(b.lastActivity) || parse(b.updatedAt) || parse(b.createdAt)
+        return scoreB - scoreA
+      })
+      setProjects(sorted)
     } catch (error) {
       console.error("Failed to load projects", error)
       setProjectsError("Unable to load projects right now.")
@@ -464,10 +475,10 @@ export default function ProjectsPage() {
 
   return (
     <div
-      className="mx-auto flex w-full max-w-[min(92rem,92vw)] flex-1 flex-col gap-6 overflow-hidden px-[clamp(1.5rem,2vw,4rem)]"
+      className="mx-auto flex w-full max-w-[min(92rem,92vw)] flex-1 flex-col gap-6 overflow-hidden px-[clamp(1.5rem,2vw,4rem)] page-fade"
       style={{ minHeight: containerMinHeight }}
     >
-      <div className="flex flex-col gap-4 mt-10 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 mt-10 sm:flex-row sm:items-center sm:justify-between page-slide">
         <SearchField
           wrapperClassName="w-full max-w-md sm:mr-auto"
           placeholder="Search"
@@ -558,8 +569,9 @@ export default function ProjectsPage() {
             ) : null}
 
             {projectsLoading ? (
-              <div className="rounded-2xl border border-primary/20 bg-primary/5 px-6 py-5 text-sm text-primary">
-                Loading projects…
+              <div className="flex flex-col gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-6 py-5 text-sm text-primary">
+                <span className="font-semibold">Loading projects…</span>
+                <ProgressBar />
               </div>
             ) : null}
 
@@ -579,46 +591,47 @@ export default function ProjectsPage() {
               const isOwner = role === "OWNER"
               const canChangeOwner = isOwner
               return (
-                <ProjectCard
-                  key={project.id}
-                  title={project.title}
-                  createdAt={formatCreatedAt(project.createdAt)}
-                  description={project.description ?? ""}
-                  imageSrc={project.imageUrl ?? undefined}
-                  onOpenProject={() => navigateToProject(project.id, `/projects/${project.id}`)}
-                  onEditProject={
-                    isOwner
-                      ? () => navigateToProject(project.id, `/projects/${project.id}/edit`)
-                      : undefined
-                  }
-                  onDelete={isOwner ? () => handleDelete(project.id) : undefined}
-                  onChangeOwner={canChangeOwner ? () => openOwnerDialog(project.id) : undefined}
-                  onLeaveProject={async () => {
-                    try {
-                      setLeaveError(null)
-                      await leaveProject(project.id)
-                      setProjects((prev) => prev.filter((item) => item.id !== project.id))
-                    } catch (error) {
-                      const raw =
-                        error instanceof Error ? error.message : "Unable to leave this project."
-                      if (raw.includes("Transfer ownership before leaving")) {
-                        notify({
-                          title: "Transfer ownership before leaving",
-                          description: raw,
-                          variant: "destructive",
-                        })
-                      } else {
-                        setLeaveError(raw)
-                      }
+                <div key={project.id}>
+                  <ProjectCard
+                    title={project.title}
+                    createdAt={formatCreatedAt(project.createdAt)}
+                    description={project.description ?? ""}
+                    imageSrc={project.imageUrl ?? undefined}
+                    onOpenProject={() => navigateToProject(project.id, `/projects/${project.id}`)}
+                    onEditProject={
+                      isOwner
+                        ? () => navigateToProject(project.id, `/projects/${project.id}/edit`)
+                        : undefined
                     }
-                  }}
-                  canEdit={isOwner}
-                  canDelete={isOwner}
-                  canChangeOwner={canChangeOwner}
-                  canLeave
-                  isOwnerCard={isOwner}
-                  dataCyIndex={index}
-                />
+                    onDelete={isOwner ? () => handleDelete(project.id) : undefined}
+                    onChangeOwner={canChangeOwner ? () => openOwnerDialog(project.id) : undefined}
+                    onLeaveProject={async () => {
+                      try {
+                        setLeaveError(null)
+                        await leaveProject(project.id)
+                        setProjects((prev) => prev.filter((item) => item.id !== project.id))
+                      } catch (error) {
+                        const raw =
+                          error instanceof Error ? error.message : "Unable to leave this project."
+                        if (raw.includes("Transfer ownership before leaving")) {
+                          notify({
+                            title: "Transfer ownership before leaving",
+                            description: raw,
+                            variant: "destructive",
+                          })
+                        } else {
+                          setLeaveError(raw)
+                        }
+                      }
+                    }}
+                    canEdit={isOwner}
+                    canDelete={isOwner}
+                    canChangeOwner={canChangeOwner}
+                    canLeave
+                    isOwnerCard={isOwner}
+                    dataCyIndex={index}
+                  />
+                </div>
               )
             })}
 

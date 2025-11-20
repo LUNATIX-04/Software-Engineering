@@ -62,9 +62,11 @@ export function ProjectOwnerDialog({
       : "Select one or more members to act as project owners. Owners can manage every aspect of the project."
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl rounded-[2rem] border-2 border-primary/30 bg-white px-8 py-8 shadow-xl">
+      <DialogContent className="max-w-2xl rounded-[2rem] border-2 border-primary/30 bg-card px-8 py-8 text-card-foreground shadow-xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-[#2F2766]">{title ?? defaultTitle}</DialogTitle>
+          <DialogTitle className="text-xl font-bold text-foreground">
+            {title ?? defaultTitle}
+          </DialogTitle>
           {subtitle ? (
             <p className="mt-1 text-sm font-semibold text-primary">{subtitle}</p>
           ) : null}
@@ -79,11 +81,11 @@ export function ProjectOwnerDialog({
               <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">Owners</p>
             </div>
             {selectedOwners.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-primary/30 bg-white px-4 py-5 text-sm text-muted-foreground">
+              <div className="rounded-2xl border border-dashed border-primary/30 bg-card px-4 py-5 text-sm text-muted-foreground">
                 Choose members from the list below to make them owners.
               </div>
             ) : (
-              <div className="rounded-3xl border border-primary/30 bg-white px-4 py-3">
+              <div className="rounded-3xl border border-primary/30 bg-card px-4 py-3">
                 <div
                   className={cn(
                     "asap-scroll max-h-30 overflow-y-auto pr-2 [scrollbar-gutter:stable]",
@@ -91,7 +93,7 @@ export function ProjectOwnerDialog({
                   )}
                 >
                   {filteredSelectedOwners.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-primary/30 bg-white px-4 py-5 text-sm text-muted-foreground">
+                    <div className="rounded-2xl border border-dashed border-primary/30 bg-card px-4 py-5 text-sm text-muted-foreground">
                       No selected owners match your search.
                     </div>
                   ) : (
@@ -123,7 +125,7 @@ export function ProjectOwnerDialog({
                 value={ownerSearch}
                 onChange={(event) => setOwnerSearch(event.target.value)}
                 placeholder="Search username"
-                className="pl-9 pr-3 text-sm font-semibold text-[#2F2766] placeholder:text-primary/40"
+                className="pl-9 pr-3 text-sm font-semibold text-foreground placeholder:text-primary/40"
               />
             </div>
             <div className="asap-scroll [scrollbar-gutter:stable] max-h-40 space-y-3 overflow-y-auto pr-1">
@@ -142,7 +144,7 @@ export function ProjectOwnerDialog({
                       type="button"
                       onClick={() => toggleOwnerSelection(candidate.id)}
                       className={cn(
-                        "flex w-full items-center justify-between rounded-2xl border border-primary/20 bg-white px-4 py-3 text-left text-sm font-semibold text-[#2F2766] transition hover:border-primary hover:bg-primary/5",
+                        "flex w-full items-center justify-between rounded-2xl border border-primary/20 bg-card px-4 py-3 text-left text-sm font-semibold text-foreground transition hover:border-primary hover:bg-primary/5",
                         isSelected && "border-primary bg-primary/10"
                       )}
                     >

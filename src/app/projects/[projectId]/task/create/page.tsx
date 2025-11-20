@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react"
 import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
+import { ProgressBar } from "@/components/ui/progress-bar"
 import { TaskForm, type TaskFormValues } from "@/components/tasks"
 import { DEFAULT_TASK_CARD_COLOR } from "@/constants/task-colors"
 import { useNotifications } from "@/components/notifications/Notification"
@@ -96,27 +97,32 @@ export default function CreateTaskPage({ params }: CreateTaskPageProps) {
             <ArrowLeft className="size-6" aria-hidden="true" />
           </Button>
         </div>
-        {formLoading ? (
-          <div className="mx-0 flex-1 rounded-[2rem] border-2 border-dashed border-primary/30 bg-white/60 px-6 py-10 text-center text-primary">
-            Loading form…
-          </div>
-        ) : formError ? (
-          <div className="mx-0 flex-1 rounded-[2rem] border-2 border-destructive/30 bg-destructive/10 px-6 py-10 text-center text-destructive">
-            {formError}
-          </div>
-        ) : (
-          <div className="mx-0 flex-1 lg:mt-10 ml-0 lg:ml-13 mb-10">
-            <TaskForm
-              className="w-full"
-              heading="Create Task"
-              submitLabel={submitting ? "Creating…" : "Create"}
-              initialValues={DEFAULT_VALUES}
-              submitting={submitting}
-              onSubmit={handleSubmit}
-              assigneeOptions={memberOptions}
-            />
-          </div>
-        )}
+        <div className="mx-0 flex-1">
+          {formLoading ? (
+            <div className="rounded-[2rem] border-2 border-dashed border-primary/30 bg-white/60 px-6 py-10 text-center text-primary">
+              <div className="flex flex-col items-center gap-3">
+                <span className="text-base font-semibold">Loading form…</span>
+                <ProgressBar className="max-w-md" />
+              </div>
+            </div>
+          ) : formError ? (
+            <div className="rounded-[2rem] border-2 border-destructive/30 bg-destructive/10 px-6 py-10 text-center text-destructive">
+              {formError}
+            </div>
+          ) : (
+            <div className="lg:mt-10 mb-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <TaskForm
+                className="w-full"
+                heading="Create Task"
+                submitLabel={submitting ? "Creating…" : "Create"}
+                initialValues={DEFAULT_VALUES}
+                submitting={submitting}
+                onSubmit={handleSubmit}
+                assigneeOptions={memberOptions}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

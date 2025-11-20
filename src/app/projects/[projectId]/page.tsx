@@ -1,16 +1,17 @@
 "use client"
 
 import * as React from "react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 import Image from "next/image"
 import Link from "next/link"
 import { CalendarDays, FolderKanban, PencilLine, RefreshCcw, Tags } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { ProgressBar } from "@/components/ui/progress-bar"
 import { usePreferences } from "@/contexts/preferences"
 import { type ProjectRecord } from "@/utils/projects/api"
-import { loadProjectRecord, prefetchProjectBundle } from "@/utils/projects/prefetch"
+import { loadProjectRecord } from "@/utils/projects/prefetch"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import BackButton from "@/components/navigation/BackButton"
 
@@ -33,24 +34,20 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
   const [error, setError] = React.useState<string | null>(null)
   const [refreshToken, setRefreshToken] = useState(0)
   const { profile } = usePreferences()
-
-  useEffect(() => {
-    if (!projectId) {
-      return
-    }
-    prefetchProjectBundle(projectId).catch((prefetchError) => {
-      console.error("Project prefetch failed", prefetchError)
-    })
-  }, [projectId])
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
 
   React.useEffect(() => {
     if (!projectId) {
       return
     }
     let active = true
-    setLoading(true)
     setError(null)
-    setProject(null)
+    if (!hasLoadedOnce) {
+      setLoading(true)
+    } else {
+      setRefreshing(true)
+    }
 
     loadProjectRecord(projectId)
       .then((data) => {
@@ -61,6 +58,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
           return
         }
         setProject(data)
+        setHasLoadedOnce(true)
       })
       .catch((fetchError) => {
         console.error("Failed to fetch project info", fetchError)
@@ -70,12 +68,13 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
       .finally(() => {
         if (!active) return
         setLoading(false)
+        setRefreshing(false)
       })
 
     return () => {
       active = false
     }
-  }, [projectId, refreshToken])
+  }, [hasLoadedOnce, projectId, refreshToken])
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -118,86 +117,87 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
     }
   }, [project])
 
-  if (loading) {
+  const pageContent = (() => {
+    if (loading) {
+      return (
+        <div className="flex w-full flex-1 flex-col items-center justify-center gap-3 text-center text-primary">
+          <span className="text-base font-semibold">Loading project information…</span>
+          <ProgressBar className="max-w-md" />
+        </div>
+      )
+    }
+
+    if (error) {
+      return (
+        <div className="flex w-full flex-1 items-center justify-center text-center text-destructive">
+          {error}
+        </div>
+      )
+    }
+
+    if (!project) {
+      return (
+        <div className="flex w-full flex-1 items-center justify-center text-center text-foreground/70">
+          Unable to load project information.
+        </div>
+      )
+    }
+
+    const role = project.membership?.role ?? "MEMBER"
+    const isOwner = role === "OWNER"
+    const hasDescription = Boolean(project.description?.trim())
+    const hasDepartments = project.departments.length > 0
+    const departmentChipVariant = profile?.departmentLayout ?? "fullWidth"
+    const departmentChipBaseClass =
+      "inline-flex items-center rounded-full border-2 border-primary/30 bg-white text-primary font-semibold shadow-[0_2px_0_rgba(144,122,214,0.22)]"
+    const departmentChipClass =
+      departmentChipVariant === "compact"
+        ? `${departmentChipBaseClass} px-5 py-2 text-sm`
+        : `${departmentChipBaseClass} w-full min-w-0 justify-between px-6 py-3 text-base`
+    const departmentsWrapperClass =
+      departmentChipVariant === "compact"
+        ? "mt-1 flex flex-wrap gap-3"
+        : "mt-3 flex w-full flex-col gap-3"
+    const projectDetailCopy = hasDescription
+      ? project.description
+      : "This project does not have a description yet. Add one from the edit page to help your team stay aligned."
+
     return (
-      <div className="mx-auto flex w-full max-w-full flex-col gap-3 px-[clamp(1.5rem,3vw,3.5rem)] pb-16 pt-10 text-center text-foreground/70">
-        Loading project information…
-      </div>
-    )
-  }
+      <>
+        {isOwner ? (
+          <div className="flex justify-end">
+            <Button
+              asChild
+              type="button"
+              variant="outline"
+              data-cy="project-info-edit-button"
+              className="page-slide inline-flex h-12 min-w-[11rem] items-center gap-2 rounded-full border-primary/40 bg-white px-8 text-base font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-primary-foreground"
+            >
+              <Link href={`/projects/${projectId}/edit`}>
+                <PencilLine className="size-5" />
+                Edit Project
+              </Link>
+            </Button>
+          </div>
+        ) : null}
 
-  if (error) {
-    return (
-      <div className="mx-auto flex w-full max-w-full flex-col gap-3 px-[clamp(1.5rem,3vw,3.5rem)] pb-16 pt-10 text-center text-destructive">
-        {error}
-      </div>
-    )
-  }
-
-  if (!project) {
-    return null
-    // The error branch above should already cover missing project scenarios.
-  }
-
-  const role = project.membership?.role ?? "MEMBER"
-  const isOwner = role === "OWNER"
-  const hasDescription = Boolean(project.description?.trim())
-  const hasDepartments = project.departments.length > 0
-  const departmentChipVariant = profile?.departmentLayout ?? "fullWidth"
-  const departmentChipBaseClass =
-    "inline-flex items-center rounded-full border-2 border-primary/30 bg-white text-primary font-semibold shadow-[0_2px_0_rgba(144,122,214,0.22)]"
-  const departmentChipClass =
-    departmentChipVariant === "compact"
-      ? `${departmentChipBaseClass} px-5 py-2 text-sm`
-      : `${departmentChipBaseClass} w-full min-w-0 justify-between px-6 py-3 text-base`
-  const departmentsWrapperClass =
-    departmentChipVariant === "compact"
-      ? "mt-1 flex flex-wrap gap-3"
-      : "mt-3 flex w-full flex-col gap-3"
-  const projectDetailCopy = hasDescription
-    ? project.description
-    : "This project does not have a description yet. Add one from the edit page to help your team stay aligned."
-
-  return (
-    <div className="asap-scroll page-fade w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
-      <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
-        <BackButton dataCy="project-info-back-button" ariaLabel="Back to projects" />
-
-        <div className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10 page-slide">
-          {isOwner ? (
-            <div className="flex justify-end">
-          <Button
-            asChild
-            type="button"
-            variant="outline"
-            data-cy="project-info-edit-button"
-            className="inline-flex h-12 min-w-[11rem] items-center gap-2 rounded-full border-primary/40 bg-white px-8 text-base font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-primary-foreground"
-          >
-                <Link href={`/projects/${projectId}/edit`}>
-                  <PencilLine className="size-5" />
-                  Edit Project
-                </Link>
-              </Button>
-            </div>
-          ) : null}
-
-          <section
-            className="rounded-[2.75rem] border-2 border-primary/40 bg-white p-8 shadow-[0_6px_0_rgba(144,122,214,0.15)]"
-            data-cy="project-info-summary-section"
-          >
-            <div className="flex flex-col gap-8 md:flex-row md:items-center">
-              <div className="flex shrink-0 justify-center">
-                {project.imageUrl ? (
-                  <div className="relative h-40 w-40 overflow-hidden rounded-[2.5rem] border-2 border-primary/40 bg-primary/20 shadow-[0_6px_0_rgba(144,122,214,0.22)]">
-                    <Image
-                      src={project.imageUrl}
-                      alt={`${project.title} cover`}
-                      fill
-                      className="object-cover"
-                      data-cy="project-cover-image"
-                    />
-                  </div>
-                ) : (
+        <section
+          className="rounded-[2.75rem] border-2 border-primary/40 bg-white p-8 shadow-[0_6px_0_rgba(144,122,214,0.15)] page-slide"
+          data-cy="project-info-summary-section"
+        >
+          <div className="flex flex-col gap-8 md:flex-row md:items-center">
+            <div className="flex shrink-0 justify-center">
+              {project.imageUrl ? (
+                <div className="relative h-40 w-40 overflow-hidden rounded-[2.5rem] border-2 border-primary/40 bg-primary/20 shadow-[0_6px_0_rgba(144,122,214,0.22)]">
+                  <Image
+                    src={project.imageUrl}
+                    alt={`${project.title} cover`}
+                    fill
+                    className="object-cover"
+                    data-cy="project-cover-image"
+                  />
+                </div>
+              ) : (
                 <div className="flex h-40 w-40 items-center justify-center rounded-[2.5rem] border-2 border-dashed border-primary/40 bg-primary/10 text-primary shadow-[0_14px_0_rgba(144,122,214,0.22)]">
                   <FolderKanban className="size-14" />
                 </div>
@@ -206,7 +206,10 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
 
             <div className="flex flex-1 flex-col gap-5">
               <div>
-                <h1 className="text-3xl font-bold text-foreground md:text-4xl" data-cy="project-name">
+                <h1
+                  className="text-3xl font-bold text-foreground md:text-4xl"
+                  data-cy="project-name"
+                >
                   {project.title}
                 </h1>
               </div>
@@ -240,7 +243,9 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
                   <div>
                     <dt className="text-sm font-semibold text-foreground">Departments</dt>
                     <dd data-cy="project-department">
-                      {project.departments.length > 0 ? project.departments.length : "No departments yet"}
+                      {project.departments.length > 0
+                        ? project.departments.length
+                        : "No departments yet"}
                     </dd>
                   </div>
                 </div>
@@ -257,45 +262,51 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
               </dl>
             </div>
           </div>
-          </section>
+        </section>
 
-          <section
-            className="rounded-[2.75rem] border-2 border-primary/30 bg-primary/10 px-8 py-6 shadow-[0_6px_0_rgba(144,122,214,0.1)]"
-            data-cy="project-info-detail-section"
-          >
-            <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-foreground">Project Detail</h2>
-                <p className="mt-1 text-x text-foreground/70" data-cy="project-description">
-                  {projectDetailCopy}
-                </p>
-              </div>
-            </header>
-
-            <div className="mt-6 flex flex-col gap-6">
-              <div>
-                <h2 className="text-xl font-semibold text-foreground">
-                  Departments
-                </h2>
-                  {hasDepartments ? (
-                    <div className={departmentsWrapperClass} data-cy="project-info-department-list">
-                    {project.departments.map((department) => (
-                      <span
-                        key={department}
-                        className={departmentChipClass}
-                      >
-                        {department}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mt-3 text-sm text-foreground/60">
-                    No departments assigned yet. You can add them from the Edit Project page.
-                  </p>
-                )}
-              </div>
+        <section
+          className="rounded-[2.75rem] border-2 border-primary/30 bg-primary/10 px-8 py-6 shadow-[0_6px_0_rgba(144,122,214,0.1)] page-slide"
+          data-cy="project-info-detail-section"
+        >
+          <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">Project Detail</h2>
+              <p className="mt-1 text-x text-foreground/70" data-cy="project-description">
+                {projectDetailCopy}
+              </p>
             </div>
-          </section>
+          </header>
+
+          <div className="mt-6 flex flex-col gap-6">
+            <div>
+              <h2 className="text-xl font-semibold text-foreground">Departments</h2>
+              {hasDepartments ? (
+                <div className={departmentsWrapperClass} data-cy="project-info-department-list">
+                  {project.departments.map((department) => (
+                    <span key={department} className={departmentChipClass}>
+                      {department}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-foreground/60">
+                  No departments assigned yet. You can add them from the Edit Project page.
+                </p>
+              )}
+            </div>
+          </div>
+        </section>
+      </>
+    )
+  })()
+
+  return (
+    <div className="asap-scroll page-fade w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
+      <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
+        <BackButton dataCy="project-info-back-button" ariaLabel="Back to projects" />
+
+        <div className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10 page-slide">
+          {pageContent}
         </div>
       </div>
     </div>

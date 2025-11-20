@@ -860,6 +860,33 @@ function AppShellInner({ children }: AppShellProps) {
     [activeProjectId]
   )
 
+  const handleProjectNavClick = useCallback(
+    (href: string | null, disabled?: boolean) => {
+      if (disabled || !href) {
+        return
+      }
+      router.push(href)
+    },
+    [router]
+  )
+
+  useEffect(() => {
+    projectNavItems.forEach((item) => {
+      if (item.href) {
+        try {
+          const result = router.prefetch(item.href)
+          if (result && typeof (result as Promise<unknown>).catch === "function") {
+            ;(result as Promise<unknown>).catch(() => {})
+          }
+        } catch (error) {
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("Prefetch failed", error)
+          }
+        }
+      }
+    })
+  }, [projectNavItems, router])
+
   useEffect(() => {
     if (projectMembership?.username) {
       setPendingUsername(projectMembership.username)
@@ -980,12 +1007,7 @@ function AppShellInner({ children }: AppShellProps) {
                 <button
                   key={item.key}
                   type="button"
-                  onClick={() => {
-                    if (item.disabled || !item.href) {
-                      return
-                    }
-                    router.push(item.href)
-                  }}
+                  onClick={() => handleProjectNavClick(item.href ?? null, item.disabled)}
                   aria-current={isActive ? "page" : undefined}
                   disabled={item.disabled}
                   data-cy={`project-nav-${item.key}`}

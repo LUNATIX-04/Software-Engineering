@@ -19,6 +19,7 @@ import {
 
 import { useNotifications } from "@/components/notifications/Notification"
 import { Button } from "@/components/ui/button"
+import { ProgressBar } from "@/components/ui/progress-bar"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import {
   createProjectDepartment,
@@ -37,9 +38,8 @@ import {
   getCachedProjectMembership,
   loadProjectDepartments,
   loadProjectMembers,
-  loadProjectMembership,
-  prefetchProjectBundle,
 } from "@/utils/projects/prefetch"
+import { getCachedProjectMetadata, loadProjectMetadata } from "@/utils/projects/metadata"
 import { generatePastelColor, getContrastingTextColor } from "@/utils/colors"
 import { PROJECT_ROLE } from "@/types/projects"
 import BackButton from "@/components/navigation/BackButton"
@@ -67,12 +67,13 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
   const { notify } = useNotifications()
   const cachedDepartments = getCachedProjectDepartments(projectId)
   const cachedMembers = getCachedProjectMembers(projectId)
+  const cachedMetadata = getCachedProjectMetadata(projectId)
   const cachedMembership = getCachedProjectMembership(projectId)
   const [membership, setMembership] = useState<ProjectMembershipSummary | null>(
-    cachedMembership ?? null
+    cachedMetadata?.membership ?? cachedMembership ?? null
   )
   const [membershipLoading, setMembershipLoading] = useState(
-    cachedMembership === undefined
+    cachedMetadata ? false : cachedMembership === undefined
   )
   const [members, setMembers] = useState<ProjectMemberDetail[]>(cachedMembers ?? [])
   const [membersError, setMembersError] = useState<string | null>(null)
@@ -90,10 +91,11 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
       activationConstraint: { distance: 8 },
     })
   )
-  const viewerRole = membership?.role ?? null
+  const viewerRole = membership?.role ?? cachedMetadata?.role ?? null
   const viewerDepartmentId = membership?.departmentId ?? null
   const viewerUsername = membership?.username ?? null
   const canManageDepartments = viewerRole === PROJECT_ROLE.OWNER
+  const showCreateDepartmentButton = membershipLoading || canManageDepartments
 
   const colorUpdateTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const pendingColors = useRef<Record<string, string>>({})
@@ -103,15 +105,6 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
       [...list].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name)),
     []
   )
-
-  useEffect(() => {
-    if (!projectId) {
-      return
-    }
-    prefetchProjectBundle(projectId).catch((prefetchError) => {
-      console.error("Project prefetch failed", prefetchError)
-    })
-  }, [projectId])
 
   const loadDepartments = useCallback(async () => {
     const shouldShowLoading = getCachedProjectDepartments(projectId) === undefined
@@ -173,28 +166,26 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
       setMembershipLoading(false)
       return
     }
-    const cached = getCachedProjectMembership(projectId)
-    const shouldShowLoading = cached === undefined
-    setMembership(cached ?? null)
-    setMembershipLoading(shouldShowLoading)
-    loadProjectMembership(projectId)
-      .then((data) => {
-        if (!active) {
-          return
-        }
-        setMembership(data)
+    const cached = getCachedProjectMetadata(projectId)
+    if (cached) {
+      setMembership(cached.membership)
+      setMembershipLoading(false)
+    } else {
+      setMembershipLoading(true)
+    }
+    loadProjectMetadata(projectId)
+      .then((metadata) => {
+        if (!active) return
+        setMembership(metadata.membership)
       })
       .catch((error) => {
-        console.error("Failed to load membership", error)
+        console.error("Failed to load project metadata", error)
         if (active) {
           setMembership(null)
         }
       })
       .finally(() => {
-        if (!active) {
-          return
-        }
-        if (shouldShowLoading) {
+        if (active) {
           setMembershipLoading(false)
         }
       })
@@ -695,15 +686,28 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
     if (!canManageDepartments || creating) {
       return
     }
+    const nextOrder =
+      departments.reduce((max, dept) => Math.max(max, dept.order), -1) + 1
     setCreating(true)
     try {
       const created = await createProjectDepartment(projectId, {
         name: `Department ${departments.length + 1}`,
         color: generatePastelColor(),
       })
+      const normalizedDepartment =
+        created.order === nextOrder ? created : { ...created, order: nextOrder }
       pendingScrollId.current = created.id
       setAutoEditId(created.id)
-      setDepartments((prev) => sortedDepartments([...prev, created]))
+      setDepartments((prev) => sortedDepartments([...prev, normalizedDepartment]))
+      if (created.order !== nextOrder) {
+        updateProjectDepartment(projectId, created.id, { order: nextOrder })
+          .then((updated) =>
+            setDepartments((prev) => prev.map((dept) => (dept.id === updated.id ? updated : dept)))
+          )
+          .catch((error) => {
+            console.error("Failed to place new department at end", error)
+          })
+      }
       notify({
         title: "Department created",
         description: "Double-click the name to rename it anytime.",
@@ -721,7 +725,7 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
     } finally {
       setCreating(false)
     }
-  }, [canManageDepartments, creating, departments.length, notify, projectId, sortedDepartments])
+  }, [canManageDepartments, creating, departments, notify, projectId, sortedDepartments])
 
   const persistDepartmentOrder = useCallback(
     async (orderedList: ProjectDepartmentRecord[]) => {
@@ -801,11 +805,11 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
                 onChange={(event) => setSearch(event.target.value)}
                 data-cy="department-search-input"
               />
-              {canManageDepartments ? (
+              {showCreateDepartmentButton ? (
                 <Button
                   type="button"
                   onClick={handleCreateDepartment}
-                  disabled={creating}
+                  disabled={creating || membershipLoading || !canManageDepartments}
                   data-cy="project-department-create-button"
                   className="inline-flex h-12 select-none items-center gap-2 rounded-full border border-primary/40 bg-white px-6 text-base font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-primary-foreground disabled:opacity-60"
                 >
@@ -819,8 +823,9 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
             ) : null}
 
             {loading ? (
-              <div className="flex h-48 w-full items-center justify-center rounded-[2.5rem] border-2 border-dashed border-primary/30 bg-white text-primary">
-                Loading departments…
+              <div className="flex h-48 w-full flex-col items-center justify-center gap-3 rounded-[2.5rem] border-2 border-dashed border-primary/30 bg-white text-primary">
+                <span className="text-base font-semibold">Loading departments…</span>
+                <ProgressBar className="max-w-md" />
               </div>
             ) : loadError ? (
               <div className="flex flex-col items-center justify-center gap-4 rounded-[2.5rem] border-2 border-destructive/40 bg-white px-8 py-10 text-center text-destructive">
@@ -837,7 +842,7 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
               </div>
             ) : (
               <section
-                className="grid gap-8 mb-10 sm:grid-cols-2 lg:grid-cols-3"
+                className="grid gap-8 mb-10 sm:grid-cols-2 lg:grid-cols-3 page-slide"
                 data-project-id={projectId}
                 aria-label="Departments"
               >
@@ -851,28 +856,29 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
                     strategy={verticalListSortingStrategy}
                   >
                     {filteredDepartments.map((department, index) => (
-                      <DepartmentCard
-                        key={department.id}
-                        dataCyIndex={index}
-                        department={department}
-                        memberCount={departmentMemberCounts[department.id] ?? department.memberCount}
-                        headOptions={getHeadOptionsForDepartment(department.id)}
-                        headLabelMap={headLabelMap}
-                        onSelectHead={handleSelectHead}
-                        onSelectColor={handleSelectColor}
-                        onRename={handleRenameDepartment}
-                        onDelete={handleDeleteDepartment}
-                        autoEditId={autoEditId}
-                        onAutoEditComplete={handleAutoEditComplete}
-                        disabled={!canManageDepartments || Boolean(updatingMap[department.id])}
-                        headControlsDisabled={
-                          !canControlHead(department.id) || Boolean(updatingMap[department.id])
-                        }
-                        colorControlsDisabled={
-                          !canManageDepartments || Boolean(updatingMap[department.id])
-                        }
-                        showManageControls={canManageDepartments}
-                      />
+                      <div key={department.id}>
+                        <DepartmentCard
+                          dataCyIndex={index}
+                          department={department}
+                          memberCount={departmentMemberCounts[department.id] ?? department.memberCount}
+                          headOptions={getHeadOptionsForDepartment(department.id)}
+                          headLabelMap={headLabelMap}
+                          onSelectHead={handleSelectHead}
+                          onSelectColor={handleSelectColor}
+                          onRename={handleRenameDepartment}
+                          onDelete={handleDeleteDepartment}
+                          autoEditId={autoEditId}
+                          onAutoEditComplete={handleAutoEditComplete}
+                          disabled={!canManageDepartments || Boolean(updatingMap[department.id])}
+                          headControlsDisabled={
+                            !canControlHead(department.id) || Boolean(updatingMap[department.id])
+                          }
+                          colorControlsDisabled={
+                            !canManageDepartments || Boolean(updatingMap[department.id])
+                          }
+                          showManageControls={canManageDepartments}
+                        />
+                      </div>
                     ))}
                   </SortableContext>
                 </DndContext>

@@ -179,31 +179,33 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
             <ArrowLeft className="size-6" aria-hidden="true" />
           </Button>
         </div>
-        {formLoading ? (
-          <div className="mx-0 flex-1 rounded-[2rem] border-2 border-dashed border-primary/30 bg-white/60 px-6 py-10 text-center text-primary">
-            Loading task…
-          </div>
-        ) : formError ? (
-          <div className="mx-0 flex-1 rounded-[2rem] border-2 border-destructive/30 bg-destructive/10 px-6 py-10 text-center text-destructive">
-            {formError}
-          </div>
-        ) : initialValues ? (
-          <div className="mx-0 flex-1 lg:mt-10 mb-10 w-full">
-            <TaskForm
-              className="w-full"
-              heading="Edit Task"
-              submitLabel={saving ? "Saving…" : "Save"}
-              initialValues={initialValues}
-              submitting={saving}
-              onSubmit={handleSave}
-              assigneeOptions={memberOptions}
-            />
-          </div>
-        ) : (
-          <div className="mx-0 flex-1 rounded-[2rem] border-2 border-destructive/30 bg-destructive/10 px-6 py-10 text-center text-destructive">
-            Task not found.
-          </div>
-        )}
+        <div className="mx-0 flex-1">
+          {formLoading ? (
+            <div className="rounded-[2rem] border-2 border-dashed border-primary/30 bg-white/60 px-6 py-10 text-center text-primary">
+              Loading task…
+            </div>
+          ) : formError ? (
+            <div className="rounded-[2rem] border-2 border-destructive/30 bg-destructive/10 px-6 py-10 text-center text-destructive">
+              {formError}
+            </div>
+          ) : initialValues ? (
+            <div className="lg:mt-10 mb-10 w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <TaskForm
+                className="w-full"
+                heading="Edit Task"
+                submitLabel={saving ? "Saving…" : "Save"}
+                initialValues={initialValues}
+                submitting={saving}
+                onSubmit={handleSave}
+                assigneeOptions={memberOptions}
+              />
+            </div>
+          ) : (
+            <div className="rounded-[2rem] border-2 border-destructive/30 bg-destructive/10 px-6 py-10 text-center text-destructive">
+              Task not found.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

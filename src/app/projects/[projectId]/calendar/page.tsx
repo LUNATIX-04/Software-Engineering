@@ -2,9 +2,7 @@
 
 import { Calendar } from "@/modules/components/calendar/calendar"
 import * as React from "react"
-import { useEffect } from "react"
 import BackButton from "@/components/navigation/BackButton"
-import { prefetchProjectBundle } from "@/utils/projects/prefetch"
 
 type ProjectCalendarFullPageProps = {
   params: Promise<{
@@ -16,15 +14,6 @@ export default function ProjectCalendarFullPage({
   params,
 }: ProjectCalendarFullPageProps) {
   const { projectId } = React.use(params)
-
-  useEffect(() => {
-    if (!projectId) {
-      return
-    }
-    prefetchProjectBundle(projectId, { taskPageSize: 18 }).catch((prefetchError) => {
-      console.error("Project prefetch failed", prefetchError)
-    })
-  }, [projectId])
 
   return (
     <div

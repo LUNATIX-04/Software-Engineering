@@ -95,14 +95,16 @@ export default function CreateProjectPage() {
             <ArrowLeft className="size-6" aria-hidden="true" />
           </Button>
         </div>
-        <ProjectForm
-          className="mx-0 flex-1 lg:mt-10"
-          heading="Create Project"
-          submitLabel={submitting ? "Creating…" : "Create"}
-          departmentChipVariant={preferredDepartmentLayout}
-          onSubmit={handleSubmit}
-          submitting={submitting}
-        />
+        <div className="mx-0 flex-1 lg:mt-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <ProjectForm
+            className="w-full"
+            heading="Create Project"
+            submitLabel={submitting ? "Creating…" : "Create"}
+            departmentChipVariant={preferredDepartmentLayout}
+            onSubmit={handleSubmit}
+            submitting={submitting}
+          />
+        </div>
       </div>
     </div>
   )
