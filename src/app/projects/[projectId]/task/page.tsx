@@ -652,7 +652,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <BackButton dataCy="project-task-back-button" ariaLabel="Back to projects" />
         <div
-          className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10"
+          className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10 page-slide"
           style={{ minHeight: containerMinHeight }}
         >
           <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">

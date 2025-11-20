@@ -788,11 +788,11 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
 
   return (
     <>
-      <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
+      <div className="asap-scroll page-fade w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
         <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
           <BackButton dataCy="project-department-back-button" ariaLabel="Back to projects" />
 
-          <div className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10">
+          <div className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10 page-slide">
             <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <SearchField
                 wrapperClassName="w-full max-w-md sm:mr-auto"

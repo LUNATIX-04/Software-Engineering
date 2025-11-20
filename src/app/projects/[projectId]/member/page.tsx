@@ -958,7 +958,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
         <BackButton dataCy="project-member-back-button" ariaLabel={backAriaLabel} />
         <div
-          className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10"
+          className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10 page-slide"
           style={{ minHeight: containerMinHeight }}
         >
           <section className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

@@ -678,6 +678,34 @@
     width: 0.8rem;
   }
 
+  .page-fade {
+    animation: pageFade 240ms ease-out;
+  }
+
+  .page-slide {
+    animation: pageSlide 280ms ease-out;
+  }
+
+  @keyframes pageFade {
+    from {
+      opacity: 0.92;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes pageSlide {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
   .project-detail-scroll::-webkit-scrollbar-track {
     background: var(--scrollbar-track);
     border-radius: 9999px;
