@@ -958,34 +958,47 @@ function AppShellInner({ children }: AppShellProps) {
     }
 
     if (headerVariant === "projects") {
+      const tabCount = projectNavItems.length || 1
+      const activeIndex = Math.max(
+        projectNavItems.findIndex((item) => item.key === currentProjectSection),
+        0
+      )
+
       const projectNavContent = hasProjectTabs ? (
-        <nav className="flex max-w-4xl flex-1 items-center gap-2 overflow-x-auto px-2">
-          {projectNavItems.map((item) => {
-            const isActive = currentProjectSection === item.key
-            return (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => {
-                  if (item.disabled || !item.href) {
-                    return
-                  }
-                  router.push(item.href)
-                }}
-                aria-current={isActive ? "page" : undefined}
-                disabled={item.disabled}
-                data-cy={`project-nav-${item.key}`}
-                className={cn(
-                  "relative flex min-w-[5.5rem] flex-1 items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-button-foreground-on-nav transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50",
-                  isActive &&
-                    "text-foreground-for-nav before:absolute before:bottom-1 before:left-4 before:right-4 before:h-1 before:rounded-full before:bg-underline-foreground-for-nav before:content-['']",
-                  !isActive && "hover:text-hover-foreground-for-nav"
-                )}
-              >
-                {item.label}
-              </button>
-            )
-          })}
+        <nav className="relative flex max-w-4xl flex-1 items-center gap-2 overflow-hidden px-2">
+          <div
+            className="absolute bottom-1 left-2 h-1 rounded-full bg-underline-foreground-for-nav transition-all duration-300 ease-out"
+            style={{
+              width: `${100 / tabCount}%`,
+              transform: `translateX(${activeIndex * 100}%)`,
+            }}
+          />
+          <div className="relative flex w-full items-center gap-2">
+            {projectNavItems.map((item) => {
+              const isActive = currentProjectSection === item.key
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => {
+                    if (item.disabled || !item.href) {
+                      return
+                    }
+                    router.push(item.href)
+                  }}
+                  aria-current={isActive ? "page" : undefined}
+                  disabled={item.disabled}
+                  data-cy={`project-nav-${item.key}`}
+                  className={cn(
+                    "relative flex min-w-[5.5rem] flex-1 items-center justify-center whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold text-button-foreground-on-nav transition-[color,transform] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50",
+                    isActive ? "text-foreground-for-nav" : "hover:text-hover-foreground-for-nav"
+                  )}
+                >
+                  {item.label}
+                </button>
+              )
+            })}
+          </div>
         </nav>
       ) : null
 
