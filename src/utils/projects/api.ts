@@ -1,6 +1,7 @@
-import type { TaskRecord } from "@/app/projects/[projectId]/task/data"
+import type { TaskRecord, TaskStatus } from "@/app/projects/[projectId]/task/data"
 import type { ProjectMemberStatus, ProjectRole } from "@/types/projects"
 export type { ProjectRole }
+export type TaskScopeFilter = "assignee" | "assigner"
 
 export type ProjectMembershipSummary = {
   id: string
@@ -63,6 +64,26 @@ export type ProjectInput = {
   description: string | null
   departments: string[]
   imageUrl: string | null
+}
+
+export type TaskListOptions = {
+  search?: string
+  departmentNames?: string[]
+  departmentIds?: string[]
+  statuses?: TaskStatus[]
+  scope?: TaskScopeFilter
+  memberId?: string
+  page?: number
+  pageSize?: number
+  signal?: AbortSignal
+}
+
+export type TaskListResponse = {
+  tasks: TaskRecord[]
+  page: number
+  pageSize: number
+  totalCount: number | null
+  totalPages: number | null
 }
 
 async function handleJsonResponse<T>(response: Response): Promise<T> {
@@ -240,12 +261,78 @@ export async function fetchProjectMembers(projectId: string) {
   return handleJsonResponse<ProjectMemberDetail[]>(response)
 }
 
-export async function fetchProjectTasks(projectId: string) {
-  const response = await fetch(`/api/projects/${projectId}/tasks`, {
-    method: "GET",
-    cache: "no-store",
-  })
-  return handleJsonResponse<TaskRecord[]>(response)
+export async function fetchProjectTasks(
+  projectId: string,
+  options?: TaskListOptions
+): Promise<TaskListResponse> {
+  const searchParams = new URLSearchParams()
+
+  if (options?.search?.trim()) {
+    searchParams.set("search", options.search.trim())
+  }
+
+  ;(options?.departmentIds ?? []).forEach((id) => searchParams.append("departmentId", id))
+  ;(options?.departmentNames ?? []).forEach((name) => searchParams.append("departmentName", name))
+  ;(options?.statuses ?? []).forEach((status) => searchParams.append("status", status))
+
+  if (options?.scope) {
+    searchParams.set("scope", options.scope)
+  }
+
+  if (options?.memberId) {
+    searchParams.set("memberId", options.memberId)
+  }
+
+  if (options?.page && Number.isFinite(options.page)) {
+    searchParams.set("page", String(Math.max(1, Math.trunc(options.page))))
+  }
+
+  if (options?.pageSize && Number.isFinite(options.pageSize)) {
+    searchParams.set("pageSize", String(Math.max(1, Math.trunc(options.pageSize))))
+  }
+
+  const querySuffix = searchParams.toString()
+  const response = await fetch(
+    `/api/projects/${projectId}/tasks${querySuffix.length > 0 ? `?${querySuffix}` : ""}`,
+    {
+      method: "GET",
+      cache: "no-store",
+      signal: options?.signal,
+    }
+  )
+
+  const payload = await handleJsonResponse<TaskRecord[]>(response)
+
+  const parseHeaderNumber = (value: string | null) => {
+    if (!value) return null
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
+  const pageHeader = parseHeaderNumber(response.headers.get("x-page"))
+  const pageSizeHeader = parseHeaderNumber(response.headers.get("x-page-size"))
+  const totalCountHeader = parseHeaderNumber(response.headers.get("x-total-count"))
+  const totalPagesHeader = parseHeaderNumber(response.headers.get("x-total-pages"))
+
+  const resolvedPage = pageHeader ?? options?.page ?? 1
+  const resolvedPageSize = Math.max(
+    1,
+    pageSizeHeader ?? options?.pageSize ?? (payload.length > 0 ? payload.length : 1)
+  )
+  const resolvedTotalCount = totalCountHeader ?? payload.length
+  const resolvedTotalPages =
+    totalPagesHeader ??
+    (resolvedTotalCount && resolvedPageSize
+      ? Math.max(1, Math.ceil(resolvedTotalCount / resolvedPageSize))
+      : 1)
+
+  return {
+    tasks: payload,
+    page: resolvedPage,
+    pageSize: resolvedPageSize,
+    totalCount: resolvedTotalCount,
+    totalPages: resolvedTotalPages,
+  }
 }
 
 export async function updateProjectMember(

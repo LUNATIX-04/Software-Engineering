@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useCallback, useRef, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Check, Link2 } from "lucide-react"
+import { Check, Link2 } from "lucide-react"
 import { useNotifications } from "@/components/notifications/Notification"
 import { Button } from "@/components/ui/button"
 import {
@@ -38,6 +38,8 @@ import {
   loadProjectDepartments,
   loadProjectMembers,
   loadProjectMembership,
+  prefetchProjectBundle,
+  refreshProjectCache,
 } from "@/utils/projects/prefetch"
 import { PROJECT_ROLE } from "@/types/projects"
 import { MemberFilterBar } from "./components/MemberFilterBar"
@@ -47,6 +49,7 @@ import { MemberDetailDialog } from "./components/MemberDetailDialog"
 import { MemberKickDialog } from "./components/MemberKickDialog"
 import { useMemberPaginationControls } from "./hooks/useMemberPaginationControls"
 import type { MemberRecord, RemoteDepartment } from "./types"
+import BackButton from "@/components/navigation/BackButton"
 
 // Share the same department catalog as the Department page so colors & labels stay in sync.
 const normalizeMemberDepartments = (departments: ProjectDepartmentRecord[]): RemoteDepartment[] =>
@@ -101,6 +104,8 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   const cachedDepartments = getCachedProjectDepartments(projectId)
   const cachedMembers = getCachedProjectMembers(projectId)
   const cachedMembership = getCachedProjectMembership(projectId)
+  const refreshTimerRef = useRef<number | null>(null)
+  const refreshInFlightRef = useRef(false)
   const [membership, setMembership] = useState<ProjectMembershipSummary | null>(
     cachedMembership ?? null
   )
@@ -131,6 +136,17 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     })
     router.replace("/projects")
   }, [notify, router])
+
+  useEffect(() => {
+    if (!projectId) {
+      return
+    }
+    prefetchProjectBundle(projectId, { taskPageSize: BASE_PAGE_SIZE_OPTIONS[1] }).catch(
+      (prefetchError) => {
+        console.error("Project prefetch failed", prefetchError)
+      }
+    )
+  }, [projectId])
 
   const departmentStyles = useMemo(() => {
     if (remoteDepartments.length === 0) {
@@ -250,6 +266,30 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     loadMembers()
   }, [projectId, loadMembers])
 
+  const reloadMembership = useCallback(async () => {
+    if (!projectId) {
+      return
+    }
+    const shouldShowLoading = getCachedProjectMembership(projectId) === undefined
+    if (shouldShowLoading) {
+      setMembershipLoading(true)
+    }
+    try {
+      const data = await loadProjectMembership(projectId)
+      setMembership(data ?? null)
+    } catch (error) {
+      console.error("Failed to load membership", error)
+      setMembership(null)
+      if (isRemovalError(error)) {
+        redirectToProjects()
+      }
+    } finally {
+      if (shouldShowLoading) {
+        setMembershipLoading(false)
+      }
+    }
+  }, [projectId, redirectToProjects])
+
   useEffect(() => {
     let active = true
     if (!projectId) {
@@ -289,6 +329,31 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       active = false
     }
   }, [projectId, redirectToProjects])
+
+  useEffect(() => {
+    if (!projectId) {
+      return
+    }
+    const runRefresh = async () => {
+      if (refreshInFlightRef.current) return
+      refreshInFlightRef.current = true
+      try {
+        await refreshProjectCache(projectId)
+        await Promise.all([fetchDepartments(), loadMembers(), reloadMembership()])
+      } catch (error) {
+        console.error("Member page refresh failed", error)
+      } finally {
+        refreshInFlightRef.current = false
+      }
+    }
+    refreshTimerRef.current = window.setInterval(runRefresh, 15000)
+    return () => {
+      if (refreshTimerRef.current) {
+        window.clearInterval(refreshTimerRef.current)
+        refreshTimerRef.current = null
+      }
+    }
+  }, [fetchDepartments, loadMembers, projectId, reloadMembership])
 
   const filteredMembers = useMemo(() => {
     const normalized = search.trim().toLowerCase()
@@ -720,14 +785,6 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     })
   }
 
-  const handleBackClick = useCallback(() => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back()
-      return
-    }
-    router.push("/projects")
-  }, [router])
-
   const handleSetMemberDepartment = useCallback(
     async (memberId: string, departmentLabel: MemberDepartment) => {
       if (!projectId) {
@@ -819,18 +876,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   return (
     <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
       <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
-        <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
-          <Button
-            type="button"
-            variant="ghost"
-            data-cy="project-member-back-button"
-            onClick={handleBackClick}
-            className="inline-flex size-12 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary focus-visible:ring-0"
-            aria-label={backAriaLabel}
-          >
-            <ArrowLeft className="size-6" aria-hidden="true" />
-          </Button>
-        </div>
+        <BackButton dataCy="project-member-back-button" ariaLabel={backAriaLabel} />
         <div
           className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10"
           style={{ minHeight: containerMinHeight }}

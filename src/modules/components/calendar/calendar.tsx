@@ -125,7 +125,7 @@ export function Calendar({ projectId }: CalendarProps) {
     setLoading(true)
     setError(null)
     fetchProjectTasks(projectId)
-      .then((tasks) => {
+      .then(({ tasks }) => {
         if (!active) return
         setEvents(mapTasksToEvents(tasks, projectId))
         setUsers(mapTasksToUsers(tasks))

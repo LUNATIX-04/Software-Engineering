@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useRef, useEffect, useCallback, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, PlusCircle } from "lucide-react"
+import { PlusCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { SearchField } from "@/components/ui/search-field"
@@ -18,13 +18,16 @@ import { TaskCard } from "@/components/tasks/TaskCard"
 import { getContrastingTextColor, sanitizeHexColor } from "@/utils/colors"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import type { ProjectDepartmentRecord } from "@/utils/projects/departments"
-import type { ProjectMembershipSummary } from "@/utils/projects/api"
+import type { ProjectMembershipSummary, TaskScopeFilter } from "@/utils/projects/api"
 import {
   loadProjectDepartments,
   loadProjectMembership,
   loadProjectTasks,
+  prefetchProjectBundle,
+  refreshProjectCache,
 } from "@/utils/projects/prefetch"
 import { PROJECT_ROLE } from "@/types/projects"
+import BackButton from "@/components/navigation/BackButton"
 
 import TaskDeleteDialog from "./components/TaskDeleteDialog"
 import TaskFilterMenu from "./components/TaskFilterMenu"
@@ -75,9 +78,14 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const [pageSize, setPageSize] = useState(
     BASE_PAGE_SIZE_OPTIONS[1] ?? BASE_PAGE_SIZE_OPTIONS[0]
   )
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalCount, setTotalCount] = useState<number | null>(null)
   const colorRollbackRef = useRef<Record<string, { cardColor: string; cardTextColor: string }>>({})
   const latestColorRequestRef = useRef<Record<string, string>>({})
   const pendingColorOverridesRef = useRef<Record<string, { cardColor: string; cardTextColor: string }>>({})
+  const taskFetchControllerRef = useRef<AbortController | null>(null)
+  const refreshTimerRef = useRef<number | null>(null)
+  const refreshInFlightRef = useRef(false)
 
   const applyPendingCardColorOverrides = useCallback((taskList: TaskRecord[]) => {
     const overrides = pendingColorOverridesRef.current
@@ -114,6 +122,16 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const membershipId = membership?.id ?? null
   const canManageTasks = Boolean(membership && membership.role !== PROJECT_ROLE.MEMBER)
 
+  useEffect(() => {
+    if (!projectId) {
+      return
+    }
+    const defaultPageSize = BASE_PAGE_SIZE_OPTIONS[1] ?? BASE_PAGE_SIZE_OPTIONS[0]
+    prefetchProjectBundle(projectId, { taskPageSize: defaultPageSize }).catch((prefetchError) => {
+      console.error("Project prefetch failed", prefetchError)
+    })
+  }, [projectId])
+
   const departmentOptions = useMemo(() => {
     const sorted = [...remoteDepartments].sort(
       (a, b) => a.order - b.order || a.name.localeCompare(b.name)
@@ -125,13 +143,6 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const departmentById = useMemo(() => {
     return remoteDepartments.reduce<Record<string, RemoteDepartment>>((acc, dept) => {
       acc[dept.id] = dept
-      return acc
-    }, {})
-  }, [remoteDepartments])
-
-  const departmentByName = useMemo(() => {
-    return remoteDepartments.reduce<Record<string, RemoteDepartment>>((acc, dept) => {
-      acc[dept.name] = dept
       return acc
     }, {})
   }, [remoteDepartments])
@@ -204,128 +215,15 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     }, {})
   }, [departmentById, tasks])
 
-  const filteredTasks = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase()
-    const hasDepartmentFilters = activeDepartmentFilters.length > 0
-    const now = Date.now()
-
-    const getSortKey = (task: TaskRecord) => {
-      if (!task.dueDate) {
-        return { bucket: 1, value: Number.POSITIVE_INFINITY }
-      }
-      const dueDate = new Date(task.dueDate).getTime()
-      const diff = dueDate - now
-      if (Number.isNaN(diff)) {
-        return { bucket: 1, value: Number.POSITIVE_INFINITY }
-      }
-      if (diff >= 0) {
-        return { bucket: 0, value: diff }
-      }
-      return { bucket: 2, value: Math.abs(diff) }
-    }
-
-    const matchesRoleScope = (task: TaskRecord) => {
-      if (!membership) {
-        return true
-      }
-      if (membership.role === PROJECT_ROLE.OWNER) {
-        return true
-      }
-      const isAssignee = membershipId
-        ? task.assignees.some((assignee) => assignee.id === membershipId)
-        : false
-      if (membership.role === PROJECT_ROLE.HEADER) {
-        return isAssignee || task.createdBy.id === membershipId
-      }
-      if (membership.role === PROJECT_ROLE.MEMBER) {
-        if (!isAssignee) {
-          return false
-        }
-        return (
-          task.createdBy.role === PROJECT_ROLE.OWNER ||
-          task.createdBy.role === PROJECT_ROLE.HEADER
-        )
-      }
-      return true
-    }
-
-    const matchesTaskScope = (task: TaskRecord) => {
-      if (taskScope === "all" || !membershipId) {
-        return true
-      }
-      const isAssignee = task.assignees.some((assignee) => assignee.id === membershipId)
-      const isAssigner = task.createdBy.id === membershipId
-      return taskScope === "assignee" ? isAssignee : isAssigner
-    }
-
-    return tasks
-      .filter((task) => {
-        const meta = taskDepartmentMeta[task.id]
-        const assigneeCounts = meta?.assigneeCounts ?? {}
-        if (!matchesRoleScope(task)) {
-          return false
-        }
-        if (!matchesTaskScope(task)) {
-          return false
-        }
-        const matchesDepartment =
-          !hasDepartmentFilters ||
-          activeDepartmentFilters.every((deptName) => {
-            const deptMeta = departmentByName[deptName]
-            if (!deptMeta) {
-              return false
-            }
-            return (assigneeCounts[deptMeta.id] ?? 0) > 0
-          })
-        if (!matchesDepartment) return false
-        if (!normalizedSearch) return true
-        const haystack = [
-          task.title,
-          task.detail ?? "",
-          task.department?.name ?? "",
-          ...task.assignees.map((assignee) => assignee.username ?? assignee.fullName ?? ""),
-        ]
-          .join(" ")
-          .toLowerCase()
-        return haystack.includes(normalizedSearch)
-      })
-      .sort((a, b) => {
-        const keyA = getSortKey(a)
-        const keyB = getSortKey(b)
-        if (keyA.bucket !== keyB.bucket) {
-          return keyA.bucket - keyB.bucket
-        }
-        if (keyA.value !== keyB.value) {
-          return keyA.value - keyB.value
-        }
-        return a.title.localeCompare(b.title)
-      })
-  }, [
-    activeDepartmentFilters,
-    departmentByName,
-    membership,
-    membershipId,
-    search,
-    taskDepartmentMeta,
-    tasks,
-    taskScope,
-  ])
-
-  const totalPages = useMemo(() => {
-    if (filteredTasks.length === 0) {
-      return 1
-    }
-    return Math.max(1, Math.ceil(filteredTasks.length / pageSize))
-  }, [filteredTasks.length, pageSize])
-
   const pageSizeOptions = useMemo(() => {
-    const totalTasks = filteredTasks.length || tasks.length
+    const totalTasks = totalCount ?? tasks.length
     const options = new Set(BASE_PAGE_SIZE_OPTIONS)
+    options.add(pageSize)
     if (totalTasks > 0) {
       options.add(totalTasks)
     }
     return [...options].sort((a, b) => a - b)
-  }, [filteredTasks.length, tasks.length])
+  }, [pageSize, tasks.length, totalCount])
 
   useEffect(() => {
     if (pageSizeOptions.length === 0) {
@@ -371,22 +269,72 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     }
   }, [projectId])
 
-  const fetchTasks = useCallback(async () => {
+  const fetchTasks = useCallback(
+    async (nextPage = page, nextPageSize = pageSize) => {
     if (!projectId) {
       return
     }
+    if (taskFetchControllerRef.current) {
+      taskFetchControllerRef.current.abort()
+    }
+    const controller = new AbortController()
+    taskFetchControllerRef.current = controller
     setTasksLoading(true)
     try {
       setTasksError(null)
-      const data = await loadProjectTasks(projectId)
-      setTasks(applyPendingCardColorOverrides(data))
+      const result = await loadProjectTasks(projectId, {
+        search: search.trim() || undefined,
+        departmentNames: activeDepartmentFilters,
+        scope: taskScope !== "all" ? (taskScope as TaskScopeFilter) : undefined,
+        memberId: taskScope !== "all" ? membershipId ?? undefined : undefined,
+        page: nextPage,
+        pageSize: nextPageSize,
+        signal: controller.signal,
+      })
+      if (controller.signal.aborted) {
+        return
+      }
+      setTasks(applyPendingCardColorOverrides(result.tasks))
+      setTotalCount(result.totalCount ?? result.tasks.length)
+      const computedTotalPages =
+        result.totalPages ??
+        (result.totalCount && result.pageSize
+          ? Math.max(1, Math.ceil(result.totalCount / result.pageSize))
+          : 1)
+      setTotalPages(computedTotalPages)
+      if (result.page && result.page !== page) {
+        setPage(result.page)
+      }
+      if (result.pageSize && result.pageSize !== pageSize) {
+        setPageSize(result.pageSize)
+      }
     } catch (error) {
+      if ((error as Error)?.name === "AbortError") {
+        return
+      }
       console.error(error)
+      setTasks([])
+      setTotalCount(0)
+      setTotalPages(1)
       setTasksError(error instanceof Error ? error.message : "Unable to load tasks")
     } finally {
+      if (taskFetchControllerRef.current === controller) {
+        taskFetchControllerRef.current = null
+      }
       setTasksLoading(false)
     }
-  }, [projectId, applyPendingCardColorOverrides])
+  },
+    [
+      projectId,
+      search,
+      activeDepartmentFilters,
+      taskScope,
+      membershipId,
+      page,
+      pageSize,
+      applyPendingCardColorOverrides,
+    ]
+  )
 
   const fetchMembership = useCallback(async () => {
     if (!projectId) {
@@ -443,6 +391,39 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       setTaskScope("all")
     }
   }, [membershipId, taskScope])
+
+  useEffect(() => {
+    return () => {
+      if (taskFetchControllerRef.current) {
+        taskFetchControllerRef.current.abort()
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!projectId) {
+      return
+    }
+    const runRefresh = async () => {
+      if (refreshInFlightRef.current) return
+      refreshInFlightRef.current = true
+      try {
+        await refreshProjectCache(projectId)
+        await Promise.all([fetchDepartments(), fetchTasks(), fetchMembership()])
+      } catch (error) {
+        console.error("Task page refresh failed", error)
+      } finally {
+        refreshInFlightRef.current = false
+      }
+    }
+    refreshTimerRef.current = window.setInterval(runRefresh, 15000)
+    return () => {
+      if (refreshTimerRef.current) {
+        window.clearInterval(refreshTimerRef.current)
+        refreshTimerRef.current = null
+      }
+    }
+  }, [fetchDepartments, fetchMembership, fetchTasks, projectId])
 
   const handleTaskColorChange = useCallback(
     async (taskId: string, color: string) => {
@@ -526,10 +507,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     [projectId, fetchTasks]
   )
 
-  const paginatedTasks = useMemo(() => {
-    const startIndex = (page - 1) * pageSize
-    return filteredTasks.slice(startIndex, startIndex + pageSize)
-  }, [filteredTasks, page, pageSize])
+  const paginatedTasks = tasks
 
   React.useEffect(() => {
     setPage(1)
@@ -609,13 +587,19 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
         throw new Error(message)
       }
       setTasks((prev) => prev.filter((task) => task.id !== pendingDeleteTask.id))
-        if (typeof window !== "undefined") {
-          window.dispatchEvent(
-            new CustomEvent(PROJECT_REFRESH_EVENT, {
-              detail: { projectId, origin: "tasks-page" },
-            })
-          )
-        }
+      setTotalCount((prev) => (prev === null ? prev : Math.max(0, prev - 1)))
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(PROJECT_REFRESH_EVENT, {
+            detail: { projectId, origin: "tasks-page" },
+          })
+        )
+      }
+      try {
+        await fetchTasks()
+      } catch (refreshError) {
+        console.error("Unable to refresh tasks after delete", refreshError)
+      }
       closeDeleteDialog()
     } catch (error) {
       console.error("Failed to delete task", error)
@@ -638,15 +622,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     router.push(`/projects/${projectId}/task/${taskId}`)
   }
 
-  const handleBackClick = useCallback(() => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back()
-      return
-    }
-    router.push("/projects")
-  }, [router])
-
-  const containerMinHeight = "calc(100dvh - 8rem)"
+  const containerMinHeight = "calc(100dvh - 7rem)"
   const cardListMaxHeight = "calc(100dvh - 22rem)"
 
   const scopeLabel =
@@ -672,17 +648,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   return (
     <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
       <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
-        <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
-          <Button
-            type="button"
-            data-cy="project-task-back-button"
-            variant="ghost"
-            onClick={handleBackClick}
-            className="inline-flex size-12 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary focus-visible:ring-0"
-          >
-            <ArrowLeft className="size-6" aria-hidden="true" />
-          </Button>
-        </div>
+        <BackButton dataCy="project-task-back-button" ariaLabel="Back to projects" />
         <div
           className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10"
           style={{ minHeight: containerMinHeight }}
@@ -719,7 +685,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                 <TaskPageSizeSelector
                   pageSize={pageSize}
                   pageSizeOptions={pageSizeOptions}
-                  totalCount={filteredTasks.length}
+                  totalCount={totalCount ?? tasks.length}
                   onPageSizeChange={(sizeOption) => {
                     if (sizeOption === pageSize) {
                       return
@@ -826,7 +792,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
             </div>
           </div>
 
-          {!tasksLoading && filteredTasks.length > 0 ? (
+          {!tasksLoading && (totalCount ?? tasks.length) > 0 ? (
             <TaskPaginationControls
               page={page}
               totalPages={totalPages}

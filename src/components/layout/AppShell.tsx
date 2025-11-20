@@ -60,6 +60,7 @@ import {
   type ProjectMemberDetail,
   type ProjectMembershipSummary,
 } from "@/utils/projects/api"
+import { refreshProjectCache } from "@/utils/projects/prefetch"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import { PROJECT_ROLE } from "@/types/projects"
 import { useProjectInvites } from "./hooks/useProjectInvites"
@@ -238,6 +239,15 @@ function AppShellInner({ children }: AppShellProps) {
     isHeaderViewer,
     notify,
   })
+
+  useEffect(() => {
+    if (!activeProjectId) {
+      return
+    }
+    refreshProjectCache(activeProjectId).catch((error) => {
+      console.error("Failed to refresh project cache on navigation", error)
+    })
+  }, [activeProjectId, currentProjectSection])
   const [ownerDialogOpen, setOwnerDialogOpen] = useState(false)
   const [ownerCandidates, setOwnerCandidates] = useState<ProjectMemberDetail[]>([])
   const [ownerSelection, setOwnerSelection] = useState<Set<string>>(new Set())

@@ -1,18 +1,18 @@
 "use client"
 
 import * as React from "react"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useMemo, useState } from "react"
 
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, CalendarDays, FolderKanban, PencilLine, RefreshCcw, Tags } from "lucide-react"
+import { CalendarDays, FolderKanban, PencilLine, RefreshCcw, Tags } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { usePreferences } from "@/contexts/preferences"
 import { type ProjectRecord } from "@/utils/projects/api"
-import { loadProjectRecord } from "@/utils/projects/prefetch"
+import { loadProjectRecord, prefetchProjectBundle } from "@/utils/projects/prefetch"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
+import BackButton from "@/components/navigation/BackButton"
 
 type ProjectInfoPageProps = {
   params: Promise<{
@@ -32,8 +32,16 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [refreshToken, setRefreshToken] = useState(0)
-  const router = useRouter()
   const { profile } = usePreferences()
+
+  useEffect(() => {
+    if (!projectId) {
+      return
+    }
+    prefetchProjectBundle(projectId).catch((prefetchError) => {
+      console.error("Project prefetch failed", prefetchError)
+    })
+  }, [projectId])
 
   React.useEffect(() => {
     if (!projectId) {
@@ -110,14 +118,6 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
     }
   }, [project])
 
-  const handleBackClick = useCallback(() => {
-      if (typeof window !== "undefined" && window.history.length > 1) {
-        router.back()
-        return
-      }
-      router.push("/projects")
-    }, [router])
-
   if (loading) {
     return (
       <div className="mx-auto flex w-full max-w-full flex-col gap-3 px-[clamp(1.5rem,3vw,3.5rem)] pb-16 pt-10 text-center text-foreground/70">
@@ -161,18 +161,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
   return (
     <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
       <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
-        <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
-          <Button
-            type="button"
-            variant="ghost"
-            data-cy="project-info-back-button"
-            onClick={handleBackClick}
-            className="inline-flex size-12 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary focus-visible:ring-0"
-            aria-label="Back to projects"
-          >
-            <ArrowLeft className="size-6" aria-hidden="true" />
-          </Button>
-        </div>
+        <BackButton dataCy="project-info-back-button" ariaLabel="Back to projects" />
 
         <div className="mx-auto mt-10 flex w-full max-w-full flex-1 flex-col gap-8 px-[clamp(1.5rem,3vw,3.5rem)] pb-10">
           {isOwner ? (
