@@ -49,6 +49,8 @@ import { MemberKickDialog } from "./components/MemberKickDialog"
 import { useMemberPaginationControls } from "./hooks/useMemberPaginationControls"
 import type { MemberRecord, RemoteDepartment } from "./types"
 import BackButton from "@/components/navigation/BackButton"
+import { dispatchNavigationAbortEvent, useNavigationAbort } from "@/hooks/useNavigationAbort"
+import { BASE_PAGE_SIZE_OPTIONS } from "@/constants/pagination"
 
 // Share the same department catalog as the Department page so colors & labels stay in sync.
 const normalizeMemberDepartments = (departments: ProjectDepartmentRecord[]): RemoteDepartment[] =>
@@ -61,7 +63,96 @@ const normalizeMemberDepartments = (departments: ProjectDepartmentRecord[]): Rem
     head: dept.head ?? null,
   }))
 
-const BASE_PAGE_SIZE_OPTIONS = [3, 9, 18, 36, 64, 96, 136, 172]
+const MEMBER_PAGE_SIZE_KEY = "asap:members-page-size"
+
+const readStoredPageSize = (key: string) => {
+  if (typeof window === "undefined") {
+    return null
+  }
+  const raw = window.localStorage.getItem(key)
+  const parsedLocal = raw ? Number.parseInt(raw, 10) : NaN
+ 
+  if (Number.isFinite(parsedLocal) && BASE_PAGE_SIZE_OPTIONS.includes(parsedLocal)) {
+    return parsedLocal
+  }
+  const cookieMatch = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${key}=`))
+  const cookieValue = cookieMatch ? Number.parseInt(cookieMatch.split("=")[1] ?? "", 10) : NaN
+  if (Number.isFinite(cookieValue) && BASE_PAGE_SIZE_OPTIONS.includes(cookieValue)) {
+    return cookieValue
+  }
+  return null
+}
+
+const persistPageSize = (key: string, value: number) => {
+  if (typeof window === "undefined") {
+    return
+  }
+  try {
+    window.localStorage.setItem(key, String(value))
+    document.cookie = `${key}=${value}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Failed to persist member page size", error)
+    }
+  }
+}
+
+type StoredMemberFilters = {
+  departments: SelectableMemberDepartment[]
+  roles: MemberRole[]
+  search: string
+}
+
+const MEMBER_FILTERS_KEY_PREFIX = "asap:members-filters"
+
+const buildMemberFilterStorageKey = (projectId?: string | null) =>
+  `${MEMBER_FILTERS_KEY_PREFIX}:${projectId ?? "global"}`
+
+const readStoredMemberFilters = (key: string): StoredMemberFilters | null => {
+  if (typeof window === "undefined") {
+    return null
+  }
+  const raw = window.localStorage.getItem(key)
+  if (!raw) {
+    return null
+  }
+  try {
+    const parsed = JSON.parse(raw)
+    const departments = Array.isArray(parsed?.departments)
+      ? parsed.departments
+          .map((name: unknown) => (typeof name === "string" ? name : ""))
+          .filter(Boolean)
+      : []
+    const roles = Array.isArray(parsed?.roles)
+      ? parsed.roles
+          .map((role: unknown) => (typeof role === "string" ? (role as MemberRole) : null))
+          .filter((role: MemberRole | null): role is MemberRole => Boolean(role))
+      : []
+    const search = typeof parsed?.search === "string" ? parsed.search : ""
+    return { departments, roles, search }
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Failed to read stored member filters", error)
+    }
+    return null
+  }
+}
+
+const persistMemberFilters = (key: string, filters: StoredMemberFilters) => {
+  if (typeof window === "undefined") {
+    return
+  }
+  try {
+    window.localStorage.setItem(key, JSON.stringify(filters))
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Failed to persist member filters", error)
+    }
+  }
+}
 const ROLE_LABEL_MAP = {
   OWNER: "Project Owner",
   HEADER: "Header",
@@ -100,11 +191,26 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   }, [])
   const router = useRouter()
   const { notify } = useNotifications()
+  const memberFilterStorageKey = useMemo(
+    () => buildMemberFilterStorageKey(projectId),
+    [projectId]
+  )
+  const storedMemberFilters = useMemo(
+    () => readStoredMemberFilters(memberFilterStorageKey),
+    [memberFilterStorageKey]
+  )
   const cachedDepartments = getCachedProjectDepartments(projectId)
   const cachedMembers = getCachedProjectMembers(projectId)
   const cachedMembership = getCachedProjectMembership(projectId)
   const refreshTimerRef = useRef<number | null>(null)
   const refreshInFlightRef = useRef(false)
+  const navigationAbortRef = useNavigationAbort(() => {
+    if (refreshTimerRef.current) {
+      window.clearInterval(refreshTimerRef.current)
+      refreshTimerRef.current = null
+    }
+    refreshInFlightRef.current = false
+  })
   const [membership, setMembership] = useState<ProjectMembershipSummary | null>(
     cachedMembership ?? null
   )
@@ -116,10 +222,14 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   )
   const [membersLoading, setMembersLoading] = useState(cachedMembers === undefined)
   const [membersError, setMembersError] = useState<string | null>(null)
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState(storedMemberFilters?.search ?? "")
   const [filterActionOpen, setFilterActionOpen] = useState(false)
-  const [activeDepartments, setActiveDepartments] = useState<SelectableMemberDepartment[]>([])
-  const [activeRoles, setActiveRoles] = useState<MemberRole[]>([])
+  const [activeDepartments, setActiveDepartments] = useState<SelectableMemberDepartment[]>(
+    () => storedMemberFilters?.departments ?? []
+  )
+  const [activeRoles, setActiveRoles] = useState<MemberRole[]>(
+    () => storedMemberFilters?.roles ?? []
+  )
   const [remoteDepartments, setRemoteDepartments] = useState<RemoteDepartment[]>(
     cachedDepartments ? normalizeMemberDepartments(cachedDepartments) : []
   )
@@ -133,6 +243,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       description: "You are no longer part of this project.",
       variant: "destructive",
     })
+    dispatchNavigationAbortEvent()
     router.replace("/projects")
   }, [notify, router])
 
@@ -179,9 +290,14 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   }, [remoteDepartments])
   const viewerDepartmentId = membership?.departmentId ?? null
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(
-    BASE_PAGE_SIZE_OPTIONS[1] ?? BASE_PAGE_SIZE_OPTIONS[0]
-  )
+  const [pageDirection, setPageDirection] = useState<"left" | "right" | null>(null)
+  const [pageSize, setPageSize] = useState<number>(() => {
+    if (typeof window === "undefined") {
+      return BASE_PAGE_SIZE_OPTIONS[0]
+    }
+    const stored = readStoredPageSize(MEMBER_PAGE_SIZE_KEY)
+    return stored ?? BASE_PAGE_SIZE_OPTIONS[0]
+  })
   const paginationControlsRef = useRef<HTMLDivElement | null>(null)
   const [pageSizeMenuOpen, setPageSizeMenuOpen] = useState(false)
   const [kickingMemberId, setKickingMemberId] = useState<string | null>(null)
@@ -195,9 +311,15 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   const [detailSaving, setDetailSaving] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
 
+  // page size is hydrated at init via lazy state above; keep persisting changes
+
+  useEffect(() => {
+    persistPageSize(MEMBER_PAGE_SIZE_KEY, pageSize)
+  }, [pageSize])
+
 
   const fetchDepartments = useCallback(async () => {
-    if (!projectId) {
+    if (!projectId || navigationAbortRef.current) {
       return
     }
     const shouldShowLoading = getCachedProjectDepartments(projectId) === undefined
@@ -207,6 +329,9 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     try {
       setDepartmentsError(null)
       const response = await loadProjectDepartments(projectId)
+      if (navigationAbortRef.current) {
+        return
+      }
       const normalized = normalizeMemberDepartments(response).sort(
         (a, b) => a.order - b.order || a.name.localeCompare(b.name)
       )
@@ -217,22 +342,27 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
         redirectToProjects()
         return
       }
-      setDepartmentsError("Unable to load project departments")
+      if (!navigationAbortRef.current) {
+        setDepartmentsError("Unable to load project departments")
+      }
     } finally {
-      if (shouldShowLoading) {
+      if (shouldShowLoading && !navigationAbortRef.current) {
         setDepartmentsLoading(false)
       }
     }
-  }, [projectId, redirectToProjects])
+  }, [navigationAbortRef, projectId, redirectToProjects])
 
   const loadMembers = useCallback(async () => {
-    if (!projectId) {
+    if (!projectId || navigationAbortRef.current) {
       return
     }
     setMembersLoading((prev) => prev || members.length === 0)
     setMembersError(null)
     try {
       const remoteMembers = await loadProjectMembers(projectId)
+      if (navigationAbortRef.current) {
+        return
+      }
       const normalized = normalizeMembers(remoteMembers)
       setMembers(normalized)
     } catch (error) {
@@ -241,11 +371,15 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
         redirectToProjects()
         return
       }
-      setMembersError("Unable to load members right now.")
+      if (!navigationAbortRef.current) {
+        setMembersError("Unable to load members right now.")
+      }
     } finally {
-      setMembersLoading(false)
+      if (!navigationAbortRef.current) {
+        setMembersLoading(false)
+      }
     }
-  }, [members.length, projectId, redirectToProjects])
+  }, [members.length, navigationAbortRef, projectId, redirectToProjects])
 
   useEffect(() => {
     const cached = getCachedProjectMembers(projectId)
@@ -255,7 +389,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   }, [projectId, loadMembers])
 
   const reloadMembership = useCallback(async () => {
-    if (!projectId) {
+    if (!projectId || navigationAbortRef.current) {
       return
     }
     const shouldShowLoading = getCachedProjectMembership(projectId) === undefined
@@ -264,23 +398,28 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     }
     try {
       const data = await loadProjectMembership(projectId)
+      if (navigationAbortRef.current) {
+        return
+      }
       setMembership(data ?? null)
     } catch (error) {
       console.error("Failed to load membership", error)
-      setMembership(null)
+      if (!navigationAbortRef.current) {
+        setMembership(null)
+      }
       if (isRemovalError(error)) {
         redirectToProjects()
       }
     } finally {
-      if (shouldShowLoading) {
+      if (shouldShowLoading && !navigationAbortRef.current) {
         setMembershipLoading(false)
       }
     }
-  }, [projectId, redirectToProjects])
+  }, [navigationAbortRef, projectId, redirectToProjects])
 
   useEffect(() => {
     let active = true
-    if (!projectId) {
+    if (!projectId || navigationAbortRef.current) {
       setMembership(null)
       setMembershipLoading(false)
       return
@@ -291,14 +430,14 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     setMembershipLoading(shouldShowLoading)
     loadProjectMembership(projectId)
       .then((data) => {
-        if (!active) {
+        if (!active || navigationAbortRef.current) {
           return
         }
         setMembership(data)
       })
       .catch((error) => {
         console.error("Failed to load membership", error)
-        if (active) {
+        if (active && !navigationAbortRef.current) {
           setMembership(null)
           if (isRemovalError(error)) {
             redirectToProjects()
@@ -306,7 +445,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
         }
       })
       .finally(() => {
-        if (!active) {
+        if (!active || navigationAbortRef.current) {
           return
         }
         if (shouldShowLoading) {
@@ -319,10 +458,11 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   }, [projectId, redirectToProjects])
 
   useEffect(() => {
-    if (!projectId) {
+    if (!projectId || navigationAbortRef.current) {
       return
     }
     const runRefresh = async () => {
+      if (navigationAbortRef.current) return
       if (refreshInFlightRef.current) return
       refreshInFlightRef.current = true
       try {
@@ -341,7 +481,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
         refreshTimerRef.current = null
       }
     }
-  }, [fetchDepartments, loadMembers, projectId, reloadMembership])
+  }, [fetchDepartments, loadMembers, navigationAbortRef, projectId, reloadMembership])
 
   const filteredMembers = useMemo(() => {
     const normalized = search.trim().toLowerCase()
@@ -399,6 +539,14 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     return Math.max(1, Math.ceil(filteredMembers.length / pageSize))
   }, [filteredMembers.length, pageSize])
 
+  const handlePageChange = useCallback(
+    (nextPage: number) => {
+      setPageDirection(nextPage > page ? "right" : nextPage < page ? "left" : null)
+      setPage(nextPage)
+    },
+    [page]
+  )
+
   const {
     pageInput,
     pageHintVisible,
@@ -414,22 +562,26 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   } = useMemberPaginationControls({
     page,
     totalPages,
-    onPageChange: setPage,
+    onPageChange: handlePageChange,
     paginationRef: paginationControlsRef,
   })
 
-  const pageSizeOptions = useMemo(() => {
-    const totalMembers = filteredMembers.length || members.length
-    const options = new Set(BASE_PAGE_SIZE_OPTIONS)
-    if (totalMembers > 0) {
-      options.add(totalMembers)
-    }
-    return [...options].sort((a, b) => a - b)
-  }, [filteredMembers.length, members.length])
+  const pageSizeOptions = useMemo(() => BASE_PAGE_SIZE_OPTIONS, [])
 
   useEffect(() => {
     setPage(1)
+    setPageDirection(null)
   }, [search, activeDepartments, activeRoles])
+
+  useEffect(() => {
+    const nextDepartments = storedMemberFilters?.departments ?? []
+    const nextRoles = (storedMemberFilters?.roles ?? []).filter((role) =>
+      AVAILABLE_ROLES.includes(role)
+    )
+    setActiveDepartments(nextDepartments)
+    setActiveRoles(nextRoles)
+    setSearch(storedMemberFilters?.search ?? "")
+  }, [storedMemberFilters])
 
   useEffect(() => {
     const cached = getCachedProjectDepartments(projectId)
@@ -448,6 +600,9 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       return
     }
     const handleProjectRefresh = (event: Event) => {
+      if (navigationAbortRef.current) {
+        return
+      }
       const detail = (
         event as CustomEvent<{
           projectId?: string | null
@@ -483,22 +638,30 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     }
     window.addEventListener(PROJECT_REFRESH_EVENT, handleProjectRefresh)
     return () => window.removeEventListener(PROJECT_REFRESH_EVENT, handleProjectRefresh)
-  }, [fetchDepartments, loadMembers, projectId])
+  }, [fetchDepartments, loadMembers, navigationAbortRef, projectId])
 
   useEffect(() => {
     setActiveDepartments((prev) => prev.filter((dept) => departmentOptions.includes(dept)))
   }, [departmentOptions])
 
   useEffect(() => {
+    persistMemberFilters(memberFilterStorageKey, {
+      departments: activeDepartments,
+      roles: activeRoles.filter((role) => AVAILABLE_ROLES.includes(role)),
+      search,
+    })
+  }, [activeDepartments, activeRoles, memberFilterStorageKey, search])
+
+  useEffect(() => {
     if (pageSizeOptions.length === 0) {
       return
     }
     if (!pageSizeOptions.includes(pageSize)) {
-      const fallbackSize = pageSizeOptions[pageSizeOptions.length - 1]
+      const fallbackSize = BASE_PAGE_SIZE_OPTIONS[0]
       setPageSize(fallbackSize)
-      setPage(1)
+      handlePageChange(1)
     }
-  }, [pageSizeOptions, pageSize])
+  }, [handlePageChange, pageSize, pageSizeOptions])
 
   useEffect(() => {
     if (page > totalPages) {
@@ -524,23 +687,14 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     setActiveRoles([])
   }
 
-  const isOwnerRole = useCallback(
-    (member: Pick<MemberRecord, "rawRole">) => member.rawRole === PROJECT_ROLE.OWNER,
-    []
-  )
-
   const canEditMember = useCallback(
     (member: MemberRecord) => {
       if (!membership) {
         return false
       }
-      if (membership.role !== "OWNER") {
-        return false
-      }
-      // Owners cannot change their own ownership role via this screen.
-      return !isOwnerRole(member)
+      return membership.role === PROJECT_ROLE.OWNER
     },
-    [isOwnerRole, membership]
+    [membership]
   )
 
   const handleSetMemberRole = useCallback(
@@ -550,19 +704,43 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       }
 
       const target = members.find((member) => member.id === memberId)
-      if (!target || target.rawRole === PROJECT_ROLE.OWNER) {
+      if (!target) {
         return
       }
 
-      const desiredRawRole =
-        nextRole === "Header" ? PROJECT_ROLE.HEADER : PROJECT_ROLE.MEMBER
+      const targetIsOwner = target.rawRole === PROJECT_ROLE.OWNER
+      const targetDeptId = target.departmentId ?? null
+      const targetDeptHead = targetDeptId ? departmentHeadMap[targetDeptId] ?? null : null
+      const desiredIsHeader = nextRole === "Header"
+      const desiredRawRole = targetIsOwner
+        ? PROJECT_ROLE.OWNER
+        : desiredIsHeader
+          ? PROJECT_ROLE.HEADER
+          : PROJECT_ROLE.MEMBER
 
       const prevMembers = members
+      const prevDepartments = remoteDepartments
 
-      // Prepare optimistic state and potential demotions to keep a single header.
-      const existingHeaders = members.filter(
-        (member) => member.rawRole === PROJECT_ROLE.HEADER && member.id !== memberId
-      )
+      // Prepare optimistic demotions to keep a single header per department.
+      const headersInTargetDept =
+        desiredIsHeader && targetDeptId
+          ? members.filter(
+              (member) =>
+                member.id !== memberId &&
+                member.departmentId === targetDeptId &&
+                member.rawRole === PROJECT_ROLE.HEADER
+            )
+          : []
+      const ownerHeadsInTargetDept =
+        desiredIsHeader && targetDeptId
+          ? members.filter(
+              (member) =>
+                member.id !== memberId &&
+                member.departmentId === targetDeptId &&
+                member.rawRole === PROJECT_ROLE.OWNER &&
+                departmentHeadMap[member.departmentId ?? ""] === member.name
+            )
+          : []
 
       const optimisticMembers = members.map((member) => {
         if (member.id === memberId) {
@@ -572,7 +750,12 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
             role: ROLE_LABEL_MAP[desiredRawRole] ?? member.role,
           }
         }
-        if (desiredRawRole === PROJECT_ROLE.HEADER && existingHeaders.some((hdr) => hdr.id === member.id)) {
+        if (
+          targetDeptId &&
+          desiredIsHeader &&
+          member.departmentId === targetDeptId &&
+          member.rawRole === PROJECT_ROLE.HEADER
+        ) {
           return {
             ...member,
             rawRole: PROJECT_ROLE.MEMBER,
@@ -583,24 +766,63 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       })
 
       setMembers(optimisticMembers)
+      if (targetDeptId && desiredIsHeader) {
+        setRemoteDepartments((prev) =>
+          prev.map((dept) =>
+            dept.id === targetDeptId ? { ...dept, head: target.name } : dept
+          )
+        )
+      } else if (targetDeptId && !desiredIsHeader && targetDeptHead === target.name) {
+        setRemoteDepartments((prev) =>
+          prev.map((dept) =>
+            dept.id === targetDeptId ? { ...dept, head: null } : dept
+          )
+        )
+      }
 
       try {
         // Update target role first.
-        await updateProjectMember(projectId, {
-          memberId,
-          role: desiredRawRole,
-        })
+        if (!targetIsOwner) {
+          await updateProjectMember(projectId, {
+            memberId,
+            role: desiredRawRole,
+          })
 
-        // Demote other headers if needed.
-        if (desiredRawRole === PROJECT_ROLE.HEADER && existingHeaders.length > 0) {
-          await Promise.all(
-            existingHeaders.map((header) =>
-              updateProjectMember(projectId, {
-                memberId: header.id,
-                role: PROJECT_ROLE.MEMBER,
-              })
+          // Demote other headers if needed.
+          if (headersInTargetDept.length > 0) {
+            await Promise.all(
+              headersInTargetDept.map((header) =>
+                updateProjectMember(projectId, {
+                  memberId: header.id,
+                  role: PROJECT_ROLE.MEMBER,
+                })
+              )
             )
-          )
+          }
+        }
+
+        // Department head updates (owners remain owners; head assignment only).
+        if (targetDeptId) {
+          if (desiredIsHeader) {
+            await updateProjectDepartment(projectId, targetDeptId, { head: target.name })
+
+            if (headersInTargetDept.length > 0) {
+              await Promise.all(
+                headersInTargetDept.map((header) =>
+                  updateProjectMember(projectId, {
+                    memberId: header.id,
+                    role: PROJECT_ROLE.MEMBER,
+                  })
+                )
+              )
+            }
+            // Owner heads from same department lose head assignment implicitly by setting new head.
+            if (ownerHeadsInTargetDept.length > 0) {
+              await Promise.resolve()
+            }
+          } else if (targetDeptHead === target.name) {
+            await updateProjectDepartment(projectId, targetDeptId, { head: null })
+          }
         }
 
         if (typeof window !== "undefined") {
@@ -618,6 +840,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
         console.error("Failed to update member role", error)
         // Revert on error
         setMembers(prevMembers)
+        setRemoteDepartments(prevDepartments)
         notify({
           title: "Update failed",
           description: "Unable to change the member role right now.",
@@ -625,7 +848,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
         })
       }
     },
-    [members, membership, notify, projectId]
+    [departmentHeadMap, members, membership, notify, projectId, setRemoteDepartments]
   )
 
   const resolveDepartmentOptions = useCallback(
@@ -746,7 +969,6 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     (open: boolean) => {
       setMemberDetailDialogOpen(open)
       if (!open) {
-        setMemberDetailTarget(null)
         setDetailError(null)
         setDetailSaving(false)
       }
@@ -831,6 +1053,16 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     setRemoteDepartments,
   ])
 
+  useEffect(() => {
+    if (memberDetailDialogOpen) {
+      return
+    }
+    const timeout = window.setTimeout(() => {
+      setMemberDetailTarget(null)
+    }, 220)
+    return () => window.clearTimeout(timeout)
+  }, [memberDetailDialogOpen])
+
   const handleToggleDepartmentFilter = (
     department: SelectableMemberDepartment,
     nextChecked: boolean
@@ -867,9 +1099,6 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       if (!previous) {
         return
       }
-      if (isOwnerRole(previous)) {
-        return
-      }
       const trimmedLabel = departmentLabel.trim()
       if (previous.department === trimmedLabel) {
         return
@@ -891,14 +1120,15 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       const wasDepartmentHead =
         Boolean(previous.departmentId) &&
         departmentHeadMap[previous.departmentId ?? ""] === previous.name
-      const shouldDemoteHeader = previous.rawRole === PROJECT_ROLE.HEADER
+      const shouldDemoteHeader =
+        previous.rawRole === PROJECT_ROLE.HEADER ? PROJECT_ROLE.MEMBER : undefined
 
       const optimisticMember: MemberRecord = {
         ...previous,
         department: trimmedLabel,
         departmentId: nextDepartmentId,
-        rawRole: shouldDemoteHeader ? PROJECT_ROLE.MEMBER : previous.rawRole,
-        role: shouldDemoteHeader ? ROLE_LABEL_MAP[PROJECT_ROLE.MEMBER] : previous.role,
+        rawRole: shouldDemoteHeader ?? previous.rawRole,
+        role: shouldDemoteHeader ? ROLE_LABEL_MAP[shouldDemoteHeader] : previous.role,
       }
 
       setMembers((prev) =>
@@ -908,9 +1138,14 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
         await updateProjectMember(projectId, {
           memberId,
           departmentId: nextDepartmentId,
-          role: shouldDemoteHeader ? PROJECT_ROLE.MEMBER : undefined,
+          role: shouldDemoteHeader,
         })
         if (wasDepartmentHead && previous.departmentId) {
+          setRemoteDepartments((prev) =>
+            prev.map((dept) =>
+              dept.id === previous.departmentId ? { ...dept, head: null } : dept
+            )
+          )
           await updateProjectDepartment(projectId, previous.departmentId, { head: null })
           fetchDepartments()
         }
@@ -944,7 +1179,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     ? `Back to members for project ${projectId}`
     : "Back to members"
 
-  const containerMinHeight = "calc(100dvh - 5.5rem)"
+  const containerMinHeight = "calc(100dvh - 3em)"
   const cardListMaxHeight = "calc(100dvh - 18rem)"
 
   const filterCount = (activeDepartments.length || 0) + (activeRoles.length || 0)
@@ -1010,8 +1245,9 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                               if (isActive) {
                                 return
                               }
+                              setPageDirection(null)
                               setPageSize(sizeOption)
-                              setPage(1)
+                              handlePageChange(1)
                             }}
                           >
                             <span>{sizeOption}</span>
@@ -1049,7 +1285,14 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
         <div className="flex flex-1 min-h-0 flex-col">
           <div className="-mr-3 -mt-5 flex-1">
             <div
-              className="projects-scroll [scrollbar-gutter:stable] flex h-full flex-col space-y-3 px-0.5 py-4"
+              className={cn(
+                "projects-scroll [scrollbar-gutter:stable] flex h-full flex-col space-y-3 px-0.5 py-4",
+                pageDirection === "right"
+                  ? "page-slide-horizontal-right"
+                  : pageDirection === "left"
+                    ? "page-slide-horizontal-left"
+                    : "page-slide"
+              )}
               style={{ maxHeight: cardListMaxHeight }}
             >
               <MemberList

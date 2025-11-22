@@ -42,7 +42,7 @@ export function CalendarHeader() {
         transition={transition}
       >
         <div className="options flex-wrap flex items-center gap-4 md:gap-2">
-          {/*<FilterEvents />*/}
+          <FilterEvents />
           <Views />
         </div>
 

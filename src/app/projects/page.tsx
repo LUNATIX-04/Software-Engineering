@@ -28,8 +28,45 @@ import {
 } from "@/utils/projects/api"
 import { useNotifications } from "@/components/notifications/Notification"
 import { cn } from "@/lib/utils"
+import { dispatchNavigationAbortEvent, useNavigationAbort } from "@/hooks/useNavigationAbort"
+import { BASE_PAGE_SIZE_OPTIONS } from "@/constants/pagination"
 
-const BASE_PAGE_SIZE_OPTIONS = [3, 9, 18, 36, 64, 96, 136, 172]
+const PROJECTS_PAGE_SIZE_KEY = "asap:projects-page-size"
+
+const readStoredPageSize = (key: string) => {
+  if (typeof window === "undefined") {
+    return null
+  }
+  const raw = window.localStorage.getItem(key)
+  const parsedLocal = raw ? Number.parseInt(raw, 10) : NaN
+  if (Number.isFinite(parsedLocal) && BASE_PAGE_SIZE_OPTIONS.includes(parsedLocal)) {
+    return parsedLocal
+  }
+  // Fallback to cookie if present
+  const cookieMatch = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${key}=`))
+  const cookieValue = cookieMatch ? Number.parseInt(cookieMatch.split("=")[1] ?? "", 10) : NaN
+  if (Number.isFinite(cookieValue) && BASE_PAGE_SIZE_OPTIONS.includes(cookieValue)) {
+    return cookieValue
+  }
+  return null
+}
+
+const persistPageSize = (key: string, value: number) => {
+  if (typeof window === "undefined") {
+    return
+  }
+  try {
+    window.localStorage.setItem(key, String(value))
+    document.cookie = `${key}=${value}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Failed to persist page size", error)
+    }
+  }
+}
 
 type ProjectsPaginationControlsProps = {
   page: number
@@ -120,7 +157,7 @@ function ProjectsPaginationControls({
   return (
     <div
       ref={controlsRef}
-      className="mt-auto mb-4 flex select-none items-center justify-center gap-4 pt-4"
+      className="mt-auto mb-4 flex select-none items-center justify-center gap-4 pt-4 form-entry"
       onFocus={triggerPageHint}
       onBlur={(event) => {
         const nextTarget = event.relatedTarget as HTMLElement | null
@@ -136,8 +173,8 @@ function ProjectsPaginationControls({
         onClick={handlePrev}
         disabled={page === 1}
         className={cn(
-          "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
-          page === 1 && "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
+          "pagination-surface inline-flex size-10 select-none items-center justify-center rounded-full text-lg transition focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
+          page === 1 && "cursor-not-allowed"
         )}
       >
         &#9664;
@@ -146,7 +183,7 @@ function ProjectsPaginationControls({
         <span
           aria-hidden="true"
           className={cn(
-            "absolute -top-8 whitespace-nowrap rounded-full border border-primary/30 bg-white px-3 py-1 text-xs font-medium text-primary shadow-sm transition-all duration-200 ease-out",
+            "pagination-hint absolute -top-8 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium shadow-sm transition-all duration-200 ease-out",
             pageHintVisible
               ? "pointer-events-auto opacity-100 translate-y-0 scale-100"
               : "pointer-events-none opacity-0 -translate-y-1 scale-95"
@@ -179,7 +216,7 @@ function ProjectsPaginationControls({
               triggerPageHint()
             }
           }}
-          className="w-16 select-text rounded-full border-2 border-primary/40 bg-white px-3 py-2 text-center text-base font-semibold text-primary shadow-sm focus:border-primary focus:outline-none"
+          className="pagination-input w-16 select-text rounded-full px-3 py-2 text-center text-base font-semibold shadow-sm focus:outline-none"
           aria-describedby="project-page-hint"
         />
       </div>
@@ -190,8 +227,8 @@ function ProjectsPaginationControls({
         onClick={handleNext}
         disabled={page === totalPages}
         className={cn(
-          "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
-          page === totalPages && "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
+          "pagination-surface inline-flex size-10 select-none items-center justify-center rounded-full text-lg transition focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
+          page === totalPages && "cursor-not-allowed"
         )}
       >
         &#9654;
@@ -207,12 +244,19 @@ export default function ProjectsPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null)
   const [leaveError, setLeaveError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(
-    BASE_PAGE_SIZE_OPTIONS[1] ?? BASE_PAGE_SIZE_OPTIONS[0]
-  )
+  const [pageDirection, setPageDirection] = useState<"left" | "right" | null>(null)
+  const [pageSize, setPageSize] = useState<number>(() => {
+    if (typeof window === "undefined") {
+      return BASE_PAGE_SIZE_OPTIONS[0]
+    }
+    const stored = readStoredPageSize(PROJECTS_PAGE_SIZE_KEY)
+    return stored ?? BASE_PAGE_SIZE_OPTIONS[0]
+  })
+  const [pageSizeHydrated, setPageSizeHydrated] = useState(() => typeof window !== "undefined")
   const [pageInput, setPageInput] = useState("1")
   const [pageSizeMenuOpen, setPageSizeMenuOpen] = useState(false)
   const router = useRouter()
+  const navigationAbortRef = useNavigationAbort()
   const { notify } = useNotifications()
   const [ownerDialogProjectId, setOwnerDialogProjectId] = useState<string | null>(null)
   const [ownerCandidates, setOwnerCandidates] = useState<ProjectMemberDetail[]>([])
@@ -223,11 +267,26 @@ export default function ProjectsPage() {
   const [ownerSearch, setOwnerSearch] = useState("")
   const [selectedOwnersSearch, setSelectedOwnersSearch] = useState("")
 
+  const changePage = useCallback(
+    (nextPage: number) => {
+      setPageDirection(nextPage > page ? "right" : nextPage < page ? "left" : null)
+      setPage(nextPage)
+      setPageInput(String(nextPage))
+    },
+    [page]
+  )
+
   const loadProjects = useCallback(async () => {
+    if (navigationAbortRef.current) {
+      return
+    }
     setProjectsLoading(true)
     setProjectsError(null)
     try {
       const data = await fetchProjects()
+      if (navigationAbortRef.current) {
+        return
+      }
       const sorted = [...data].sort((a, b) => {
         const parse = (value: string | undefined | null) => {
           if (!value) return 0
@@ -241,11 +300,15 @@ export default function ProjectsPage() {
       setProjects(sorted)
     } catch (error) {
       console.error("Failed to load projects", error)
-      setProjectsError("Unable to load projects right now.")
+      if (!navigationAbortRef.current) {
+        setProjectsError("Unable to load projects right now.")
+      }
     } finally {
-      setProjectsLoading(false)
+      if (!navigationAbortRef.current) {
+        setProjectsLoading(false)
+      }
     }
-  }, [])
+  }, [navigationAbortRef])
 
   useEffect(() => {
     loadProjects()
@@ -258,6 +321,7 @@ export default function ProjectsPage() {
           console.warn("Failed to record project usage", error)
         }
       })
+      dispatchNavigationAbortEvent()
       router.push(destination)
     },
     [router]
@@ -273,18 +337,23 @@ export default function ProjectsPage() {
     )
   }, [projects, searchQuery])
 
-  const pageSizeOptions = useMemo(() => {
-    const totalProjects = filteredProjects.length || projects.length
-    const options = new Set(BASE_PAGE_SIZE_OPTIONS)
-    if (totalProjects > 0) {
-      options.add(totalProjects)
-    }
-    return [...options].sort((a, b) => a - b)
-  }, [filteredProjects.length, projects.length])
+  const pageSizeOptions = useMemo(() => BASE_PAGE_SIZE_OPTIONS, [])
 
   useEffect(() => {
     setPage(1)
+    setPageDirection(null)
   }, [searchQuery, projects])
+
+  useEffect(() => {
+    setPageSizeHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    if (!pageSizeHydrated) {
+      return
+    }
+    persistPageSize(PROJECTS_PAGE_SIZE_KEY, pageSize)
+  }, [pageSize, pageSizeHydrated])
 
   const totalPages = useMemo(() => {
     if (filteredProjects.length === 0) {
@@ -297,16 +366,18 @@ export default function ProjectsPage() {
     if (pageSizeOptions.length === 0) {
       return
     }
-    const maxOption = pageSizeOptions[pageSizeOptions.length - 1]
     if (!pageSizeOptions.includes(pageSize)) {
-      setPageSize(maxOption)
-      setPage(1)
+      const fallbackSize = BASE_PAGE_SIZE_OPTIONS[0]
+      setPageSize(fallbackSize)
+      changePage(1)
     }
-  }, [pageSize, pageSizeOptions])
+  }, [changePage, pageSize, pageSizeOptions])
 
   useEffect(() => {
     if (page > totalPages) {
+      setPageDirection(null)
       setPage(totalPages)
+      setPageInput(String(totalPages))
     }
   }, [page, totalPages])
 
@@ -365,8 +436,8 @@ export default function ProjectsPage() {
       setPageInput(String(page))
       return
     }
-    setPage(parsed)
-  }, [page, pageInput, totalPages])
+    changePage(parsed)
+  }, [changePage, page, pageInput, totalPages])
 
   const containerMinHeight = "calc(100dvh - 100rem)"
   const cardListMaxHeight = "calc(100dvh - 18rem)"
@@ -533,7 +604,7 @@ export default function ProjectsPage() {
             </DropdownMenu>
             <div
               className={cn(
-                "pointer-events-none absolute right-[-10rem] top-3/2 z-[500] rounded-2xl border border-primary/30 bg-white/95 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-primary shadow-lg transition duration-200 ease-out",
+                "pagination-surface pointer-events-none absolute right-[-10rem] top-3/2 z-[500] rounded-2xl px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] shadow-lg transition duration-200 ease-out",
                 "max-w-[14rem] whitespace-normal break-words leading-tight -translate-y-1/2",
                 pageSizeMenuOpen && filteredProjects.length > 0
                   ? "opacity-100 translate-y-[-40%]"
@@ -559,7 +630,14 @@ export default function ProjectsPage() {
       <div className="flex flex-1 min-h-0 flex-col">
         <div className="-mr-3 -mt-2 flex-1">
           <div
-            className="projects-scroll [scrollbar-gutter:stable] flex h-full flex-col space-y-3 px-0.5 py-4"
+            className={cn(
+              "projects-scroll [scrollbar-gutter:stable] flex h-full flex-col space-y-3 px-0.5 py-4",
+              pageDirection === "right"
+                ? "page-slide-horizontal-right"
+                : pageDirection === "left"
+                  ? "page-slide-horizontal-left"
+                  : "page-slide"
+            )}
             style={{ maxHeight: cardListMaxHeight }}
           >
             {projectsError ? (
@@ -591,7 +669,7 @@ export default function ProjectsPage() {
               const isOwner = role === "OWNER"
               const canChangeOwner = isOwner
               return (
-                <div key={project.id}>
+                <div key={project.id} className="form-entry">
                   <ProjectCard
                     title={project.title}
                     createdAt={formatCreatedAt(project.createdAt)}
@@ -647,7 +725,7 @@ export default function ProjectsPage() {
             totalPages={totalPages}
             pageInput={pageInput}
             setPageInput={setPageInput}
-            onPageChange={(value) => setPage(value)}
+            onPageChange={changePage}
             pageHint={pageHint}
             onPageInputCommit={commitPageInput}
           />

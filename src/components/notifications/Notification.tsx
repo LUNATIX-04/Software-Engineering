@@ -52,10 +52,13 @@ export function useNotifications() {
 }
 
 const VARIANT_CLASSES: Record<NotificationVariant, string> = {
-  success: "bg-primary text-primary-foreground shadow-[0_4px_2px_rgba(144,122,214,0.2)]",
-  info: "bg-primary-soft text-secondary-foreground shadow-[0_4px_2px_rgba(144,122,214,0.15)]",
-  warning: "bg-amber-500 text-white shadow-[0_4px_2px_rgba(245,158,11,0.2)]",
-  destructive: "bg-destructive text-destructive-foreground shadow-[0_4px_2px_rgba(239,68,68,0.2)]",
+  success:
+    "bg-[color:var(--notify-success-bg)] text-[color:var(--notify-success-text)] shadow-[0_4px_2px_rgba(144,122,214,0.2)]",
+  info: "bg-[color:var(--notify-info-bg)] text-[color:var(--notify-info-text)] shadow-[0_4px_2px_rgba(144,122,214,0.15)]",
+  warning:
+    "bg-[color:var(--notify-warning-bg)] text-[color:var(--notify-warning-text)] shadow-[0_4px_2px_rgba(245,158,11,0.2)]",
+  destructive:
+    "bg-[color:var(--notify-destructive-bg)] text-[color:var(--notify-destructive-text)] shadow-[0_4px_2px_rgba(239,68,68,0.2)]",
 }
 
 type NotificationViewportProps = {

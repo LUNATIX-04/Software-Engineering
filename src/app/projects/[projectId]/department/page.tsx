@@ -21,6 +21,7 @@ import { useNotifications } from "@/components/notifications/Notification"
 import { Button } from "@/components/ui/button"
 import { ProgressBar } from "@/components/ui/progress-bar"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
+import { useNavigationAbort } from "@/hooks/useNavigationAbort"
 import {
   createProjectDepartment,
   deleteProjectDepartment,
@@ -36,6 +37,7 @@ import {
   getCachedProjectDepartments,
   getCachedProjectMembers,
   getCachedProjectMembership,
+  invalidateProjectDepartments,
   loadProjectDepartments,
   loadProjectMembers,
 } from "@/utils/projects/prefetch"
@@ -100,13 +102,30 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
   const colorUpdateTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const pendingColors = useRef<Record<string, string>>({})
   const pendingScrollId = useRef<string | null>(null)
+  const navigationAbortRef = useNavigationAbort(() => {
+    Object.values(colorUpdateTimers.current).forEach((timer) => {
+      clearTimeout(timer)
+    })
+    colorUpdateTimers.current = {}
+  })
   const sortedDepartments = useCallback(
     (list: ProjectDepartmentRecord[]) =>
       [...list].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name)),
     []
   )
+  const applyPendingColors = useCallback((list: ProjectDepartmentRecord[]) => {
+    return list.map((dept) => {
+      const pendingColor = pendingColors.current[dept.id]
+      return pendingColor
+        ? { ...dept, color: pendingColor, textColor: getContrastingTextColor(pendingColor) }
+        : dept
+    })
+  }, [])
 
   const loadDepartments = useCallback(async () => {
+    if (navigationAbortRef.current) {
+      return
+    }
     const shouldShowLoading = getCachedProjectDepartments(projectId) === undefined
     if (shouldShowLoading) {
       setLoading(true)
@@ -114,54 +133,70 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
     setLoadError(null)
     try {
       const data = await loadProjectDepartments(projectId)
-      setDepartments(sortedDepartments(data))
+      if (navigationAbortRef.current) {
+        return
+      }
+      setDepartments(applyPendingColors(sortedDepartments(data)))
     } catch (error) {
       console.error("Failed to load departments", error)
       const message =
         error instanceof Error ? error.message : "Unable to load project departments."
-      setLoadError(message)
-      notify({
-        title: "Load departments failed",
-        description: message,
-        variant: "destructive",
-      })
+      if (!navigationAbortRef.current) {
+        setLoadError(message)
+        notify({
+          title: "Load departments failed",
+          description: message,
+          variant: "destructive",
+        })
+      }
     } finally {
-      if (shouldShowLoading) {
+      if (shouldShowLoading && !navigationAbortRef.current) {
         setLoading(false)
       }
     }
-  }, [notify, projectId, sortedDepartments])
+  }, [applyPendingColors, navigationAbortRef, notify, projectId, sortedDepartments])
 
   const loadMembers = useCallback(async () => {
-    if (!projectId) {
+    if (!projectId || navigationAbortRef.current) {
       return
     }
     setMembersError(null)
     try {
       const data = await loadProjectMembers(projectId)
+      if (navigationAbortRef.current) {
+        return
+      }
       setMembers(data)
     } catch (error) {
       console.error("Failed to load project members", error)
-      setMembersError("Unable to load members for head selection.")
+      if (!navigationAbortRef.current) {
+        setMembersError("Unable to load members for head selection.")
+      }
     }
-  }, [projectId])
+  }, [navigationAbortRef, projectId])
 
   useEffect(() => {
+    if (navigationAbortRef.current) {
+      return
+    }
     const cached = getCachedProjectDepartments(projectId)
-    setDepartments(cached ? sortedDepartments(cached) : [])
+    setDepartments(cached ? applyPendingColors(sortedDepartments(cached)) : [])
     setLoading(cached === undefined)
     loadDepartments()
-  }, [projectId, loadDepartments])
+  }, [applyPendingColors, loadDepartments, navigationAbortRef, projectId, sortedDepartments])
 
   useEffect(() => {
+    if (navigationAbortRef.current) {
+      return
+    }
     const cached = getCachedProjectMembers(projectId)
     setMembers(cached ?? [])
     loadMembers()
-  }, [projectId, loadMembers])
+  }, [loadMembers, navigationAbortRef, projectId])
 
   useEffect(() => {
     let active = true
-    if (!projectId) {
+    if (!projectId || navigationAbortRef.current) {
       setMembership(null)
       setMembershipLoading(false)
       return
@@ -175,24 +210,24 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
     }
     loadProjectMetadata(projectId)
       .then((metadata) => {
-        if (!active) return
+        if (!active || navigationAbortRef.current) return
         setMembership(metadata.membership)
       })
       .catch((error) => {
         console.error("Failed to load project metadata", error)
-        if (active) {
+        if (active && !navigationAbortRef.current) {
           setMembership(null)
         }
       })
       .finally(() => {
-        if (active) {
+        if (active && !navigationAbortRef.current) {
           setMembershipLoading(false)
         }
       })
     return () => {
       active = false
     }
-  }, [projectId])
+  }, [navigationAbortRef, projectId])
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -201,6 +236,9 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
     const handleProjectRefresh = (
       event: Event
     ) => {
+      if (navigationAbortRef.current) {
+        return
+      }
       const detail = (
         event as CustomEvent<{ projectId?: string | null; source?: string; origin?: string }>
       ).detail
@@ -222,7 +260,7 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
     }
     window.addEventListener(PROJECT_REFRESH_EVENT, handleProjectRefresh)
     return () => window.removeEventListener(PROJECT_REFRESH_EVENT, handleProjectRefresh)
-  }, [loadDepartments, loadMembers, projectId])
+  }, [loadDepartments, loadMembers, navigationAbortRef, projectId])
 
   useEffect(() => {
     return () => {
@@ -623,22 +661,25 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
         setDepartments((prev) =>
           prev.map((dept) => (dept.id === departmentId ? updated : dept))
         )
+        delete pendingColors.current[departmentId]
+        invalidateProjectDepartments(projectId)
         if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent(PROJECT_REFRESH_EVENT, {
-            detail: {
-              projectId,
-              source: "department-color",
-              origin: "department-page",
-              departmentId,
-              color: updated.color,
-              textColor: updated.textColor,
-            },
-          })
-        )
+          window.dispatchEvent(
+            new CustomEvent(PROJECT_REFRESH_EVENT, {
+              detail: {
+                projectId,
+                source: "department-color",
+                origin: "department-page",
+                departmentId,
+                color: updated.color,
+                textColor: updated.textColor,
+              },
+            })
+          )
         }
       } catch (error) {
         console.error("Failed to update department color", error)
+        delete pendingColors.current[departmentId]
         notify({
           title: "Color update failed",
           description: "Unable to save the selected color. Please try again.",
@@ -649,7 +690,7 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
         setDepartmentUpdating(departmentId, false)
       }
     },
-    [canManageDepartments, loadDepartments, notify, projectId, setDepartmentUpdating]
+    [canManageDepartments, invalidateProjectDepartments, loadDepartments, notify, projectId, setDepartmentUpdating]
   )
 
   const handleSelectColor = useCallback(

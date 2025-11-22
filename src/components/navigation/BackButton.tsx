@@ -4,6 +4,7 @@ import { useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 
+import { NAVIGATION_ABORT_EVENT } from "@/constants/events"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -31,14 +32,21 @@ export function BackButton({
   className,
 }: BackButtonProps) {
   const router = useRouter()
+  const dispatchNavigationAbort = useCallback(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    window.dispatchEvent(new Event(NAVIGATION_ABORT_EVENT))
+  }, [])
 
   const handleClick = useCallback(() => {
+    dispatchNavigationAbort()
     if (onClick) {
       onClick()
       return
     }
     defaultBackHandler(router, fallbackHref)
-  }, [fallbackHref, onClick, router])
+  }, [dispatchNavigationAbort, fallbackHref, onClick, router])
 
   return (
     <div
@@ -52,7 +60,7 @@ export function BackButton({
         variant="ghost"
         data-cy={dataCy}
         onClick={handleClick}
-        className="inline-flex size-12 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary focus-visible:ring-0"
+        className="back-button inline-flex size-12 items-center justify-center rounded-full border shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--back-button-text)]/35"
         aria-label={ariaLabel}
       >
         <ArrowLeft className="size-6" aria-hidden="true" />

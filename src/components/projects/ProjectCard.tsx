@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 const baseCardClass =
-  "project-card w-full rounded-3xl flex items-center relative select-none shrink-0"
+  "project-card project-card-border w-full rounded-3xl flex items-center relative select-none shrink-0"
 
 export type ProjectCardProps = {
   title: string
@@ -101,21 +101,22 @@ export function ProjectCard({
     const interactiveClass = onOpenProject
       ? "cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/40"
       : ""
-    const ownerClass = isOwnerCard ? menuOpen?"bg-primary/50 border-primary":"project-card--owner group hover:bg-primary/50 hover:border-primary" : menuOpen?"bg-primary/20":""
-    if (menuOpen || isHovering) {
-      return `${baseCardClass} project-card--active ${ownerClass} ${interactiveClass}`.trim()
-    }
-    return `${baseCardClass} ${ownerClass} ${interactiveClass}`.trim()
+    const baseOwnerClass = isOwnerCard ? "project-card--owner" : ""
+    const ownerOpenClass = isOwnerCard && menuOpen ? "project-card--owner-open" : ""
+    const activeClass = menuOpen || isHovering ? "project-card--active" : ""
+    return [baseCardClass, baseOwnerClass, ownerOpenClass, activeClass, interactiveClass]
+      .filter(Boolean)
+      .join(" ")
   }, [isHovering, isOwnerCard, menuOpen, onOpenProject])
 
   const menuButtonClassName = useMemo(
     () =>
       [
-        "absolute px-2 py-2 top-6 right-6 rounded-full border transition-colors duration-200 cursor-pointer",
+        "card-menu-trigger absolute px-2 py-2 top-6 right-6 rounded-full border transition-colors duration-200 cursor-pointer",
         "focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-transparent focus-visible:outline-none",
         menuOpen
-          ? "border-primary/40 bg-white/90 text-primary shadow-[0_1px_3px_rgba(79,61,152,0.95)]"
-          : "border-transparent text-foreground hover:border-primary/30 hover:bg-white/80 hover:text-primary",
+          ? "text-primary card-menu-shadow"
+          : "border-transparent text-foreground hover:border-primary/30 hover:bg-card-menu active:border-primary/30 active:bg-card-menu",
       ]
         .filter(Boolean)
         .join(" "),

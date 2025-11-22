@@ -6,16 +6,18 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import type { AppRouterInstance } from "next/navigation"
 import Image from "next/image"
 import {
   ChevronDown,
   Check,
+  Loader2,
+  LogIn,
   Search,
   User as UserIcon,
   X,
@@ -61,7 +63,7 @@ import {
   type ProjectMembershipSummary,
 } from "@/utils/projects/api"
 import { refreshProjectCache } from "@/utils/projects/prefetch"
-import { PROJECT_REFRESH_EVENT } from "@/constants/events"
+import { NAVIGATION_ABORT_EVENT, PROJECT_REFRESH_EVENT } from "@/constants/events"
 import { PROJECT_ROLE } from "@/types/projects"
 import { useProjectInvites } from "./hooks/useProjectInvites"
 
@@ -77,6 +79,8 @@ import { isRemovalError } from "@/utils/projects/removal"
 
 const DEPARTMENT_LAYOUTS: DepartmentLayoutOption[] = ["compact", "fullWidth"]
 const THEME_OPTIONS: ThemeOption[] = ["standard", "light", "dark", "red", "blue"]
+const THEME_STORAGE_KEY = "asap:theme-preference"
+const DEPARTMENT_LAYOUT_STORAGE_KEY = "asap:department-layout"
 export async function handleGoogleSignIn() {
   const supabase = getSupabaseBrowserClient();
   const {
@@ -181,6 +185,26 @@ export default function AppShell({ children }: AppShellProps) {
 function AppShellInner({ children }: AppShellProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const dispatchNavigationAbort = useCallback(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    window.dispatchEvent(new Event(NAVIGATION_ABORT_EVENT))
+  }, [])
+  const pushWithAbort = useCallback(
+    (href: string) => {
+      dispatchNavigationAbort()
+      router.push(href)
+    },
+    [dispatchNavigationAbort, router]
+  )
+  const replaceWithAbort = useCallback(
+    (href: string) => {
+      dispatchNavigationAbort()
+      router.replace(href)
+    },
+    [dispatchNavigationAbort, router]
+  )
   const isHomepage = pathname === "/homepage"
   const isProjects = pathname?.startsWith("/projects") ?? false
   const isTraditionalAuth = pathname === "/auth/traditional"
@@ -189,10 +213,9 @@ function AppShellInner({ children }: AppShellProps) {
   const projectSlug = isProjectRoute ? segments[1] ?? null : null
   const normalizedProjectSlug = projectSlug?.toLowerCase()
   const isProjectDetailPage = Boolean(normalizedProjectSlug) && normalizedProjectSlug !== "create"
-  const isProjectEditPage = isProjectDetailPage && segments[2]?.toLowerCase() === "edit"
   const activeProjectId = isProjectDetailPage && projectSlug ? projectSlug : null
   const currentProjectSection = isProjectDetailPage ? (segments[2]?.toLowerCase() ?? "info") : null
-  const hasProjectTabs = Boolean(activeProjectId) && !isProjectEditPage
+  const hasProjectTabs = Boolean(activeProjectId)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const supabase = useMemo(() => getSupabaseBrowserClient(), [])
   const [session, setSession] = useState<Session | null>(null)
@@ -213,8 +236,8 @@ function AppShellInner({ children }: AppShellProps) {
       description: "You are no longer part of this project.",
       variant: "destructive",
     })
-    router.replace("/projects")
-  }, [notify, router])
+    replaceWithAbort("/projects")
+  }, [notify, replaceWithAbort])
   const authenticatedUser = session?.user ?? null
   const [projectActionsOpen, setProjectActionsOpen] = useState(false)
   const [deleteProjectDialogOpen, setDeleteProjectDialogOpen] = useState(false)
@@ -422,6 +445,63 @@ function AppShellInner({ children }: AppShellProps) {
       root.dataset.theme = theme
     }
     document.documentElement.classList.toggle("dark", theme === "dark")
+    body?.removeAttribute("data-theme-init")
+  }, [])
+
+  const loadStoredDepartmentLayout = useCallback((): DepartmentLayoutOption | null => {
+    if (typeof window === "undefined") {
+      return null
+    }
+    try {
+      const stored = window.localStorage.getItem(DEPARTMENT_LAYOUT_STORAGE_KEY)
+      return stored ? ensureDepartmentLayout(stored) : null
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to read stored department layout", error)
+      }
+      return null
+    }
+  }, [])
+
+  const persistDepartmentLayout = useCallback((layout: DepartmentLayoutOption) => {
+    if (typeof window === "undefined") {
+      return
+    }
+    try {
+      window.localStorage.setItem(DEPARTMENT_LAYOUT_STORAGE_KEY, layout)
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to persist department layout", error)
+      }
+    }
+  }, [])
+
+  const loadStoredTheme = useCallback((): ThemeOption | null => {
+    if (typeof window === "undefined") {
+      return null
+    }
+    try {
+      const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
+      return stored ? ensureTheme(stored) : null
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to read stored theme", error)
+      }
+      return null
+    }
+  }, [])
+
+  const persistTheme = useCallback((theme: ThemeOption) => {
+    if (typeof window === "undefined") {
+      return
+    }
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to persist theme preference", error)
+      }
+    }
   }, [])
 
   const updateProfileLocally = useCallback((update: Partial<ProfileSummary>) => {
@@ -433,6 +513,8 @@ function AppShellInner({ children }: AppShellProps) {
       const normalizedDepartment = ensureDepartmentLayout(
         update.departmentLayout ?? prev.departmentLayout
       )
+      persistTheme(normalizedTheme)
+      persistDepartmentLayout(normalizedDepartment)
       return {
         ...prev,
         ...update,
@@ -440,7 +522,7 @@ function AppShellInner({ children }: AppShellProps) {
         departmentLayout: normalizedDepartment,
       }
     })
-  }, [])
+  }, [persistDepartmentLayout, persistTheme])
 
   const refreshProfile = useCallback(async () => {
     if (!authenticatedUser) {
@@ -464,7 +546,7 @@ function AppShellInner({ children }: AppShellProps) {
       const { data, error } = await supabase
         .from("profiles")
         .select(
-          "id, email, full_name, avatar_url, bio, last_sign_in, department_layout, theme, password_hash"
+          "id, email, full_name, avatar_url, bio, last_sign_in, password_hash"
         )
         .eq("id", authenticatedUser.id)
         .maybeSingle()
@@ -486,8 +568,8 @@ function AppShellInner({ children }: AppShellProps) {
           avatarUrl: data.avatar_url ?? metadataAvatarUrl,
           bio: data.bio ?? null,
           lastSignIn: data.last_sign_in ?? null,
-          departmentLayout: ensureDepartmentLayout(data.department_layout),
-          theme: ensureTheme(data.theme),
+          departmentLayout: ensureDepartmentLayout(loadStoredDepartmentLayout()),
+          theme: ensureTheme(loadStoredTheme()),
           hasPassword: Boolean(data.password_hash),
         })
       } else {
@@ -502,8 +584,8 @@ function AppShellInner({ children }: AppShellProps) {
           avatarUrl: metadataAvatarUrl,
           bio: null,
           lastSignIn: authenticatedUser.last_sign_in_at ?? null,
-          departmentLayout: "fullWidth",
-          theme: "standard",
+          departmentLayout: ensureDepartmentLayout(loadStoredDepartmentLayout()),
+          theme: ensureTheme(loadStoredTheme()),
           hasPassword: false,
         })
       }
@@ -585,10 +667,19 @@ function AppShellInner({ children }: AppShellProps) {
     refreshProfile()
   }, [authLoading, refreshProfile])
 
+  useLayoutEffect(() => {
+    const storedTheme = loadStoredTheme()
+    if (storedTheme) {
+      applyTheme(storedTheme)
+    }
+  }, [applyTheme, loadStoredTheme])
+
   useEffect(() => {
-    const nextTheme = profile?.theme ?? "standard"
+    const storedTheme = loadStoredTheme()
+    const nextTheme = ensureTheme(profile?.theme ?? storedTheme ?? "standard")
     applyTheme(nextTheme)
-  }, [profile?.theme, applyTheme])
+    persistTheme(nextTheme)
+  }, [applyTheme, loadStoredTheme, persistTheme, profile?.theme])
 
   useEffect(() => {
     if (!authenticatedUser) {
@@ -607,14 +698,14 @@ function AppShellInner({ children }: AppShellProps) {
       }
       setAccountMenuOpen(false)
       setAuthLoading(false)
-      router.push("/homepage")
+      pushWithAbort("/homepage")
       notify({
         title: "Signed out successfully",
         description: "See you soon on ASAP!",
         variant: "info",
       })
     },
-    [notify, router, supabase]
+    [notify, pushWithAbort, supabase]
   )
 
   const handleDeleteDialogOpenChange = useCallback((open: boolean) => {
@@ -675,7 +766,7 @@ function AppShellInner({ children }: AppShellProps) {
         variant: "success",
       })
       handleDeleteDialogOpenChange(false)
-      router.push("/projects")
+      pushWithAbort("/projects")
     } catch (error) {
       console.error("Failed to delete project", error)
       const raw =
@@ -684,7 +775,7 @@ function AppShellInner({ children }: AppShellProps) {
     } finally {
       setDeleteProjectLoading(false)
     }
-  }, [deleteProjectTargetId, handleDeleteDialogOpenChange, notify, router])
+  }, [deleteProjectTargetId, handleDeleteDialogOpenChange, notify, pushWithAbort])
 
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
   const [leaveLoading, setLeaveLoading] = useState(false)
@@ -705,7 +796,7 @@ function AppShellInner({ children }: AppShellProps) {
       })
       setProjectMembership(null)
       setLeaveDialogOpen(false)
-      router.push("/projects")
+      pushWithAbort("/projects")
     } catch (error) {
       console.error("Failed to leave project", error)
       const raw = error instanceof Error ? error.message : "Unable to leave this project."
@@ -713,7 +804,7 @@ function AppShellInner({ children }: AppShellProps) {
     } finally {
       setLeaveLoading(false)
     }
-  }, [activeProjectId, notify, router])
+  }, [activeProjectId, notify, pushWithAbort])
 
   useEffect(() => {
     if (!leaveDialogOpen) {
@@ -860,32 +951,38 @@ function AppShellInner({ children }: AppShellProps) {
     [activeProjectId]
   )
 
+  const refreshActiveProject = useCallback(() => {
+    if (activeProjectId) {
+      refreshProjectCache(activeProjectId).catch((error) => {
+        console.error("Failed to refresh project cache", error)
+      })
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent(PROJECT_REFRESH_EVENT, {
+          detail: { projectId: activeProjectId ?? null },
+        })
+      )
+    }
+    router.refresh()
+  }, [activeProjectId, router])
+
   const handleProjectNavClick = useCallback(
     (href: string | null, disabled?: boolean) => {
       if (disabled || !href) {
         return
       }
-      router.push(href)
-    },
-    [router]
-  )
-
-  useEffect(() => {
-    projectNavItems.forEach((item) => {
-      if (item.href) {
-        try {
-          const result = router.prefetch(item.href)
-          if (result && typeof (result as Promise<unknown>).catch === "function") {
-            ;(result as Promise<unknown>).catch(() => {})
-          }
-        } catch (error) {
-          if (process.env.NODE_ENV !== "production") {
-            console.warn("Prefetch failed", error)
-          }
-        }
+      if (pathname === href) {
+        refreshActiveProject()
+        return
       }
-    })
-  }, [projectNavItems, router])
+      pushWithAbort(href)
+    },
+    [pathname, pushWithAbort, refreshActiveProject]
+  )
+  const triggerProjectRefresh = useCallback(() => {
+    refreshActiveProject()
+  }, [refreshActiveProject])
 
   useEffect(() => {
     if (projectMembership?.username) {
@@ -926,13 +1023,21 @@ function AppShellInner({ children }: AppShellProps) {
   const logoDestination = headerVariant === "minimal" ? "/homepage" : "/projects"
 
   const handleLogoClick = useCallback(() => {
-    router.push(logoDestination)
-  }, [router, logoDestination])
+    const isActiveLogoTarget = pathname === logoDestination
+    if (isActiveLogoTarget) {
+      refreshActiveProject()
+      return
+    }
+    pushWithAbort(logoDestination)
+  }, [logoDestination, pathname, pushWithAbort, refreshActiveProject])
 
   const header = (() => {
     if (headerVariant === "homepage") {
       return (
-        <header className="fixed inset-x-0 top-0 z-50 bg-primary px-[clamp(1.5rem,1vw,3rem)] py-[clamp(0.6rem,1vh,1rem)]">
+        <header
+          className="fixed inset-x-0 top-0 z-50 px-[clamp(1.5rem,1vw,3rem)] py-[clamp(0.6rem,1vh,1rem)]"
+          style={{ backgroundColor: "var(--app-shell-bg, var(--primary))" }}
+        >
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-[clamp(1.5rem,7vw,7rem)]">
               <button
@@ -969,13 +1074,17 @@ function AppShellInner({ children }: AppShellProps) {
                 />
               ) : (
                 <Button
+                  type="button"
                   variant="secondary"
-                  className="bg-button-background text-button-foreground-on-nav hover:bg-button-hover-background-on-nav hover:text-foreground rounded-full px-[clamp(2.5rem,5vw,4rem)] py-[clamp(0.5rem,1.6vh,0.85rem)] text-[clamp(1rem,2.1vw,1.15rem)] font-semibold"
-                  onClick={() => router.push("/auth/traditional")}
+                  className="nav-auth-button flex size-9 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary hover:text-primary focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
+                  onClick={() => pushWithAbort("/auth/traditional")}
                   disabled={authLoading}
-                  data-cy="app-shell-sign-in-button"
                 >
-                  {authLoading ? "Loading..." : "Sign In"}
+                  {authLoading ? (
+                    <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+                  ) : (
+                    <LogIn className="size-5" aria-hidden="true" />
+                  )}
                 </Button>
               )}
             </div>
@@ -1025,7 +1134,10 @@ function AppShellInner({ children }: AppShellProps) {
       ) : null
 
       return (
-        <header className="fixed inset-x-0 top-0 z-50 bg-primary">
+        <header
+          className="fixed inset-x-0 top-0 z-50"
+          style={{ backgroundColor: "var(--app-shell-bg, var(--primary))" }}
+        >
           <div className="px-[clamp(1.5rem,1vw,3rem)] py-[clamp(0.6rem,1vh,1rem)]">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-6">
@@ -1058,10 +1170,10 @@ function AppShellInner({ children }: AppShellProps) {
                   <div className="flex items-center gap-3">
                     <ProjectActionsMenu
                       activeProjectId={activeProjectId}
-                      isProjectEditPage={isProjectEditPage}
                       projectActionsOpen={projectActionsOpen}
                       projectMembership={projectMembership}
                       promptProjectDelete={promptProjectDelete}
+                      onRefresh={triggerProjectRefresh}
                       router={router}
                       setLeaveDialogOpen={setLeaveDialogOpen}
                       setOwnerDialogOpen={setOwnerDialogOpen}
@@ -1082,14 +1194,20 @@ function AppShellInner({ children }: AppShellProps) {
                       />
                     ) : (
                       <Button
+                        type="button"
                         variant="secondary"
-                        className="rounded-full bg-button-background-on-nav px-6 py-2 text-base font-semibold text-button-foreground-on-nav hover:bg-button-hover-background-on-nav"
-                        onClick={() => router.push("/auth/traditional")}
+                        className="nav-auth-button flex size-9 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary hover:text-primary focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
+                        onClick={() => pushWithAbort("/auth/traditional")}
                         disabled={authLoading}
                       >
-                        {authLoading ? "Loading..." : "Sign In"}
+                        {authLoading ? (
+                          <Loader2 className="size-5 animate-spin" aria-hidden="true" />
+                        ) : (
+                          <LogIn className="size-5" aria-hidden="true" />
+                        )}
                       </Button>
                     )}
+                    
                   </div>
               </div>
             </div>
@@ -1100,7 +1218,10 @@ function AppShellInner({ children }: AppShellProps) {
 
     if (headerVariant === "minimal") {
       return (
-        <header className="fixed inset-x-0 top-0 z-50 bg-primary">
+        <header
+          className="fixed inset-x-0 top-0 z-50"
+          style={{ backgroundColor: "var(--app-shell-bg, var(--primary))" }}
+        >
           <div className="px-[clamp(1.5rem,1vw,3rem)] py-[clamp(0.6rem,1.6vh,1rem)]">
             <button
               type="button"

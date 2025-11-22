@@ -4,7 +4,6 @@ import { useCallback } from "react"
 import { Link2, LogOut, MoreHorizontal, PencilLine, RefreshCcw, Trash2, UserPen } from "lucide-react"
 import type { AppRouterInstance } from "next/navigation"
 
-import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +18,6 @@ import { PROJECT_ROLE } from "@/types/projects"
 
 export type ProjectActionsMenuProps = {
   activeProjectId: string | null
-  isProjectEditPage: boolean
   projectActionsOpen: boolean
   projectMembership: ProjectMembershipSummary | null
   promptProjectDelete: (projectId: string) => void
@@ -30,11 +28,11 @@ export type ProjectActionsMenuProps = {
   setProjectActionsOpen: (open: boolean) => void
   setUsernameDialogOpen: (open: boolean) => void
   openInviteDialog: () => void
+  onRefresh?: () => void
 }
 
 export function ProjectActionsMenu({
   activeProjectId,
-  isProjectEditPage,
   projectActionsOpen,
   projectMembership,
   promptProjectDelete,
@@ -45,8 +43,9 @@ export function ProjectActionsMenu({
   setProjectActionsOpen,
   setUsernameDialogOpen,
   openInviteDialog,
+  onRefresh,
 }: ProjectActionsMenuProps) {
-  if (!activeProjectId || isProjectEditPage) {
+  if (!activeProjectId) {
     return null
   }
 
@@ -59,6 +58,10 @@ export function ProjectActionsMenu({
 
   const handleRefresh = useCallback(() => {
     setProjectActionsOpen(false)
+    if (onRefresh) {
+      onRefresh()
+      return
+    }
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent(PROJECT_REFRESH_EVENT, {
@@ -68,34 +71,28 @@ export function ProjectActionsMenu({
     } else {
       router.refresh()
     }
-  }, [activeProjectId, router, setProjectActionsOpen])
+  }, [activeProjectId, onRefresh, router, setProjectActionsOpen])
 
   return (
     <DropdownMenu modal={false} onOpenChange={setProjectActionsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button
+        <button
           type="button"
-          variant="ghost"
-          size="icon"
           className={cn(
-            "size-8 mr-3 rounded-full border transition-colors duration-200 focus-visible:border-transparent focus-visible:outline-none focus-visible:ring-0",
+            "card-menu-trigger size-8 mr-3 rounded-full border transition-colors duration-200 cursor-pointer focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-transparent focus-visible:outline-none flex items-center justify-center",
             projectActionsOpen
-              ? "border-primary/40 bg-white/90 text-primary shadow-[0_1px_3px_rgba(79,61,152,0.95)] hover:bg-white/80 hover:text-primary"
-              : "border-transparent text-button-foreground-on-nav hover:border-primary/30 hover:bg-white/80 hover:text-primary"
+              ? "text-primary card-menu-shadow bg-card-menu"
+              : "border-transparent text-button-foreground-on-nav !bg-transparent hover:border-primary/30 hover:bg-card-menu active:border-primary/30 active:bg-card-menu"
           )}
           aria-label="Project actions"
           aria-pressed={projectActionsOpen}
         >
-          <MoreHorizontal
-            className={
-              projectActionsOpen ? "size-5 text-primary" : "size-5 text-current"
-            }
-          />
-        </Button>
+          <MoreHorizontal className={projectActionsOpen ? "size-5 text-primary" : "size-5 text-current"} />
+        </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        className="w-48 rounded-3xl border border-button-background-on-nav/40 bg-button-background-on-nav/95 p-2 text-foreground shadow-[0_16px_30px_rgba(39,36,66,0.25)]"
+        className="dropdown-surface w-48 rounded-3xl border-none bg-button-background p-2 text-button-foreground"
       >
         {canInviteMembers ? (
           <DropdownMenuItem
@@ -107,7 +104,7 @@ export function ProjectActionsMenu({
             }}
           >
             <span className="inline-flex items-center gap-2">
-              <Link2 className="size-4" />
+              <Link2 className="size-4 text-current" />
               Invite Link
             </span>
           </DropdownMenuItem>
@@ -118,7 +115,7 @@ export function ProjectActionsMenu({
           onSelect={handleRefresh}
         >
           <span className="inline-flex items-center gap-2">
-            <RefreshCcw className="size-4" />
+            <RefreshCcw className="size-4 text-current" />
             Refresh
           </span>
         </DropdownMenuItem>
@@ -135,7 +132,7 @@ export function ProjectActionsMenu({
           }}
         >
           <span className="inline-flex items-center gap-2">
-            <UserPen className="size-4" />
+            <UserPen className="size-4 text-current" />
             Change Username
           </span>
         </DropdownMenuItem>
@@ -150,7 +147,7 @@ export function ProjectActionsMenu({
             }}
           >
             <span className="inline-flex items-center gap-2">
-              <PencilLine className="size-4" />
+              <PencilLine className="size-4 text-current" />
               Edit Project
             </span>
           </DropdownMenuItem>
@@ -161,16 +158,16 @@ export function ProjectActionsMenu({
             className="rounded-2xl px-4 py-3 text-sm font-semibold transition hover:bg-button-hover-background-on-nav"
             onSelect={() => {
               setProjectActionsOpen(false)
-              setOwnerDialogOpen(true)
-            }}
-          >
-            <span className="inline-flex items-center gap-2">
-              <UserPen className="size-4" />
-              Change Project Owner
-            </span>
-          </DropdownMenuItem>
-        ) : null}
-        {canDeleteThisProject ? (
+            setOwnerDialogOpen(true)
+          }}
+        >
+          <span className="inline-flex items-center gap-2">
+            <UserPen className="size-4 text-current" />
+            Change Project Owner
+          </span>
+        </DropdownMenuItem>
+      ) : null}
+      {canDeleteThisProject ? (
           <DropdownMenuItem
             data-cy="project-actions-delete"
             className="rounded-2xl px-4 py-3 text-sm font-semibold transition hover:bg-destructive/10 focus:bg-destructive/10"
@@ -185,7 +182,7 @@ export function ProjectActionsMenu({
             }}
           >
             <span className="inline-flex items-center gap-2 text-destructive font-semibold">
-              <Trash2 className="size-4 text-destructive" />
+              <Trash2 className="size-4 text-current" />
               Delete Project
             </span>
           </DropdownMenuItem>
@@ -201,7 +198,7 @@ export function ProjectActionsMenu({
           }}
         >
           <span className="inline-flex items-center gap-2">
-            <LogOut className="size-4" />
+            <LogOut className="size-4 text-current" />
             Leave Project
           </span>
         </DropdownMenuItem>

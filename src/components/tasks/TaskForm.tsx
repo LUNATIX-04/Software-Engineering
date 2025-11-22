@@ -120,7 +120,7 @@ function TaskColorMenu({
       <DropdownMenuContent
         align="end"
         sideOffset={6}
-        className="w-64 max-h-[24rem] overflow-y-auto rounded-3xl border border-primary/30 bg-white p-4 text-sm font-semibold text-primary shadow-[0_16px_30px_rgba(72,68,110,0.2)]"
+        className="dialog-scroll w-64 max-h-[24rem] overflow-y-auto rounded-3xl border border-primary/30 bg-white p-4 text-sm font-semibold text-primary shadow-[0_16px_30px_rgba(72,68,110,0.2)]"
       >
         <div className="mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-primary/70">
           <span className="inline-flex items-center gap-1">
@@ -170,7 +170,7 @@ function TaskColorMenu({
             })}
           </div>
         ) : (
-          <div className="max-h-[18rem] space-y-2 overflow-auto rounded-2xl border border-primary/20 bg-white/60 p-3">
+          <div className="dialog-scroll max-h-[18rem] space-y-2 overflow-auto rounded-2xl border border-primary/20 bg-white/60 p-3">
             <div className="rounded-2xl bg-white p-2">
               <HexColorPicker
                 color={selectionColor}
@@ -1512,13 +1512,13 @@ export function TaskForm({
           className="h-12 rounded-full border-2 border-primary/40 bg-white px-5 text-base font-semibold text-[#2F2766] placeholder:text-[#2F2766]/70 focus:border-primary focus:outline-none"
           required />
 
-        <div className="group/textarea overflow-hidden rounded-[1.25rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.25)]">
+        <div className="textarea-surface group/textarea overflow-hidden rounded-[1.25rem]">
           <Textarea
             value={detail}
             onChange={(event) => setDetail(event.target.value)}
             placeholder="Add detail"
             aria-label="Task detail"
-            className="project-detail-scroll min-h-[10rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-6 py-2 text-base text-[#2F2766] placeholder:text-primary/60 shadow-none focus-visible:outline-none focus-visible:ring-0" />
+            className="project-detail-scroll min-h-[10rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-6 py-2 text-base shadow-none focus-visible:outline-none focus-visible:ring-0" />
         </div>
 
         <TaskAssigneeSection

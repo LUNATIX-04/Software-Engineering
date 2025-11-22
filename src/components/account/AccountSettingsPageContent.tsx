@@ -646,9 +646,9 @@ export function AccountSettingsContent({
         </div>
         */}
       </div>
-      <p className={sectionDescriptionClass}>
+      {/*<p className={sectionDescriptionClass}>
         Link your Google account so you can sign in with a single click.
-      </p>
+      </p>*/}
     </div>
   )
 
@@ -675,18 +675,23 @@ export function AccountSettingsContent({
         <p className={sectionDescriptionClass}>
           Share a sentence or two about yourself.
         </p>
-        <div className="group/textarea overflow-hidden rounded-[1rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.12)]">
+        <div className="textarea-surface group/textarea overflow-hidden rounded-[1rem]">
           <Textarea
             value={bioInput}
             onChange={(event) => setBioInput(event.target.value)}
             placeholder='Tell your teammates who you are. (e.g., "Product lead obsessed with deadlines.")'
-            className="project-detail-scroll min-h-[10rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-6 py-3 text-base text-foreground placeholder:text-primary/60 shadow-none focus-visible:outline-none focus-visible:ring-0"
+            className="project-detail-scroll min-h-[10rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-6 py-3 text-base shadow-none focus-visible:outline-none focus-visible:ring-0"
             rows={4}
           />
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={profileSaving} className="rounded-full px-6">
+        <Button
+          type="submit"
+          variant="ghost"
+          disabled={profileSaving}
+          className="rounded-full bg-button-background px-6 text-button-foreground !hover:bg-button-hover-background !hover:text-button-foreground focus-visible:ring-button-foreground/40"
+        >
           {profileSaving ? "Saving…" : "Save profile"}
         </Button>
         <Button
@@ -727,7 +732,8 @@ export function AccountSettingsContent({
         <div className="flex flex-wrap items-center gap-2">
           <Button
             type="button"
-            className="rounded-full"
+            variant="ghost"
+            className="rounded-full bg-button-background px-5 text-button-foreground !hover:bg-button-hover-background !hover:text-button-foreground focus-visible:ring-button-foreground/40"
             onClick={() => {
               setAvatarDialogOpen(true)
             }}
@@ -841,7 +847,12 @@ export function AccountSettingsContent({
           </div>
           {passwordError ? <p className="text-sm font-semibold text-destructive">{passwordError}</p> : null}
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={passwordPending} className="rounded-full px-5">
+          <Button
+            type="submit"
+            variant="ghost"
+            disabled={passwordPending}
+            className="rounded-full bg-button-background px-5 text-button-foreground !hover:bg-button-hover-background !hover:text-button-foreground focus-visible:ring-button-foreground/40"
+          >
             {passwordPending ? "Saving…" : "Save password"}
           </Button>
           <Button
@@ -892,7 +903,7 @@ export function AccountSettingsContent({
     return (
       <div className="flex h-[60vh] min-h-[32rem] flex-col gap-4 overflow-hidden">
         <div className="shrink-0">{header}</div>
-        <nav className="shrink-0 flex flex-wrap gap-1 rounded-full border border-primary/20 bg-primary/5 p-0.5">
+        <nav className="shrink-0 flex flex-wrap gap-1 rounded-full border border-button-background/20 bg-button-background/10 p-0.5">
           {DIALOG_SECTIONS.map((section) => {
             const isActive = section.id === activeDialogSection
             return (
@@ -902,8 +913,8 @@ export function AccountSettingsContent({
                 className={cn(
                   "flex-1 min-w-[12rem] rounded-full px-4 py-1.5 text-sm font-semibold transition inline-flex items-center justify-center gap-2",
                   isActive
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-primary hover:bg-primary/10"
+                    ? "bg-button-background text-button-foreground shadow-sm"
+                    : "text-foreground hover:bg-button-hover-background hover:text-button-foreground"
                 )}
                 aria-pressed={isActive}
                 onClick={() => setActiveDialogSection(section.id)}
@@ -914,7 +925,7 @@ export function AccountSettingsContent({
             )
           })}
         </nav>
-        <div className="flex-1 w-full min-h-0 overflow-y-auto px-[clamp(2rem,3vw,3.5rem)] pt-4 ">
+        <div className="flex-1 w-full min-h-0 overflow-y-auto dialog-scroll px-[clamp(2rem,3vw,3.5rem)] pt-4 ">
           {activeSection}
         </div> {/*account-settings-scroll asap-scroll [scrollbar-gutter:stable]*/}
       </div>

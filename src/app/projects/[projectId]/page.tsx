@@ -11,9 +11,19 @@ import { Button } from "@/components/ui/button"
 import { ProgressBar } from "@/components/ui/progress-bar"
 import { usePreferences } from "@/contexts/preferences"
 import { type ProjectRecord } from "@/utils/projects/api"
-import { loadProjectRecord } from "@/utils/projects/prefetch"
+import {
+  getCachedProjectDepartments,
+  loadProjectDepartments,
+  loadProjectRecord,
+} from "@/utils/projects/prefetch"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
+import { useNavigationAbort } from "@/hooks/useNavigationAbort"
 import BackButton from "@/components/navigation/BackButton"
+import type { ProjectDepartmentRecord } from "@/utils/projects/departments"
+import {
+  DEFAULT_DEPARTMENT_COLORS,
+  DEFAULT_DEPARTMENT_TEXT_COLOR,
+} from "@/constants/departments"
 
 type ProjectInfoPageProps = {
   params: Promise<{
@@ -26,6 +36,24 @@ type FormattedDates = {
   updated: string
 }
 
+const buildDepartmentStyles = (departments?: ProjectDepartmentRecord[] | null) => {
+  const styles: Record<string, { background: string; text: string }> = {}
+
+  departments?.forEach((department) => {
+    styles[department.name] = {
+      background: department.color,
+      text: department.textColor ?? DEFAULT_DEPARTMENT_TEXT_COLOR,
+    }
+  })
+
+  Object.entries(DEFAULT_DEPARTMENT_COLORS).forEach(([name, color]) => {
+    if (styles[name]) return
+    styles[name] = { background: color, text: DEFAULT_DEPARTMENT_TEXT_COLOR }
+  })
+
+  return styles
+}
+
 
 export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
   const { projectId } = React.use(params)
@@ -36,9 +64,17 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
   const { profile } = usePreferences()
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [departmentStyles, setDepartmentStyles] = useState<
+    Record<string, { background: string; text: string }>
+  >({})
+  const navigationAbortRef = useNavigationAbort(() => {
+    setRefreshing(false)
+    setError(null)
+    setProject(null)
+  })
 
   React.useEffect(() => {
-    if (!projectId) {
+    if (!projectId || navigationAbortRef.current) {
       return
     }
     let active = true
@@ -51,7 +87,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
 
     loadProjectRecord(projectId)
       .then((data) => {
-        if (!active) return
+        if (!active || navigationAbortRef.current) return
         if (!data) {
           setError("Project not found.")
           setProject(null)
@@ -61,12 +97,23 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
         setHasLoadedOnce(true)
       })
       .catch((fetchError) => {
+        if (!active || navigationAbortRef.current) return
+        const name = (fetchError as { name?: string })?.name
+        const message = (fetchError as { message?: string })?.message ?? ""
+        const code = (fetchError as { code?: number })?.code
+        const aborted =
+          name === "AbortError" ||
+          code === 20 ||
+          message.toLowerCase().includes("abort") ||
+          message.toLowerCase().includes("canceled")
+        if (aborted) {
+          return
+        }
         console.error("Failed to fetch project info", fetchError)
-        if (!active) return
         setError("Unable to load project information.")
       })
       .finally(() => {
-        if (!active) return
+        if (!active || navigationAbortRef.current) return
         setLoading(false)
         setRefreshing(false)
       })
@@ -74,7 +121,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
     return () => {
       active = false
     }
-  }, [hasLoadedOnce, projectId, refreshToken])
+  }, [hasLoadedOnce, navigationAbortRef, projectId, refreshToken])
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -95,6 +142,30 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
     window.addEventListener(PROJECT_REFRESH_EVENT, handleProjectRefresh)
     return () => window.removeEventListener(PROJECT_REFRESH_EVENT, handleProjectRefresh)
   }, [projectId])
+
+  useEffect(() => {
+    if (!projectId || navigationAbortRef.current) {
+      return
+    }
+    let active = true
+    const cachedDepartments = getCachedProjectDepartments(projectId)
+    if (cachedDepartments) {
+      setDepartmentStyles(buildDepartmentStyles(cachedDepartments))
+    }
+    loadProjectDepartments(projectId)
+      .then((departments) => {
+        if (!active || navigationAbortRef.current) return
+        setDepartmentStyles(buildDepartmentStyles(departments))
+      })
+      .catch((fetchError) => {
+        if (!active || navigationAbortRef.current) return
+        console.error("Failed to load project departments", fetchError)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [navigationAbortRef, projectId])
 
   const formattedDates = React.useMemo<FormattedDates>(() => {
     const defaultValue = { created: "—", updated: "—" }
@@ -126,6 +197,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
         </div>
       )
     }
+   
 
     if (error) {
       return (
@@ -134,7 +206,11 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
         </div>
       )
     }
-
+    
+    if (navigationAbortRef.current) {
+      return null
+    }
+    
     if (!project) {
       return (
         <div className="flex w-full flex-1 items-center justify-center text-center text-foreground/70">
@@ -149,7 +225,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
     const hasDepartments = project.departments.length > 0
     const departmentChipVariant = profile?.departmentLayout ?? "fullWidth"
     const departmentChipBaseClass =
-      "inline-flex items-center rounded-full border-2 border-primary/30 bg-white text-primary font-semibold shadow-[0_2px_0_rgba(144,122,214,0.22)]"
+      "inline-flex items-center rounded-full border-2 font-semibold shadow-[0_2px_0_color-mix(in_srgb,var(--primary)_22%,transparent)]"
     const departmentChipClass =
       departmentChipVariant === "compact"
         ? `${departmentChipBaseClass} px-5 py-2 text-sm`
@@ -158,6 +234,10 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
       departmentChipVariant === "compact"
         ? "mt-1 flex flex-wrap gap-3"
         : "mt-3 flex w-full flex-col gap-3"
+    const fallbackDepartmentStyle = {
+      background: "color-mix(in srgb, var(--muted) 70%, var(--card) 30%)",
+      text: "var(--foreground)",
+    }
     const projectDetailCopy = hasDescription
       ? project.description
       : "This project does not have a description yet. Add one from the edit page to help your team stay aligned."
@@ -182,7 +262,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
         ) : null}
 
         <section
-          className="rounded-[2.75rem] border-2 border-primary/40 bg-white p-8 shadow-[0_6px_0_rgba(144,122,214,0.15)] page-slide"
+          className="project-info-surface rounded-[2.75rem] border-2 border-primary/40 p-8 shadow-[0_6px_0_rgba(144,122,214,0.15)] page-slide"
           data-cy="project-info-summary-section"
         >
           <div className="flex flex-col gap-8 md:flex-row md:items-center">
@@ -283,7 +363,18 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
               {hasDepartments ? (
                 <div className={departmentsWrapperClass} data-cy="project-info-department-list">
                   {project.departments.map((department) => (
-                    <span key={department} className={departmentChipClass}>
+                    <span
+                      key={department}
+                      className={departmentChipClass}
+                      style={{
+                        backgroundColor:
+                          departmentStyles[department]?.background ?? fallbackDepartmentStyle.background,
+                        color: departmentStyles[department]?.text ?? fallbackDepartmentStyle.text,
+                        borderColor:
+                          departmentStyles[department]?.background ??
+                          "color-mix(in srgb, var(--primary) 24%, transparent)",
+                      }}
+                    >
                       {department}
                     </span>
                   ))}
@@ -420,7 +511,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
         </section>
 
         <section
-          className="mt-6 rounded-[2.75rem] border-2 border-primary/30 bg-primary/10 px-8 py-6 shadow-[0_14px_0_rgba(144,122,214,0.1)]"
+          className="project-info-surface mt-6 rounded-[2.75rem] border-2 border-primary/30 px-8 py-6 shadow-[0_14px_0_rgba(144,122,214,0.1)]"
           data-cy="project-info-detail-section"
         >
           <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

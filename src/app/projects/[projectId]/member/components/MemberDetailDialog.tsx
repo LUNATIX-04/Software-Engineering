@@ -113,13 +113,13 @@ export function MemberDetailDialog({
             <div className="space-y-3">
               <p className="text-sm font-semibold uppercase tracking-wide text-primary/70">About me</p>
               {isSelf ? (
-                <div className="group/textarea -mt-2 overflow-hidden rounded-[1rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.12)]">
+                <div className="textarea-surface group/textarea -mt-2 overflow-hidden rounded-[1rem]">
                   <Textarea
                     value={bioValue}
                     onChange={(event) => onBioChange(event.target.value)}
                     placeholder="Share a short bio"
                     data-cy="project-member-detail-bio-input"
-                    className="project-detail-scroll min-h-[8rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-5 py-3 text-sm font-semibold text-[#2F2766] placeholder:text-primary/60 shadow-none focus-visible:outline-none focus-visible:ring-0"
+                    className="project-detail-scroll min-h-[8rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-5 py-3 text-sm font-semibold shadow-none focus-visible:outline-none focus-visible:ring-0"
                     rows={4}
                   />
                 </div>

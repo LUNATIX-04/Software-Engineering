@@ -15,11 +15,7 @@ import {
 import { cn } from "@/lib/utils"
 import { SearchField } from "@/components/ui/search-field"
 
-import type {
-  MemberRole,
-  SelectableMemberDepartment,
-} from "@/components/projects/MemberCard"
-import { ADD_DEPARTMENT_LABEL } from "@/constants/departments"
+import type { MemberRole, SelectableMemberDepartment } from "@/components/projects/MemberCard"
 import { useNotifications } from "@/components/notifications/Notification"
 import { useEffect } from "react"
 
@@ -97,7 +93,7 @@ export function MemberFilterBar({
                 Filter
               </span>
               {filterCount > 0 ? (
-                <span className="ml-auto inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded-full bg-primary/90 px-1 text-xs font-bold text-primary-foreground">
+                <span className="ml-auto inline-flex h-5 min-w-[1.5rem] items-center justify-center rounded-full bg-[color:var(--muted)] px-1 text-xs font-bold text-[color:var(--foreground)]">
                   {filterCount}
                 </span>
               ) : null}
@@ -105,7 +101,7 @@ export function MemberFilterBar({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="start"
-            className="w-60 overflow-hidden rounded-3xl border border-primary/40 bg-white text-sm font-semibold text-primary shadow-[0_10px_30px_rgba(72,68,110,0.2)]"
+            className="dropdown-surface w-60 overflow-hidden rounded-3xl border border-primary/40 bg-popover text-sm font-semibold text-foreground"
           >
             <div className="member-filter-scroll max-h-[22rem] overflow-y-auto px-2 py-2">
               <div className="flex items-center justify-between px-3 py-1.5">
@@ -147,7 +143,9 @@ export function MemberFilterBar({
                 Departments
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="my-1 bg-primary/10" />
-              {departmentOptions.map((department) => (
+              {departmentOptions
+                .filter((department) => department.toLowerCase() !== "add department")
+                .map((department) => (
                 <DropdownMenuCheckboxItem
                   key={department}
                   checked={departmentFilters.includes(department)}
@@ -157,7 +155,7 @@ export function MemberFilterBar({
                   onSelect={(event) => event.preventDefault()}
                   className={cn(
                     "rounded-2xl px-3 py-2 pr-10 focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3",
-                    department === ADD_DEPARTMENT_LABEL ? "text-primary/80" : "text-foreground"
+                    "text-foreground"
                   )}
                 >
                   <span className="block max-w-[20rem] truncate">{department}</span>

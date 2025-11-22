@@ -16,6 +16,7 @@ export type ProjectDepartmentRecord = {
 export type CreateProjectDepartmentInput = {
   name: string
   color?: string
+  textColor?: string
 }
 
 export type UpdateProjectDepartmentInput = Partial<{

@@ -11,6 +11,7 @@ export type ProjectFormValues = {
   title: string
   detail: string
   departments: string[]
+  departmentColors?: Record<string, { color: string; textColor: string }>
   imageFile: File | null
   imagePreviewUrl: string | null
   imageCropPosition: ImageCropSelection | null
@@ -23,4 +24,5 @@ export type ProjectFormInitialValues = {
   departments?: string[]
   imageUrl?: string | null
   imageCropPosition?: ImageCropSelection | null
+  departmentColors?: Record<string, { color: string; textColor: string }>
 }

@@ -30,6 +30,8 @@ import { PROJECT_ROLE } from "@/types/projects"
 import BackButton from "@/components/navigation/BackButton"
 import { isRemovalError } from "@/utils/projects/removal"
 import { Skeleton } from "@/components/ui/skeleton"
+import { dispatchNavigationAbortEvent, useNavigationAbort } from "@/hooks/useNavigationAbort"
+import { BASE_PAGE_SIZE_OPTIONS } from "@/constants/pagination"
 
 import TaskDeleteDialog from "./components/TaskDeleteDialog"
 import TaskFilterMenu from "./components/TaskFilterMenu"
@@ -43,7 +45,92 @@ type ProjectTaskPageProps = {
   }>
 }
 
-const BASE_PAGE_SIZE_OPTIONS = [3, 9, 18, 36, 64, 96, 136, 172]
+const TASK_PAGE_SIZE_KEY = "asap:tasks-page-size"
+
+const readStoredPageSize = (key: string): number | null => {
+  if (typeof window === "undefined") {
+    return null
+  }
+  const raw = window.localStorage.getItem(key)
+  const parsedLocal = raw ? Number.parseInt(raw, 10) : NaN
+  if (Number.isFinite(parsedLocal) && BASE_PAGE_SIZE_OPTIONS.includes(parsedLocal)) {
+    return parsedLocal
+  }
+  const cookieMatch = document.cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${key}=`))
+  const cookieValue = cookieMatch ? Number.parseInt(cookieMatch.split("=")[1] ?? "", 10) : NaN
+  if (Number.isFinite(cookieValue) && BASE_PAGE_SIZE_OPTIONS.includes(cookieValue)) {
+    return cookieValue
+  }
+  return null
+}
+
+const persistPageSize = (key: string, value: number) => {
+  if (typeof window === "undefined") {
+    return
+  }
+  try {
+    window.localStorage.setItem(key, String(value))
+    document.cookie = `${key}=${value}; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Failed to persist task page size", error)
+    }
+  }
+}
+
+type StoredTaskFilters = {
+  departments: string[]
+  exactMatch: boolean
+  taskScope: TaskScope
+  search: string
+}
+
+const TASK_FILTERS_KEY_PREFIX = "asap:tasks-filters"
+
+const buildTaskFilterStorageKey = (projectId?: string | null) =>
+  `${TASK_FILTERS_KEY_PREFIX}:${projectId ?? "global"}`
+
+const readStoredTaskFilters = (key: string): StoredTaskFilters | null => {
+  if (typeof window === "undefined") {
+    return null
+  }
+  const raw = window.localStorage.getItem(key)
+  if (!raw) {
+    return null
+  }
+  try {
+    const parsed = JSON.parse(raw)
+    const departments = Array.isArray(parsed?.departments)
+      ? parsed.departments.map((name: unknown) => (typeof name === "string" ? name : "")).filter(Boolean)
+      : []
+    const exactMatch = typeof parsed?.exactMatch === "boolean" ? parsed.exactMatch : true
+    const taskScope: TaskScope =
+      parsed?.taskScope === "assignee" || parsed?.taskScope === "assigner" ? parsed.taskScope : "all"
+    const search = typeof parsed?.search === "string" ? parsed.search : ""
+    return { departments, exactMatch, taskScope, search }
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Failed to read stored task filters", error)
+    }
+    return null
+  }
+}
+
+const persistTaskFilters = (key: string, filters: StoredTaskFilters) => {
+  if (typeof window === "undefined") {
+    return
+  }
+  try {
+    window.localStorage.setItem(key, JSON.stringify(filters))
+  } catch (error) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Failed to persist task filters", error)
+    }
+  }
+}
 
 type RemoteDepartment = {
   id: string
@@ -70,27 +157,82 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const { projectId } = React.use(params)
   const router = useRouter()
   const redirectToProjects = useCallback(() => {
+    dispatchNavigationAbortEvent()
     router.replace("/projects")
   }, [router])
-  const initialPageSize = BASE_PAGE_SIZE_OPTIONS[1] ?? BASE_PAGE_SIZE_OPTIONS[0]
-  const [tasks, setTasks] = useState<TaskRecord[]>([])
+  const taskPageSizeStorageKey = useMemo(
+    () => `${TASK_PAGE_SIZE_KEY}:${projectId ?? "global"}`,
+    [projectId]
+  )
+  const taskFilterStorageKey = useMemo(
+    () => buildTaskFilterStorageKey(projectId),
+    [projectId]
+  )
+  const storedTaskFilters = useMemo(
+    () => readStoredTaskFilters(taskFilterStorageKey),
+    [taskFilterStorageKey]
+  )
+  const initialPageSize = BASE_PAGE_SIZE_OPTIONS[0]
+  const [allTasks, setAllTasks] = useState<TaskRecord[]>([])
   const [hasLoadedTasks, setHasLoadedTasks] = useState(false)
-  const [search, setSearch] = useState("")
-  const [activeDepartmentFilters, setActiveDepartmentFilters] = useState<string[]>([])
-  const [taskScope, setTaskScope] = useState<TaskScope>("all")
+  const [search, setSearch] = useState(storedTaskFilters?.search ?? "")
+  const [activeDepartmentFilters, setActiveDepartmentFilters] = useState<string[]>(
+    () => storedTaskFilters?.departments ?? []
+  )
+  const [exactDepartmentMatch, setExactDepartmentMatch] = useState(
+    storedTaskFilters?.exactMatch ?? true
+  )
+  const [taskScope, setTaskScope] = useState<TaskScope>(
+    storedTaskFilters?.taskScope ?? "all"
+  )
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [pendingDeleteTask, setPendingDeleteTask] = useState<TaskRecord | null>(null)
   const [deletingTask, setDeletingTask] = useState(false)
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(initialPageSize)
+  const [pageSize, setPageSize] = useState<number>(() => {
+    if (typeof window === "undefined") {
+      return initialPageSize
+    }
+    const stored = readStoredPageSize(taskPageSizeStorageKey)
+    return stored ?? initialPageSize
+  })
+  const [pageSizeHydrated, setPageSizeHydrated] = useState(() => typeof window !== "undefined")
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState<number | null>(null)
+  const [membership, setMembership] = useState<ProjectMembershipSummary | null>(null)
+  const [membershipLoading, setMembershipLoading] = useState(true)
+  const membershipId = membership?.id ?? null
+  const canManageTasks = Boolean(membership && membership.role !== PROJECT_ROLE.MEMBER)
+  const showCreateTaskButton = membershipLoading || canManageTasks
   const colorRollbackRef = useRef<Record<string, { cardColor: string; cardTextColor: string }>>({})
   const latestColorRequestRef = useRef<Record<string, string>>({})
   const pendingColorOverridesRef = useRef<Record<string, { cardColor: string; cardTextColor: string }>>({})
   const taskFetchControllerRef = useRef<AbortController | null>(null)
   const refreshTimerRef = useRef<number | null>(null)
   const refreshInFlightRef = useRef(false)
+  const navigationAbortRef = useNavigationAbort(() => {
+    if (taskFetchControllerRef.current) {
+      taskFetchControllerRef.current.abort()
+      taskFetchControllerRef.current = null
+    }
+  })
+  useEffect(() => {
+    setPageSizeHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    if (!pageSizeHydrated) {
+      return
+    }
+    persistPageSize(taskPageSizeStorageKey, pageSize)
+  }, [pageSize, pageSizeHydrated, taskPageSizeStorageKey])
+
+  useEffect(() => {
+    setActiveDepartmentFilters(storedTaskFilters?.departments ?? [])
+    setExactDepartmentMatch(storedTaskFilters?.exactMatch ?? true)
+    setTaskScope(storedTaskFilters?.taskScope ?? "all")
+    setSearch(storedTaskFilters?.search ?? "")
+  }, [storedTaskFilters])
 
   const applyPendingCardColorOverrides = useCallback((taskList: TaskRecord[]) => {
     const overrides = pendingColorOverridesRef.current
@@ -116,17 +258,131 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       }
     })
   }, [])
+
+  const sortTasksForDisplay = useCallback((list: TaskRecord[]) => {
+    const parseTimestamp = (value?: string | null) => {
+      if (!value) return 0
+      const parsed = Date.parse(value)
+      return Number.isFinite(parsed) ? parsed : 0
+    }
+    return [...list].sort((a, b) => {
+      const scoreA = parseTimestamp(a.updatedAt) || parseTimestamp(a.createdAt)
+      const scoreB = parseTimestamp(b.updatedAt) || parseTimestamp(b.createdAt)
+      return scoreB - scoreA
+    })
+  }, [])
+
   const [tasksLoading, setTasksLoading] = useState(true)
   const [tasksError, setTasksError] = useState<string | null>(null)
   const [remoteDepartments, setRemoteDepartments] = useState<RemoteDepartment[]>([])
   const [departmentsLoading, setDepartmentsLoading] = useState(true)
   const [departmentsError, setDepartmentsError] = useState<string | null>(null)
-  const [membership, setMembership] = useState<ProjectMembershipSummary | null>(null)
-  const [membershipLoading, setMembershipLoading] = useState(true)
   const [departmentFilterMenuOpen, setDepartmentFilterMenuOpen] = useState(false)
-  const membershipId = membership?.id ?? null
-  const canManageTasks = Boolean(membership && membership.role !== PROJECT_ROLE.MEMBER)
-  const showCreateTaskButton = membershipLoading || canManageTasks
+
+  const departmentFilterSet = useMemo(() => {
+    const names = new Set(
+      activeDepartmentFilters
+        .map((name) => name.trim().toLowerCase())
+        .filter(Boolean)
+    )
+    const ids = new Set(
+      remoteDepartments
+        .filter((dept) => names.has(dept.name.trim().toLowerCase()))
+        .map((dept) => dept.id)
+    )
+    return { names, ids }
+  }, [activeDepartmentFilters, remoteDepartments])
+
+  const departmentById = useMemo(() => {
+    return remoteDepartments.reduce<Record<string, RemoteDepartment>>((acc, dept) => {
+      acc[dept.id] = dept
+      return acc
+    }, {})
+  }, [remoteDepartments])
+
+  const filteredTasks = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase()
+    return sortTasksForDisplay(
+      allTasks.filter((task) => {
+        const hasDepartmentFilters =
+          departmentFilterSet.names.size > 0 || departmentFilterSet.ids.size > 0
+        if (hasDepartmentFilters) {
+            const candidateIds = new Set<string>()
+            const candidateNames = new Set<string>()
+
+            if (task.department) {
+              candidateIds.add(task.department.id)
+              candidateNames.add(task.department.name.trim().toLowerCase())
+            }
+
+            task.assignees.forEach((assignee) => {
+              if (!assignee.departmentId) {
+                return
+              }
+              candidateIds.add(assignee.departmentId)
+              const assigneeDeptName = departmentById[assignee.departmentId]?.name
+              if (assigneeDeptName) {
+                candidateNames.add(assigneeDeptName.trim().toLowerCase())
+              }
+            })
+
+            if (exactDepartmentMatch) {
+              const idsMatchExactly =
+                departmentFilterSet.ids.size === 0 ||
+                (candidateIds.size === departmentFilterSet.ids.size &&
+                  Array.from(departmentFilterSet.ids).every((id) => candidateIds.has(id)))
+              const namesMatchExactly =
+                departmentFilterSet.names.size === 0 ||
+                (candidateNames.size === departmentFilterSet.names.size &&
+                  Array.from(departmentFilterSet.names).every((name) => candidateNames.has(name)))
+              if (!idsMatchExactly && !namesMatchExactly) {
+                return false
+              }
+            } else {
+              const matchesSelectedId = Array.from(candidateIds).some((id) =>
+                departmentFilterSet.ids.has(id)
+              )
+              const matchesSelectedName = Array.from(candidateNames).some((name) =>
+                departmentFilterSet.names.has(name)
+              )
+
+              if (!matchesSelectedId && !matchesSelectedName) {
+                return false
+              }
+            }
+        }
+        if (taskScope === "assignee") {
+          if (!membershipId) return false
+          const isAssignee = task.assignees.some((assignee) => assignee.id === membershipId)
+          if (!isAssignee) return false
+        } else if (taskScope === "assigner") {
+          if (!membershipId) return false
+          if (task.createdBy.id !== membershipId) return false
+        }
+        if (!normalizedSearch) return true
+        const haystack = [
+          task.title,
+          task.detail ?? "",
+          task.department?.name ?? "",
+          task.assignees.map((a) => a.username ?? a.fullName ?? "").join(" "),
+          task.createdBy.username ?? "",
+          task.createdBy.fullName ?? "",
+        ]
+          .join(" ")
+          .toLowerCase()
+        return haystack.includes(normalizedSearch)
+      })
+    )
+  }, [
+    allTasks,
+    departmentById,
+    departmentFilterSet,
+    exactDepartmentMatch,
+    membershipId,
+    search,
+    sortTasksForDisplay,
+    taskScope,
+  ])
 
   const departmentOptions = useMemo(() => {
     const sorted = [...remoteDepartments].sort(
@@ -134,13 +390,6 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     )
     const names = sorted.map((dept) => dept.name)
     return Array.from(new Set(names))
-  }, [remoteDepartments])
-
-  const departmentById = useMemo(() => {
-    return remoteDepartments.reduce<Record<string, RemoteDepartment>>((acc, dept) => {
-      acc[dept.id] = dept
-      return acc
-    }, {})
   }, [remoteDepartments])
 
   const departmentColorMap = useMemo(() => {
@@ -158,7 +407,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   }
 
   const taskDepartmentMeta = useMemo(() => {
-    return tasks.reduce<
+    return filteredTasks.reduce<
       Record<
         string,
         {
@@ -209,24 +458,13 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       }
       return acc
     }, {})
-  }, [departmentById, tasks])
+  }, [departmentById, filteredTasks])
 
-  const pageSizeOptions = useMemo(() => {
-    const totalTasks = totalCount ?? tasks.length
-    const options = new Set(BASE_PAGE_SIZE_OPTIONS)
-    options.add(pageSize)
-    if (totalTasks > 0) {
-      options.add(totalTasks)
-    }
-    return [...options].sort((a, b) => a - b)
-  }, [pageSize, tasks.length, totalCount])
+  const pageSizeOptions = useMemo(() => [...BASE_PAGE_SIZE_OPTIONS], [])
 
   useEffect(() => {
-    if (pageSizeOptions.length === 0) {
-      return
-    }
     if (!pageSizeOptions.includes(pageSize)) {
-      const fallbackSize = pageSizeOptions[pageSizeOptions.length - 1]
+      const fallbackSize = BASE_PAGE_SIZE_OPTIONS[0]
       setPageSize(fallbackSize)
       setPage(1)
     }
@@ -248,29 +486,51 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     })
   }, [departmentOptions])
 
+  useEffect(() => {
+    persistTaskFilters(taskFilterStorageKey, {
+      departments: activeDepartmentFilters,
+      exactMatch: exactDepartmentMatch,
+      taskScope,
+      search,
+    })
+  }, [activeDepartmentFilters, exactDepartmentMatch, search, taskFilterStorageKey, taskScope])
+
+  useEffect(() => {
+    const totalTasks = filteredTasks.length
+    setTotalPages(Math.max(1, Math.ceil(totalTasks / pageSize)))
+    setTotalCount(totalTasks)
+  }, [filteredTasks.length, pageSize])
+
   const fetchDepartments = useCallback(async () => {
-    if (!projectId) {
+    if (!projectId || navigationAbortRef.current) {
       return
     }
     setDepartmentsLoading(true)
     try {
       setDepartmentsError(null)
       const data = await fetchProjectDepartments(projectId)
+      if (navigationAbortRef.current) {
+        return
+      }
       setRemoteDepartments(normalizeDepartments(data))
     } catch (error) {
       console.error(error)
-      setDepartmentsError("Unable to load departments")
+      if (!navigationAbortRef.current) {
+        setDepartmentsError("Unable to load departments")
+      }
       if (isRemovalError(error)) {
         redirectToProjects()
       }
     } finally {
-      setDepartmentsLoading(false)
+      if (!navigationAbortRef.current) {
+        setDepartmentsLoading(false)
+      }
     }
-  }, [projectId, redirectToProjects])
+  }, [navigationAbortRef, projectId, redirectToProjects])
 
   const fetchTasks = useCallback(
-    async (nextPage = page, nextPageSize = pageSize) => {
-      if (!projectId) {
+    async () => {
+      if (!projectId || navigationAbortRef.current) {
         return
       }
       if (taskFetchControllerRef.current) {
@@ -282,32 +542,36 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       setTasksLoading(true)
       try {
         setTasksError(null)
-        const result = await fetchProjectTasks(projectId, {
-          search: search.trim() || undefined,
-          departmentNames: activeDepartmentFilters,
-          scope: taskScope !== "all" ? (taskScope as TaskScopeFilter) : undefined,
-          memberId: taskScope !== "all" ? membershipId ?? undefined : undefined,
-          page: nextPage,
-          pageSize: nextPageSize,
-          signal: controller.signal,
-        })
-        if (controller.signal.aborted) {
-          return
+        const aggregated: TaskRecord[] = []
+        let totalCountLocal: number | null = null
+        let currentPage = 1
+        const pageSize = 200
+        while (!navigationAbortRef.current) {
+          const result = await fetchProjectTasks(projectId, {
+            page: currentPage,
+            pageSize,
+            signal: controller.signal,
+          })
+          if (controller.signal.aborted || navigationAbortRef.current) {
+            return
+          }
+          aggregated.push(...result.tasks)
+          totalCountLocal = result.totalCount ?? totalCountLocal ?? aggregated.length
+          const totalPagesLocal =
+            result.totalPages ??
+            (result.totalCount && result.pageSize
+              ? Math.max(1, Math.ceil(result.totalCount / result.pageSize))
+              : null)
+          const reachedEnd =
+            (totalPagesLocal !== null && currentPage >= totalPagesLocal) ||
+            result.tasks.length < pageSize
+          if (reachedEnd) {
+            break
+          }
+          currentPage += 1
         }
-        setTasks(applyPendingCardColorOverrides(result.tasks))
-        setTotalCount(result.totalCount ?? result.tasks.length)
-        const computedTotalPages =
-          result.totalPages ??
-          (result.totalCount && result.pageSize
-            ? Math.max(1, Math.ceil(result.totalCount / result.pageSize))
-            : 1)
-        setTotalPages(computedTotalPages)
-        if (result.page && result.page !== page) {
-          setPage(result.page)
-        }
-        if (result.pageSize && result.pageSize !== pageSize) {
-          setPageSize(result.pageSize)
-        }
+        setAllTasks(applyPendingCardColorOverrides(aggregated))
+        setTotalCount(totalCountLocal ?? aggregated.length)
       } catch (error) {
         if ((error as Error)?.name === "AbortError") {
           return
@@ -317,30 +581,29 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
           redirectToProjects()
           return
         }
-        setTasksError(error instanceof Error ? error.message : "Unable to load tasks")
+        if (!navigationAbortRef.current) {
+          setTasksError(error instanceof Error ? error.message : "Unable to load tasks")
+        }
       } finally {
         if (taskFetchControllerRef.current === controller) {
           taskFetchControllerRef.current = null
-          setHasLoadedTasks(true)
-          setTasksLoading(false)
+          if (!navigationAbortRef.current) {
+            setHasLoadedTasks(true)
+            setTasksLoading(false)
+          }
         }
       }
     },
     [
       projectId,
-      search,
-      activeDepartmentFilters,
-      taskScope,
-      membershipId,
-      page,
-      pageSize,
       applyPendingCardColorOverrides,
+      navigationAbortRef,
       redirectToProjects,
     ]
   )
 
   const reloadMembership = useCallback(async () => {
-    if (!projectId) {
+    if (!projectId || navigationAbortRef.current) {
       setMembership(null)
       setMembershipLoading(false)
       return
@@ -348,17 +611,24 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     setMembershipLoading(true)
     try {
       const membershipRecord = await fetchProjectMembership(projectId)
+      if (navigationAbortRef.current) {
+        return
+      }
       setMembership(membershipRecord ?? null)
     } catch (error) {
       console.error("Failed to load membership", error)
-      setMembership(null)
+      if (!navigationAbortRef.current) {
+        setMembership(null)
+      }
       if (isRemovalError(error)) {
         redirectToProjects()
       }
     } finally {
-      setMembershipLoading(false)
+      if (!navigationAbortRef.current) {
+        setMembershipLoading(false)
+      }
     }
-  }, [projectId, redirectToProjects])
+  }, [navigationAbortRef, projectId, redirectToProjects])
 
   useEffect(() => {
     fetchDepartments()
@@ -377,6 +647,9 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       return
     }
     const handleProjectRefresh = (event: Event) => {
+      if (navigationAbortRef.current) {
+        return
+      }
       const detail = (
         event as CustomEvent<{ projectId?: string | null; origin?: string }>
       ).detail
@@ -392,7 +665,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     }
     window.addEventListener(PROJECT_REFRESH_EVENT, handleProjectRefresh)
     return () => window.removeEventListener(PROJECT_REFRESH_EVENT, handleProjectRefresh)
-  }, [fetchDepartments, fetchTasks, projectId, reloadMembership])
+  }, [fetchDepartments, fetchTasks, navigationAbortRef, projectId, reloadMembership])
 
   useEffect(() => {
     if (!membershipId && taskScope !== "all") {
@@ -438,7 +711,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       const derivedTextColor = getContrastingTextColor(normalizedColor)
       latestColorRequestRef.current[taskId] = normalizedColor
 
-      setTasks((prev) => {
+      setAllTasks((prev) => {
         const previousTask = prev.find((task) => task.id === taskId)
         if (previousTask) {
           colorRollbackRef.current[taskId] = {
@@ -446,11 +719,12 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
             cardTextColor: previousTask.cardTextColor,
           }
         }
-        return prev.map((task) =>
+        const nextList = prev.map((task) =>
           task.id === taskId
             ? { ...task, cardColor: normalizedColor, cardTextColor: derivedTextColor }
             : task
         )
+        return sortTasksForDisplay(nextList)
       })
 
       try {
@@ -469,7 +743,9 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
         if (latestColorRequestRef.current[taskId] !== normalizedColor) {
           return
         }
-        setTasks((prev) => prev.map((task) => (task.id === updatedTask.id ? updatedTask : task)))
+        setAllTasks((prev) =>
+          sortTasksForDisplay(prev.map((task) => (task.id === updatedTask.id ? updatedTask : task)))
+        )
         pendingColorOverridesRef.current[taskId] = {
           cardColor: normalizedColor,
           cardTextColor: derivedTextColor,
@@ -489,16 +765,17 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
           return
         }
         delete pendingColorOverridesRef.current[taskId]
-        setTasks((prev) => {
+        setAllTasks((prev) => {
           const rollback = colorRollbackRef.current[taskId]
           if (!rollback) {
             return prev
           }
-          return prev.map((task) =>
+          const nextList = prev.map((task) =>
             task.id === taskId
               ? { ...task, cardColor: rollback.cardColor, cardTextColor: rollback.cardTextColor }
               : task
           )
+          return sortTasksForDisplay(nextList)
         })
         delete colorRollbackRef.current[taskId]
         delete latestColorRequestRef.current[taskId]
@@ -514,7 +791,10 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     [projectId, fetchTasks]
   )
 
-  const paginatedTasks = tasks
+  const paginatedTasks = useMemo(() => {
+    const startIndex = (page - 1) * pageSize
+    return filteredTasks.slice(startIndex, startIndex + pageSize)
+  }, [filteredTasks, page, pageSize])
 
   React.useEffect(() => {
     setPage(1)
@@ -522,18 +802,20 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
 
   const handleToggleDepartmentFilter = useCallback((departmentName: string, enabled: boolean) => {
     setActiveDepartmentFilters((prev) => {
+      const normalized = departmentName.trim()
       if (enabled) {
-        if (prev.includes(departmentName)) {
+        if (prev.some((item) => item.trim().toLowerCase() === normalized.toLowerCase())) {
           return prev
         }
-        return [...prev, departmentName]
+        return [...prev, normalized]
       }
-      return prev.filter((name) => name !== departmentName)
+      return prev.filter((name) => name.trim().toLowerCase() !== normalized.toLowerCase())
     })
   }, [])
 
   const handleResetFilters = useCallback(() => {
     setActiveDepartmentFilters([])
+    setExactDepartmentMatch(true)
     setTaskScope("all")
   }, [])
 
@@ -593,7 +875,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
           typeof payload?.error === "string" ? payload.error : "Failed to delete task"
         throw new Error(message)
       }
-      setTasks((prev) => prev.filter((task) => task.id !== pendingDeleteTask.id))
+      setAllTasks((prev) => prev.filter((task) => task.id !== pendingDeleteTask.id))
       setTotalCount((prev) => (prev === null ? prev : Math.max(0, prev - 1)))
       if (typeof window !== "undefined") {
         window.dispatchEvent(
@@ -696,6 +978,8 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                   departmentColorMap={departmentColorMap}
                   activeDepartmentFilters={activeDepartmentFilters}
                   onToggleDepartmentFilter={handleToggleDepartmentFilter}
+                  exactDepartmentMatch={exactDepartmentMatch}
+                  onExactDepartmentMatchChange={setExactDepartmentMatch}
                   taskScope={taskScope}
                   onTaskScopeChange={handleTaskScopeChange}
                   isScopeSelectionDisabled={isScopeSelectionDisabled}
@@ -708,7 +992,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                 <TaskPageSizeSelector
                   pageSize={pageSize}
                   pageSizeOptions={pageSizeOptions}
-                  totalCount={totalCount ?? tasks.length}
+                  totalCount={totalCount ?? filteredTasks.length}
                   onPageSizeChange={(sizeOption) => {
                     if (sizeOption === pageSize) {
                       return
@@ -742,7 +1026,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
             >
               <div
                 className={cn(
-                  "projects-scroll [scrollbar-gutter:stable] flex flex-col space-y-3 px-0.5 py-2 pb-2"
+                  "projects-scroll relative [scrollbar-gutter:stable] flex flex-col space-y-3 px-0.5 py-2 pb-2"
                 )}
                 style={{
                   maxHeight: cardListMaxHeight,
@@ -754,7 +1038,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                     {tasksError}
                   </div>
                 ) : null}
-                {(!hasLoadedTasks || tasksLoading) ? (
+                {(!hasLoadedTasks || tasksLoading) && paginatedTasks.length === 0 ? (
                   <div className="flex min-h-[11rem] flex-col items-center justify-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-6 py-6 text-center text-sm text-primary">
                     <span className="text-base font-semibold">Loading task...</span>
                     <div className="w-full max-w-sm">
@@ -763,7 +1047,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                   </div>
                 ) : null}
                 {paginatedTasks.map((task, index) => (
-                  <div key={task.id}>
+                  <div key={task.id} className="page-slide">
                     <TaskCard
                       title={task.title}
                       deadline={task.dueDate ? format(new Date(task.dueDate), "dd/MM/yyyy") : "—"}
@@ -801,6 +1085,14 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                     />
                   </div>
                 ))}
+                {tasksLoading && paginatedTasks.length > 0 ? (
+                  <div className="pointer-events-auto absolute inset-0 z-10 flex items-center justify-center rounded-[2.25rem] bg-white/70 backdrop-blur-sm">
+                    <div className="flex w-full max-w-xs flex-col items-center gap-3 rounded-2xl border border-primary/20 bg-white/80 px-6 py-5 text-sm text-primary shadow-[0_8px_20px_rgba(72,68,110,0.15)]">
+                      <span className="text-base font-semibold">Updating tasks…</span>
+                      <ProgressBar />
+                    </div>
+                  </div>
+                ) : null}
                 {paginatedTasks.length === 0 &&
                 hasLoadedTasks &&
                 !tasksLoading &&
@@ -820,7 +1112,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
               </div>
             </div>
 
-            {!tasksLoading && (totalCount ?? tasks.length) > 0 ? (
+            {(totalCount ?? filteredTasks.length) > 0 ? (
               <TaskPaginationControls
                 page={page}
                 totalPages={totalPages}

@@ -41,7 +41,7 @@ export function MemberPaginationControls({
   return (
     <div
       ref={paginationRef}
-      className="mt-auto mb-20 flex select-none items-center justify-center gap-4 pt-4"
+      className="mt-auto mb-20 flex select-none items-center justify-center gap-4 pt-4 form-entry"
       onFocus={onContainerFocus}
       onBlur={onContainerBlur}
     >
@@ -52,8 +52,8 @@ export function MemberPaginationControls({
         onClick={onPrev}
         disabled={page === 1}
         className={cn(
-          "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
-          page === 1 && "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
+          "pagination-surface inline-flex size-10 select-none items-center justify-center rounded-full text-lg transition focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
+          page === 1 && "cursor-not-allowed"
         )}
       >
         &#9664;
@@ -62,7 +62,7 @@ export function MemberPaginationControls({
         <span
           aria-hidden="true"
           className={cn(
-            "absolute -top-8 whitespace-nowrap rounded-full border border-primary/30 bg-white px-3 py-1 text-xs font-medium text-primary shadow-sm transition-all duration-200 ease-out",
+            "pagination-hint absolute -top-8 whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium shadow-sm transition-all duration-200 ease-out",
             pageHintVisible
               ? "pointer-events-auto opacity-100 translate-y-0 scale-100"
               : "pointer-events-none opacity-0 -translate-y-1 scale-95"
@@ -83,7 +83,7 @@ export function MemberPaginationControls({
           onBlur={onPageInputBlur}
           onChange={(event) => onPageInputChange(event.target.value)}
           onKeyDown={onPageInputKeyDown}
-          className="w-16 select-text rounded-full border-2 border-primary/40 bg-white px-3 py-2 text-center text-base font-semibold text-primary shadow-sm focus:border-primary focus:outline-none"
+          className="pagination-input w-16 select-text rounded-full px-3 py-2 text-center text-base font-semibold shadow-sm focus:outline-none"
           aria-describedby="project-page-hint"
         />
       </div>
@@ -94,9 +94,8 @@ export function MemberPaginationControls({
         onClick={onNext}
         disabled={page === totalPages}
         className={cn(
-          "inline-flex size-10 select-none items-center justify-center rounded-full border-2 border-primary/40 bg-primary text-lg text-primary-foreground transition hover:bg-primary/90 focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
-          page === totalPages &&
-            "bg-primary/30 text-primary/90 border-primary/20 cursor-not-allowed"
+          "pagination-surface inline-flex size-10 select-none items-center justify-center rounded-full text-lg transition focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 active:scale-95",
+          page === totalPages && "cursor-not-allowed"
         )}
       >
         &#9654;

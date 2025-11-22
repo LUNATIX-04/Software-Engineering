@@ -1,8 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { ChevronDown, Check, GripVertical, Palette, Trash2, Wand2 } from "lucide-react"
-import { HexColorPicker } from "react-colorful"
+import { ChevronDown, Check, GripVertical, Palette, Trash2 } from "lucide-react"
 import { useSortable } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 
@@ -21,22 +20,9 @@ import type { ProjectDepartmentRecord } from "@/utils/projects/departments"
 
 import DepartmentDeleteDialog from "./DepartmentDeleteDialog"
 import type { HeadOption } from "../types"
+import DepartmentColorMenu, { QUICK_DEPARTMENT_COLORS } from "@/components/projects/DepartmentColorMenu"
 
 const CARD_TEXT_COLOR = DEFAULT_DEPARTMENT_TEXT_COLOR
-const QUICK_COLOR_OPTIONS = [
-  { label: "Red", value: "#FFB3B3" },
-  { label: "Orange", value: "#FFC9A9" },
-  { label: "Yellow", value: "#FFE6A7" },
-  { label: "Green", value: "#93E8B9" },
-  { label: "Light Green", value: "#CFF7C4" },
-  { label: "Sky", value: "#B7E5FF" },
-  { label: "Blue", value: "#A9C7FF" },
-  { label: "Purple", value: "#CDB4FF" },
-  { label: "Pink", value: "#FFB8E2" },
-  { label: "Gray", value: "#D9DEE8" },
-  { label: "White", value: "#FFFFFF" },
-  { label: "Black", value: "#1E1E1E" },
-] as const
 
 type DepartmentCardProps = {
   department: ProjectDepartmentRecord
@@ -92,8 +78,6 @@ export default function DepartmentCard({
     disabled,
   })
   const [headMenuOpen, setHeadMenuOpen] = useState(false)
-  const [colorMenuOpen, setColorMenuOpen] = useState(false)
-  const [colorMode, setColorMode] = useState<"presets" | "custom">("presets")
   const [previewColor, setPreviewColor] = useState<string | null>(null)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState(department.name)
@@ -111,10 +95,8 @@ export default function DepartmentCard({
   }, [headControlsDisabled])
 
   useEffect(() => {
-    if (!colorMenuOpen) {
-      setPreviewColor(null)
-    }
-  }, [colorMenuOpen])
+    setPreviewColor(null)
+  }, [department.color])
 
   const displayColor = previewColor ?? department.color
   const innerTone = useMemo(() => blendColorWithWhite(displayColor, 0.35), [displayColor])
@@ -184,12 +166,11 @@ export default function DepartmentCard({
   const handleColorMenuOpenChange = useCallback(
     (open: boolean) => {
       if (colorControlsDisabled) {
-        setColorMenuOpen(false)
+        setPreviewColor(null)
         return
       }
-      setColorMenuOpen(open)
       if (!open) {
-        setColorMode("presets")
+        setPreviewColor(null)
       }
     },
     [colorControlsDisabled]
@@ -331,11 +312,20 @@ export default function DepartmentCard({
           Number of Member : {memberCount ?? department.memberCount}
         </p>
 
-        <DropdownMenu
-          open={colorControlsDisabled ? false : colorMenuOpen}
-          onOpenChange={handleColorMenuOpenChange}
-        >
-          <DropdownMenuTrigger asChild>
+        <DepartmentColorMenu
+          color={department.color}
+            quickColors={QUICK_DEPARTMENT_COLORS}
+            disabled={colorControlsDisabled}
+            align="center"
+            side="top"
+            onSelectColor={(next) => {
+              if (disabled) return
+              setPreviewColor(null)
+              onSelectColor(department.id, next)
+            }}
+            onPreviewColor={(next) => setPreviewColor(next)}
+            onOpenChange={handleColorMenuOpenChange}
+            trigger={
             <button
               type="button"
               data-cy={buildDataCy("department-color-trigger")}
@@ -348,80 +338,11 @@ export default function DepartmentCard({
               </span>
               <span
                 className="size-6 rounded-full border-2 border-primary/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]"
-                style={{ backgroundColor: department.color }}
+                style={{ backgroundColor: displayColor }}
               />
             </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="center"
-            side="top"
-            className="w-64 max-h-[24rem] overflow-y-auto rounded-3xl border border-primary/30 bg-white p-4 text-sm font-semibold text-primary shadow-[0_16px_30px_rgba(72,68,110,0.2)]"
-          >
-            <div className="mb-3 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-primary/70">
-              <span className="inline-flex items-center gap-1">
-                {colorMode === "presets" ? (
-                  <Palette className="size-3.5" />
-                ) : (
-                  <Wand2 className="size-3.5" />
-                )}
-                {colorMode === "presets" ? "Quick Colors" : "Custom Color"}
-              </span>
-              <button
-                type="button"
-                data-cy={buildDataCy("department-color-mode-toggle")}
-                className="rounded-full border border-transparent px-3 py-1 text-[0.7rem] font-semibold text-primary transition hover:border-primary/30 hover:bg-primary/5"
-                onClick={() => setColorMode((mode) => (mode === "presets" ? "custom" : "presets"))}
-              >
-                {colorMode === "presets" ? (
-                  <span className="inline-flex items-center gap-1">
-                    <Wand2 className="size-3.5" />
-                    Custom
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1">
-                    <Palette className="size-3.5" />
-                    Palette
-                  </span>
-                )}
-              </button>
-            </div>
-            {colorMode === "presets" ? (
-              <div className="flex flex-wrap gap-2">
-                {QUICK_COLOR_OPTIONS.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    data-cy={buildDataCy(`department-color-option-${option.value.replace("#", "")}`)}
-                    className="flex size-10 items-center justify-center rounded-2xl border-2 border-primary/20 text-[0.65rem] font-semibold transition hover:border-primary"
-                    style={{ backgroundColor: option.value }}
-                    onMouseEnter={() => setPreviewColor(option.value)}
-                    onMouseLeave={() => setPreviewColor(null)}
-                    onFocus={() => setPreviewColor(option.value)}
-                    onBlur={() => setPreviewColor(null)}
-                    onClick={() => {
-                      if (disabled) {
-                        return
-                      }
-                      onSelectColor(department.id, option.value)
-                      setColorMenuOpen(false)
-                    }}
-                    aria-label={`Select ${option.label}`}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="space-y-2 rounded-2xl border border-primary/20 bg-white/60 p-3 max-h-[18rem] overflow-auto">
-                <div className="rounded-2xl bg-white p-2">
-                  <HexColorPicker
-                    color={department.color}
-                    onChange={(color) => onSelectColor(department.id, color)}
-                    style={{ width: "100%", height: "160px" }}
-                  />
-                </div>
-              </div>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
+          }
+        />
       </div>
 
       {showManageControls ? (

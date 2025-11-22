@@ -32,10 +32,11 @@ interface ICalendarContext {
 	selectedColors: TEventColor[];
 	filterEventsBySelectedColors: (colors: TEventColor) => void;
 	filterEventsBySelectedUser: (userId: IUser["id"] | "all") => void;
-	selectedDepartments: string[];
-	toggleDepartmentFilter: (department: string) => void;
+	selectedDepartmentNames: string[];
+	selectedDepartmentIds: string[];
+	toggleDepartmentFilter: (departmentName: string, departmentId?: string | null) => void;
 	availableDepartments: string[];
-	departmentMeta: Record<string, { color?: string; textColor?: string }>;
+	departmentMeta: Record<string, { id?: string | null; color?: string; textColor?: string }>;
 	clearDepartmentFilters: () => void;
 	users: IUser[];
 	events: IEvent[];
@@ -106,7 +107,8 @@ export function CalendarProvider({
 	const [selectedUserId, setSelectedUserId] = useState<IUser["id"] | "all">(
 		"all",
 	);
-	const [selectedDepartments, setSelectedDepartments] = useState<string[]>([]);
+	const [selectedDepartmentNames, setSelectedDepartmentNames] = useState<string[]>([]);
+	const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<string[]>([]);
 	const [selectedColors, setSelectedColors] = useState<TEventColor[]>([]);
 
 	const [allEvents, setAllEvents] = useState<IEvent[]>(events || []);
@@ -121,33 +123,43 @@ export function CalendarProvider({
 	const availableDepartments = useMemo(() => {
 		const names = new Set<string>();
 		allEvents.forEach((event) => {
-			if (event.departmentName) {
-				names.add(event.departmentName);
+			const normalized = event.departmentName?.trim();
+			if (normalized) {
+				names.add(normalized);
 			}
 		});
 		return Array.from(names);
 	}, [allEvents]);
 
 	const departmentMeta = useMemo(() => {
-		const meta: Record<string, { color?: string; textColor?: string }> =
-			{};
+		const meta: Record<
+			string,
+			{ id?: string | null; color?: string; textColor?: string }
+		> = {};
 		allEvents.forEach((event) => {
-			if (!event.departmentName) {
+			const departmentName = event.departmentName?.trim();
+			if (!departmentName) {
 				return;
 			}
-			const existing = meta[event.departmentName];
-			if (!existing || event.departmentColor) {
-				meta[event.departmentName] = {
-					color: event.departmentColor ?? existing?.color,
-					textColor: event.departmentTextColor ?? existing?.textColor,
-				};
-			}
+			const existing = meta[departmentName];
+			meta[departmentName] = {
+				id: event.departmentId ?? existing?.id ?? null,
+				color: event.departmentColor ?? existing?.color,
+				textColor: event.departmentTextColor ?? existing?.textColor,
+			};
 		});
 		return meta;
 	}, [allEvents]);
 
 	const applyFilters = useCallback(() => {
 		let nextEvents = allEvents;
+		const selectedDepartmentNamesLower = selectedDepartmentNames
+			.map((name) => name.trim().toLowerCase())
+			.filter(Boolean);
+		const selectedDepartmentNamesSet = new Set(selectedDepartmentNamesLower);
+		const selectedDepartmentIdsSet = new Set(
+			selectedDepartmentIds.map((id) => id.trim()).filter(Boolean),
+		);
 
 		if (selectedColors.length > 0) {
 			nextEvents = nextEvents.filter((event) => {
@@ -156,12 +168,17 @@ export function CalendarProvider({
 			});
 		}
 
-		if (selectedDepartments.length > 0) {
+		if (selectedDepartmentNames.length > 0 || selectedDepartmentIds.length > 0) {
 			nextEvents = nextEvents.filter((event) => {
-				if (!event.departmentName) {
+				const departmentName = event.departmentName?.trim().toLowerCase() ?? "";
+				const departmentId = event.departmentId ?? "";
+				const matchesName =
+					departmentName.length > 0 && selectedDepartmentNamesSet.has(departmentName);
+				const matchesId = departmentId && selectedDepartmentIdsSet.has(departmentId);
+				if (!matchesName && !matchesId) {
 					return false;
 				}
-				return selectedDepartments.includes(event.departmentName);
+				return true;
 			});
 		}
 
@@ -172,7 +189,7 @@ export function CalendarProvider({
 		}
 
 		setFilteredEvents(nextEvents);
-	}, [allEvents, selectedColors, selectedDepartments, selectedUserId]);
+	}, [allEvents, selectedColors, selectedDepartmentIds, selectedDepartmentNames, selectedUserId]);
 
 	useEffect(() => {
 		applyFilters();
@@ -219,17 +236,37 @@ export function CalendarProvider({
 		setSelectedUserId(userId);
 	};
 
-	const toggleDepartmentFilter = (department: string) => {
-		setSelectedDepartments((prev) => {
-			if (prev.includes(department)) {
-				return prev.filter((name) => name !== department);
+	const toggleDepartmentFilter = (departmentName: string, departmentId?: string | null) => {
+		const normalizedName = departmentName.trim();
+		if (!normalizedName && !departmentId) {
+			return;
+		}
+		setSelectedDepartmentNames((prev) => {
+			if (!normalizedName) return prev;
+			const exists = prev.some(
+				(name) => name.trim().toLowerCase() === normalizedName.toLowerCase(),
+			);
+			if (exists) {
+				return prev.filter(
+					(name) => name.trim().toLowerCase() !== normalizedName.toLowerCase(),
+				);
 			}
-			return [...prev, department];
+			return [...prev, normalizedName];
 		});
+		if (departmentId) {
+			setSelectedDepartmentIds((prev) => {
+				const exists = prev.some((id) => id === departmentId);
+				if (exists) {
+					return prev.filter((id) => id !== departmentId);
+				}
+				return [...prev, departmentId];
+			});
+		}
 	};
 
 	const clearDepartmentFilters = () => {
-		setSelectedDepartments([]);
+		setSelectedDepartmentNames([]);
+		setSelectedDepartmentIds([]);
 	};
 
 	const handleSelectDate = (date: Date | undefined) => {
@@ -263,7 +300,8 @@ export function CalendarProvider({
 		const clearFilter = () => {
 			setSelectedColors([]);
 			setSelectedUserId("all");
-			setSelectedDepartments([]);
+			setSelectedDepartmentNames([]);
+			setSelectedDepartmentIds([]);
 		};
 
 		const value = {
@@ -275,7 +313,8 @@ export function CalendarProvider({
 			setBadgeVariant,
 			users,
 			selectedColors,
-			selectedDepartments,
+			selectedDepartmentNames,
+			selectedDepartmentIds,
 			toggleDepartmentFilter,
 			availableDepartments,
 			departmentMeta,

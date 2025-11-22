@@ -95,7 +95,7 @@ export default function TaskCardMenu({
       <DropdownMenuContent
         align="end"
         sideOffset={-4}
-        className="w-48 rounded-2xl border-none bg-button-background p-3 text-base text-button-foreground shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
+        className="dialog-scroll dropdown-surface w-48 max-h-[28rem] overflow-y-auto rounded-2xl border-none bg-button-background p-3 text-base text-button-foreground"
         data-task-menu="true"
         onPointerDown={(event) => event.stopPropagation()}
         onClick={(event) => event.stopPropagation()}

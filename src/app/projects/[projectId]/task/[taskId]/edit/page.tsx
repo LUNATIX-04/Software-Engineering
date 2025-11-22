@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react"
 import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
+import { ProgressBar } from "@/components/ui/progress-bar"
 import { TaskForm, type TaskAssigneeOption, type TaskFormValues } from "@/components/tasks"
 import { DEFAULT_TASK_CARD_COLOR } from "@/constants/task-colors"
 import { useNotifications } from "@/components/notifications/Notification"
@@ -182,14 +183,19 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
         <div className="mx-0 flex-1">
           {formLoading ? (
             <div className="rounded-[2rem] border-2 border-dashed border-primary/30 bg-white/60 px-6 py-10 text-center text-primary">
-              Loading task…
+              <div className="flex flex-col items-center gap-3">
+                <span className="text-base font-semibold">Loading task…</span>
+                <div className="w-full max-w-sm">
+                  <ProgressBar />
+                </div>
+              </div>
             </div>
           ) : formError ? (
             <div className="rounded-[2rem] border-2 border-destructive/30 bg-destructive/10 px-6 py-10 text-center text-destructive">
               {formError}
             </div>
           ) : initialValues ? (
-            <div className="lg:mt-10 mb-10 w-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="lg:mt-10 mb-10 w-full form-entry">
               <TaskForm
                 className="w-full"
                 heading="Edit Task"

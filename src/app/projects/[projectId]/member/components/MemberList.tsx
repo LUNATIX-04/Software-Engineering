@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { TOOLTIP_DELAY_DURATION_MS } from "@/constants/ui"
 
@@ -43,6 +45,9 @@ export function MemberList({
   canEditMember,
   canKickMemberTarget,
 }: MemberListProps) {
+  const [activeMenuMemberId, setActiveMenuMemberId] = useState<string | null>(null)
+  const [activeTooltipMemberId, setActiveTooltipMemberId] = useState<string | null>(null)
+
   if (membersError) {
     return (
       <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-6 py-4 text-sm text-destructive">
@@ -80,14 +85,31 @@ export function MemberList({
         const isDepartmentHead =
           Boolean(departmentHeadUsername) && departmentHeadUsername === member.name
         const roleLabel =
-          isDepartmentHead && member.rawRole === "OWNER"
-            ? "Header (Project Owner)"
+          member.rawRole === "OWNER"
+            ? isDepartmentHead
+              ? "Header (Project Owner)"
+              : "Member (Project Owner)"
             : member.role
         const isSelf = member.id === membership?.id
         const canKickThisMember = canKickMemberTarget(member)
+        const menuOpen = activeMenuMemberId === member.id
+        const tooltipOpen = !menuOpen && activeTooltipMemberId === member.id
         return (
           <div key={member.id}>
-            <Tooltip delayDuration={TOOLTIP_DELAY_DURATION_MS}>
+            <Tooltip
+              delayDuration={TOOLTIP_DELAY_DURATION_MS}
+              open={tooltipOpen}
+              disableHoverableContent={menuOpen}
+              onOpenChange={(open) => {
+                if (menuOpen) {
+                  setActiveTooltipMemberId(null)
+                  return
+                }
+                setActiveTooltipMemberId((current) =>
+                  open ? member.id : current === member.id ? null : current
+                )
+              }}
+            >
               <TooltipTrigger asChild>
                 <div className="w-full page-slide">
                   <MemberCard
@@ -97,12 +119,8 @@ export function MemberList({
                     avatarUrl={member.avatarUrl}
                     role={member.role}
                     roleLabel={roleLabel}
-                    roleOptions={isReadOnly ? undefined : (member.rawRole === "OWNER" ? [] : ["Header", "Member"])}
-                    onRoleSelect={
-                      isReadOnly || member.rawRole === "OWNER"
-                        ? undefined
-                        : (role) => onRoleChange(member.id, role)
-                    }
+                    roleOptions={isReadOnly ? undefined : ["Header", "Member"]}
+                    onRoleSelect={isReadOnly ? undefined : (role) => onRoleChange(member.id, role)}
                     department={member.department}
                     availableDepartments={isReadOnly ? undefined : memberDepartmentOptions}
                     onDepartmentSelect={
@@ -110,6 +128,16 @@ export function MemberList({
                         ? undefined
                         : (department) => handleSetMemberDepartment(member.id, department)
                     }
+                    onMenuOpenChange={(open) => {
+                      if (open) {
+                        setActiveMenuMemberId(member.id)
+                        setActiveTooltipMemberId(null)
+                      } else {
+                        setActiveMenuMemberId((current) =>
+                          current === member.id ? null : current
+                        )
+                      }
+                    }}
                     readOnly={isReadOnly}
                     departmentColors={departmentStyles}
                     onKick={canKickThisMember && !isSelf ? () => requestKickMember(member) : undefined}

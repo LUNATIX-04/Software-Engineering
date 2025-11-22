@@ -2,15 +2,20 @@
 
 import { useCallback, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
 import { ProjectForm } from "@/components/projects/ProjectForm"
 import type { ProjectFormValues } from "@/components/projects/ProjectForm/types"
 import { createProject } from "@/utils/projects/api"
+import {
+  createProjectDepartment,
+  fetchProjectDepartments,
+  updateProjectDepartment,
+} from "@/utils/projects/departments"
 import { uploadProjectImage } from "@/utils/projects/media"
 import { useNotifications } from "@/components/notifications/Notification"
 import { usePreferences } from "@/contexts/preferences"
+import BackButton from "@/components/navigation/BackButton"
+import { getContrastingTextColor, generatePastelColor, sanitizeHexColor } from "@/utils/colors"
 
 export default function CreateProjectPage() {
   const router = useRouter()
@@ -53,12 +58,42 @@ export default function CreateProjectPage() {
           }
         }
 
-        await createProject({
-          title,
-          description: values.detail.trim() || null,
-          departments,
-          imageUrl,
-        })
+        try {
+          const project = await createProject({
+            title,
+            description: values.detail.trim() || null,
+            departments,
+            imageUrl,
+          })
+          const departmentColors = values.departmentColors ?? {}
+          const existingDepartments = await fetchProjectDepartments(project.id).catch(() => [])
+          const existingByName = new Map(
+            existingDepartments.map((dept) => [dept.name.toLowerCase(), dept])
+          )
+
+          for (const name of departments) {
+            const colorConfig = departmentColors[name]
+            const desiredColor = colorConfig?.color ? sanitizeHexColor(colorConfig.color) : null
+            const match = existingByName.get(name.toLowerCase())
+
+            if (match) {
+              if (desiredColor && match.color.toLowerCase() !== desiredColor.toLowerCase()) {
+                const textColor = getContrastingTextColor(desiredColor)
+                await updateProjectDepartment(project.id, match.id, {
+                  color: desiredColor,
+                  textColor,
+                })
+              }
+            } else {
+              const color = desiredColor ?? generatePastelColor()
+              const textColor = getContrastingTextColor(color)
+              await createProjectDepartment(project.id, { name, color, textColor })
+            }
+          }
+        } catch (error) {
+          console.error("Failed to sync department colors", error)
+        }
+
         router.push("/projects")
       } catch (error) {
         console.error("Failed to create project", error)
@@ -83,19 +118,12 @@ export default function CreateProjectPage() {
   return (
     <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
       <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
-        <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
-          <Button
-            type="button"
-            variant="ghost"
-            data-cy="project-create-back-button"
-            onClick={() => router.push("/projects")}
-            className="inline-flex size-12 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary focus-visible:ring-0"
-            aria-label="Back to projects"
-          >
-            <ArrowLeft className="size-6" aria-hidden="true" />
-          </Button>
-        </div>
-        <div className="mx-0 flex-1 lg:mt-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+        <BackButton
+          dataCy="project-create-back-button"
+          ariaLabel="Back to projects"
+          onClick={() => router.push("/projects")}
+        />
+        <div className="mx-0 flex-1 lg:mt-10 form-entry">
           <ProjectForm
             className="w-full"
             heading="Create Project"

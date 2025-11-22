@@ -1,5 +1,5 @@
 export function sanitizeHexColor(input: string): string {
-  const value = input.trim()
+  const value = String(input || "").trim()
   if (!value) {
     return "#FFFFFF"
   }

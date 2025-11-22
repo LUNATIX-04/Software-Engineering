@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, Filter, X } from "lucide-react";
+import { Filter, X } from "lucide-react";
 import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
@@ -26,7 +26,8 @@ export default function FilterEvents() {
 	const {
 		availableDepartments,
 		departmentMeta,
-		selectedDepartments,
+		selectedDepartmentNames,
+		selectedDepartmentIds,
 		filterEventsBySelectedUser,
 		clearFilter,
 		selectedUserId,
@@ -136,11 +137,16 @@ export default function FilterEvents() {
 		);
 	}, [availableDepartments, remoteDepartments]);
 
-	const filterActive = selectedDepartments.length > 0 || selectedUserId !== "all";
+	const hasDepartmentFilters =
+		selectedDepartmentNames.length > 0 || selectedDepartmentIds.length > 0;
+	const filterActive = hasDepartmentFilters || selectedUserId !== "all";
 
 	const handleToggleDepartmentFilter = useCallback(
-		(department: string) => toggleDepartmentFilter(department),
-		[toggleDepartmentFilter],
+		(department: string) => {
+			const meta = remoteDepartmentByName[department] ?? departmentMeta[department];
+			toggleDepartmentFilter(department, meta?.id ?? null);
+		},
+		[departmentMeta, remoteDepartmentByName, toggleDepartmentFilter],
 	);
 
 	const applyTaskScope = useCallback(
@@ -215,11 +221,16 @@ export default function FilterEvents() {
 						</div>
 					) : (
 						departmentOptions.map((department) => {
-							const meta = departmentMeta[department] ?? remoteDepartmentByName[department];
+							const meta = remoteDepartmentByName[department] ?? departmentMeta[department];
+							const isChecked =
+								selectedDepartmentNames.some(
+									(name) => name.trim().toLowerCase() === department.trim().toLowerCase(),
+								) ||
+								(meta?.id ? selectedDepartmentIds.includes(meta.id) : false);
 							return (
 								<DropdownMenuCheckboxItem
 									key={department}
-									checked={selectedDepartments.includes(department)}
+									checked={isChecked}
 									onCheckedChange={() => handleToggleDepartmentFilter(department)}
 									onSelect={(event) => event.preventDefault()}
 									className="rounded-2xl px-3 py-2 pr-10 text-foreground focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
@@ -233,9 +244,6 @@ export default function FilterEvents() {
 										/>
 										<span className="block max-w-[10rem] truncate">{department}</span>
 									</span>
-									{selectedDepartments.includes(department) && (
-										<CheckIcon className="size-4 text-primary" />
-									)}
 								</DropdownMenuCheckboxItem>
 							);
 						})

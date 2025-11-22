@@ -1,8 +1,9 @@
 "use client"
 
-import { FormEvent, useEffect, useMemo, useState } from "react"
+import { FormEvent, useEffect, useState } from "react"
 
 import { usePreferences } from "@/contexts/preferences"
+import { useNotifications } from "@/components/notifications/Notification"
 import type { DepartmentLayoutOption, ThemeOption } from "@/types/preferences"
 import {
   Select,
@@ -12,8 +13,9 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
-import { getSupabaseBrowserClient } from "@/utils/supabase/client"
+import { loadTooltipPreference, setTooltipPreference, TOOLTIP_PREF_EVENT } from "@/components/ui/tooltip"
 
 type StatusState =
   | { kind: "idle" }
@@ -34,12 +36,14 @@ const departmentLabels: Record<DepartmentLayoutOption, string> = {
 }
 
 const themeSwatches: Record<ThemeOption, string[]> = {
-  standard: ["#907ad6", "#4f518c", "#f4effa"],
-  light: ["#2563eb", "#a5b4fc", "#fdfbff"],
-  dark: ["#111827", "#6366f1", "#0ea5e9"],
-  red: ["#e11d48", "#fecdd3", "#fff5f5"],
-  blue: ["#1d4ed8", "#38bdf8", "#e6f4ff"],
+  standard: ["#907ad6", "#c6b6f2", "#f4effa"],
+  light: ["#2563eb", "#93c5fd", "#fdfbff"],
+  dark: ["#0b1220", "#1f2937", "#4b5563"],
+  red: ["#e11d48", "#fda4af", "#fff5f5"],
+  blue: ["#1d4ed8", "#60a5fa", "#e6f4ff"],
 }
+
+const themeOptions: ThemeOption[] = ["standard", "light", "dark", "red", "blue"]
 
 export type SettingsFormProps = {
   layout?: "page" | "dialog"
@@ -47,11 +51,13 @@ export type SettingsFormProps = {
 }
 
 export function SettingsForm({ layout = "page", onSaved }: SettingsFormProps) {
-  const supabase = useMemo(() => getSupabaseBrowserClient(), [])
   const { profile, loading, refreshProfile, updateProfileLocally } = usePreferences()
+  const { notify } = useNotifications()
 
   const [departmentLayout, setDepartmentLayout] = useState<DepartmentLayoutOption | null>(null)
   const [theme, setTheme] = useState<ThemeOption | null>(null)
+  const [initialTooltipsEnabled, setInitialTooltipsEnabled] = useState<boolean>(() => loadTooltipPreference())
+  const [tooltipsEnabled, setTooltipsEnabled] = useState<boolean>(() => loadTooltipPreference())
   const [saving, setSaving] = useState(false)
   const [status, setStatus] = useState<StatusState>({ kind: "idle" })
 
@@ -62,11 +68,26 @@ export function SettingsForm({ layout = "page", onSaved }: SettingsFormProps) {
     }
   }, [profile])
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    const handlePreferenceChange = () => {
+      const next = loadTooltipPreference()
+      setInitialTooltipsEnabled(next)
+      setTooltipsEnabled(next)
+    }
+    window.addEventListener(TOOLTIP_PREF_EVENT, handlePreferenceChange)
+    return () => window.removeEventListener(TOOLTIP_PREF_EVENT, handlePreferenceChange)
+  }, [])
+
   const hasChanges =
     !!profile &&
     departmentLayout !== null &&
     theme !== null &&
-    (profile.departmentLayout !== departmentLayout || profile.theme !== theme)
+    (profile.departmentLayout !== departmentLayout ||
+      profile.theme !== theme ||
+      tooltipsEnabled !== initialTooltipsEnabled)
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -87,41 +108,28 @@ export function SettingsForm({ layout = "page", onSaved }: SettingsFormProps) {
     setStatus({ kind: "idle" })
 
     try {
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-
-      if (userError) {
-        throw userError
-      }
-
-      if (!user) {
-        throw new Error("Authentication required")
-      }
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          department_layout: departmentLayout,
-          theme,
-        })
-        .eq("id", user.id)
-
-      if (error) {
-        throw error
-      }
-
       updateProfileLocally({ departmentLayout, theme })
       await refreshProfile()
+      setTooltipPreference(tooltipsEnabled)
+      setInitialTooltipsEnabled(tooltipsEnabled)
 
-      setStatus({ kind: "success", message: "Settings saved successfully." })
+      //setStatus({ kind: "success", message: "Settings saved successfully." })
+      notify({
+        title: "Settings saved successfully.",
+        description: "Your display preferences are stored on this device.",
+        variant: "success",
+      })
       onSaved?.()
     } catch (error) {
       console.error("Failed to save settings", error)
-      setStatus({
+      /*setStatus({
         kind: "error",
         message: "Unable to save settings. Please try again.",
+      })*/
+       notify({
+        title: "Settings saved successfully.",
+        description: "Unable to save settings. Please try again.",
+        variant: "destructive",
       })
     } finally {
       setSaving(false)
@@ -196,21 +204,22 @@ export function SettingsForm({ layout = "page", onSaved }: SettingsFormProps) {
             <SelectValue placeholder="Select Theme" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="standard" data-cy="settings-theme-option-standard">
-              {themeLabels.standard}
-            </SelectItem>
-            <SelectItem value="light" data-cy="settings-theme-option-light">
-              {themeLabels.light}
-            </SelectItem>
-            <SelectItem value="dark" data-cy="settings-theme-option-dark">
-              {themeLabels.dark}
-            </SelectItem>
-            <SelectItem value="red" data-cy="settings-theme-option-red">
-              {themeLabels.red}
-            </SelectItem>
-            <SelectItem value="blue" data-cy="settings-theme-option-blue">
-              {themeLabels.blue}
-            </SelectItem>
+            {themeOptions.map((option) => (
+              <SelectItem
+                key={option}
+                value={option}
+                data-cy={`settings-theme-option-${option}`}
+                className="flex items-center gap-3"
+              >
+                <span className="inline-flex items-center gap-2">
+                  <span
+                    className="size-3.5 rounded-full border border-border shadow-[0_0_0_1px_rgba(0,0,0,0.04)]"
+                    style={{ backgroundColor: themeSwatches[option]?.[0] ?? "#000000" }}
+                  />
+                  <span>{themeLabels[option]}</span>
+                </span>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
 
@@ -227,6 +236,25 @@ export function SettingsForm({ layout = "page", onSaved }: SettingsFormProps) {
             {themeLabels[effectiveTheme]} palette preview
           </span>
         </div>
+      </section>
+
+      <section className="space-y-3">
+        <header className="flex items-center justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-semibold text-foreground">Hints & Tooltips</h2>
+            <p className="text-sm text-foreground/70">
+              Toggle helper hints across the workspace.
+            </p>
+          </div>
+          <Switch
+            checked={tooltipsEnabled}
+            onCheckedChange={(checked) => {
+              setTooltipsEnabled(Boolean(checked))
+            }}
+            aria-label="Toggle tooltips"
+            data-cy="settings-tooltips-toggle"
+          />
+        </header>
       </section>
 
       <div className="flex flex-wrap items-center gap-4">

@@ -229,20 +229,18 @@ export function TaskCard({
   const menuButtonClassName = React.useMemo(
     () =>
       cn(
-        "data-task-menu-trigger px-2 py-2 absolute top-8 right-8 rounded-full border transition-colors duration-200 cursor-pointer text-inherit",
+        "card-menu-trigger data-task-menu-trigger px-2 py-2 absolute top-8 right-8 rounded-full border transition-colors duration-200 cursor-pointer text-inherit",
         "focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:border-transparent focus-visible:outline-none",
         menuOpen
-          ? "border-primary/40 bg-white/90 text-primary shadow-[0_1px_3px_rgba(79,61,152,0.95)]"
-          : "border-transparent hover:border-primary/30 hover:bg-white/80 hover:text-primary"
+          ? "text-primary card-menu-shadow"
+          : "border-transparent text-foreground hover:border-primary/30 hover:bg-card-menu active:border-primary/30 active:bg-card-menu"
       ),
     [menuOpen]
   )
 
-  const menuButtonStyle =
-    !menuOpen && !menuTriggerHover ? { color: resolvedCardTextColor } : undefined
-  const menuIconStyle =
-    !menuOpen && !menuTriggerHover ? { color: resolvedCardTextColor } : undefined
-  const menuIconClassName = cn("size-5 transition-colors duration-200", menuOpen ? "text-primary" : "")
+  const menuButtonStyle = undefined
+  const menuIconStyle = undefined
+  const menuIconClassName = cn("size-5 transition-colors duration-200", menuOpen ? "text-primary" : "text-current")
 
   const cardStyle = {
     background: isHovering ? hoverColor : effectiveCardColor,

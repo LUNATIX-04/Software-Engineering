@@ -110,7 +110,7 @@ export default function CreateTaskPage({ params }: CreateTaskPageProps) {
               {formError}
             </div>
           ) : (
-            <div className="lg:mt-10 mb-10 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="lg:mt-10 mb-10 form-entry">
               <TaskForm
                 className="w-full"
                 heading="Create Task"

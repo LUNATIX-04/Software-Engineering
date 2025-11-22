@@ -67,7 +67,7 @@ export function registerAccountRoutes(app: Elysia) {
         { id: user.id, email: user.email ?? undefined, ...updates },
         { onConflict: "id", ignoreDuplicates: false }
       )
-      .select("id, email, full_name, bio, avatar_url, department_layout, theme")
+      .select("id, email, full_name, bio, avatar_url")
       .maybeSingle()
 
     if (error) {
@@ -87,8 +87,6 @@ export function registerAccountRoutes(app: Elysia) {
           fullName: data.full_name ?? null,
           bio: data.bio ?? null,
           avatarUrl: data.avatar_url ?? null,
-          departmentLayout: data.department_layout ?? null,
-          theme: data.theme ?? null,
         },
       })
     )

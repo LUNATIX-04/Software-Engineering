@@ -7,6 +7,7 @@ import {
   KeyboardEvent,
   PointerEvent,
   type CSSProperties,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -16,12 +17,12 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
-import { GripVertical, Image as ImageIcon, Minus, Plus, X } from "lucide-react"
+import { Check, GripVertical, Image as ImageIcon, Minus, Plus, X } from "lucide-react"
 import { useNotifications } from "@/components/notifications/Notification"
 import { ERROR_MESSAGES } from "@/constants/error"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { TOOLTIP_DELAY_DURATION_MS } from "@/constants/ui"
-
+import { cn } from "@/lib/utils"
 import {
   DEFAULT_CROP_POSITION,
   DEFAULT_ZOOM,
@@ -39,8 +40,12 @@ import {
   ProjectFormInitialValues,
   ProjectFormValues,
 } from "./types"
+import DepartmentColorMenu, { QUICK_DEPARTMENT_COLORS } from "@/components/projects/DepartmentColorMenu"
+import { computeTextColor, sanitizeHexColor } from "@/utils/colors"
+import DepartmentDeleteDialog from "@/app/projects/[projectId]/department/components/DepartmentDeleteDialog"
 
 const FALLBACK_DEPARTMENTS: string[] = []
+const DEFAULT_DEPARTMENT_COLOR = "#E9E0FF"
 
 export type ProjectFormProps = {
   heading: string
@@ -75,6 +80,7 @@ export function ProjectForm({
       imageCropPosition:
         initialValues?.imageCropPosition ??
         (initialValues?.imageUrl ? { xPercent: 50, yPercent: 50 } : null),
+      departmentColors: initialValues?.departmentColors ?? undefined,
     }
   }, [defaultDepartments, initialValues])
 
@@ -83,6 +89,31 @@ export function ProjectForm({
   const [departments, setDepartments] = useState<string[]>([...normalizedInitial.departments])
   const [activeDepartmentIndex, setActiveDepartmentIndex] = useState<number>(
     normalizedInitial.departments.length > 0 ? 0 : -1
+  )
+  const [previewDeptId, setPreviewDeptId] = useState<string | null>(null)
+  const [previewColor, setPreviewColor] = useState<string | null>(null)
+  const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null)
+  const [editingDepartmentName, setEditingDepartmentName] = useState("")
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const buildInitialDepartmentStyles = useCallback(
+    (names: string[]) => {
+      const styles: Record<string, { color: string; textColor: string }> = {}
+      names.forEach((name, index) => {
+        const paletteColor = QUICK_DEPARTMENT_COLORS[index % QUICK_DEPARTMENT_COLORS.length]
+        const color = sanitizeHexColor(
+          normalizedInitial.departmentColors?.[name]?.color ?? paletteColor ?? DEFAULT_DEPARTMENT_COLOR
+        )
+        const textColor =
+          normalizedInitial.departmentColors?.[name]?.textColor ?? computeTextColor(color)
+        styles[name] = { color, textColor }
+      })
+      return styles
+    },
+    [normalizedInitial.departmentColors]
+  )
+  const [departmentStyles, setDepartmentStyles] = useState<Record<string, { color: string; textColor: string }>>(
+    buildInitialDepartmentStyles(normalizedInitial.departments)
   )
   const [departmentInput, setDepartmentInput] = useState("")
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
@@ -136,7 +167,10 @@ export function ProjectForm({
     setDragOverIndex(null)
     draggedDepartmentIndexRef.current = null
     setInternalSubmitting(false)
-  }, [normalizedInitial])
+    setDepartmentStyles(buildInitialDepartmentStyles(normalizedInitial.departments))
+    setPreviewDeptId(null)
+    setPreviewColor(null)
+  }, [buildInitialDepartmentStyles, normalizedInitial])
 
   useEffect(() => {
     return () => {
@@ -356,6 +390,22 @@ export function ProjectForm({
       }
       const next = [...prev, trimmed]
       setActiveDepartmentIndex(next.length - 1)
+      setDepartmentStyles((prevStyles) => {
+        if (prevStyles[trimmed]) {
+          return prevStyles
+        }
+        const paletteColor =
+          QUICK_DEPARTMENT_COLORS[next.length % QUICK_DEPARTMENT_COLORS.length] ??
+          DEFAULT_DEPARTMENT_COLOR
+        const color = sanitizeHexColor(paletteColor)
+        return {
+          ...prevStyles,
+          [trimmed]: {
+            color,
+            textColor: computeTextColor(color),
+          },
+        }
+      })
       return next
     })
   }
@@ -381,9 +431,40 @@ export function ProjectForm({
       })
       return next
     })
+    setDepartmentStyles((prev) => {
+      if (!prev[value]) {
+        return prev
+      }
+      const next = { ...prev }
+      delete next[value]
+      return next
+    })
+    if (editingDepartmentId === value) {
+      setEditingDepartmentId(null)
+      setEditingDepartmentName("")
+    }
   }
 
+  const handleDepartmentColorChange = useCallback(
+    (name: string, color: string) => {
+      const sanitized = sanitizeHexColor(color)
+      setDepartmentStyles((prev) => ({
+        ...prev,
+        [name]: {
+          color: sanitized,
+          textColor: computeTextColor(sanitized),
+        },
+      }))
+      setPreviewColor((current) => (name === previewDeptId ? sanitized : current))
+    },
+    [previewDeptId]
+  )
+
   const handleDepartmentDragStart = (event: DragEvent<HTMLSpanElement>, index: number) => {
+    if (editingDepartmentId) {
+      event.preventDefault()
+      return
+    }
     draggedDepartmentIndexRef.current = index
     setDraggingIndex(index)
     event.dataTransfer?.setData("text/plain", String(index))
@@ -393,6 +474,10 @@ export function ProjectForm({
   }
 
   const handleDepartmentDragOver = (event: DragEvent<HTMLSpanElement>, index: number) => {
+    if (editingDepartmentId) {
+      event.preventDefault()
+      return
+    }
     event.preventDefault()
     if (event.dataTransfer) {
       event.dataTransfer.dropEffect = "move"
@@ -409,6 +494,10 @@ export function ProjectForm({
   }
 
   const handleDepartmentDrop = (event: DragEvent<HTMLSpanElement>, index: number) => {
+    if (editingDepartmentId) {
+      event.preventDefault()
+      return
+    }
     event.preventDefault()
     const fromIndex = draggedDepartmentIndexRef.current
     if (fromIndex === null || fromIndex === index) {
@@ -448,7 +537,76 @@ export function ProjectForm({
     draggedDepartmentIndexRef.current = null
   }
 
+  const startEditingDepartment = (value: string) => {
+    setEditingDepartmentId(value)
+    setEditingDepartmentName(value)
+  }
+
+  const cancelEditingDepartment = () => {
+    setEditingDepartmentId(null)
+    setEditingDepartmentName("")
+  }
+
+  const confirmRemoveDepartment = () => {
+    if (!deleteTarget) {
+      return
+    }
+    handleRemoveDepartment(deleteTarget)
+    setDeleteDialogOpen(false)
+    setDeleteTarget(null)
+  }
+
+  const commitEditingDepartment = (original: string) => {
+    const trimmed = editingDepartmentName.trim()
+    if (!trimmed) {
+      notify({
+        title: "Department name required",
+        description: "Please enter a department name.",
+        variant: "destructive",
+      })
+      return
+    }
+    if (trimmed === original) {
+      setEditingDepartmentId(null)
+      setEditingDepartmentName("")
+      return
+    }
+    if (trimmed !== original && departments.some((name) => name.toLowerCase() === trimmed.toLowerCase())) {
+      notify({
+        title: "Duplicate department",
+        description: "A department with this name already exists.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setDepartments((prev) =>
+      prev.map((name) => (name === original ? trimmed : name))
+    )
+    setDepartmentStyles((prev) => {
+      if (!prev[original]) {
+        return prev
+      }
+      const next = { ...prev, [trimmed]: prev[original] }
+      delete next[original]
+      return next
+    })
+    setEditingDepartmentId(null)
+    setEditingDepartmentName("")
+  }
+
   const handleDepartmentChipKeyDown = (event: KeyboardEvent<HTMLSpanElement>, index: number) => {
+    const dept = departments[index]
+    if (editingDepartmentId === dept) {
+      if (event.key === "Enter") {
+        event.preventDefault()
+        commitEditingDepartment(dept)
+      } else if (event.key === "Escape") {
+        event.preventDefault()
+        cancelEditingDepartment()
+      }
+      return
+    }
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault()
       setActiveDepartmentIndex(index)
@@ -595,6 +753,7 @@ export function ProjectForm({
       title,
       detail,
       departments,
+      departmentColors: departmentStyles,
       imageFile: preparedFile,
       imagePreviewUrl: preparedPreviewUrl,
       imageCropPosition,
@@ -806,12 +965,12 @@ export function ProjectForm({
 
             <label className="block space-y-3">
               {/*<span className="text-lg font-semibold text-foreground">Add detail</span>*/}
-              <div className="group/textarea overflow-hidden rounded-[1rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.25)]">
+              <div className="textarea-surface group/textarea overflow-hidden rounded-[1rem]">
                 <Textarea
                   value={detail}
                   onChange={(event) => setDetail(event.target.value)}
                   placeholder="Add Detail"
-                  className="project-detail-scroll min-h-[10rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-6 py-2 text-base text-foreground placeholder:text-primary/60 shadow-none focus-visible:outline-none focus-visible:ring-0"
+                  className="project-detail-scroll min-h-[10rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-6 py-2 text-base shadow-none focus-visible:outline-none focus-visible:ring-0"
                   data-cy="project-detail-textarea"
                 />
               </div>
@@ -824,11 +983,24 @@ export function ProjectForm({
                   const isDragOver = dragOverIndex === index
                   const isDragging = draggingIndex === index
                   const isActive = index === activeDepartmentIndex
+                  const baseChipColors = departmentStyles[dept] ?? {
+                    color: DEFAULT_DEPARTMENT_COLOR,
+                    textColor: computeTextColor(DEFAULT_DEPARTMENT_COLOR),
+                  }
+                  const chipColors =
+                    previewDeptId === dept && previewColor
+                      ? { color: previewColor, textColor: computeTextColor(previewColor) }
+                      : baseChipColors
+                  const chipStyle = {
+                    backgroundColor: chipColors.color,
+                    color: chipColors.textColor,
+                    borderColor: isActive ? "var(--primary)" : "color-mix(in srgb, var(--primary) 15%, #cccccc)",
+                  }
 
                   const chipClassName = [
                     departmentChipClass,
                     isActive
-                      ? "border-primary bg-[#E9E0FF] text-[#2F2766] shadow-[0_2px_0_rgba(144,122,214,0.22)]"
+                      ? "border-primary shadow-[0_2px_0_rgba(144,122,214,0.22)]"
                       : "",
                     isDragOver ? "border-primary bg-primary/10" : "",
                     isDragging ? "cursor-grabbing opacity-80" : "",
@@ -849,53 +1021,131 @@ export function ProjectForm({
                           onFocus={() => setActiveDepartmentIndex(index)}
                           onClick={() => setActiveDepartmentIndex(index)}
                           onKeyDown={(event) => handleDepartmentChipKeyDown(event, index)}
-                          onDoubleClick={() => {
-                            setDepartmentInput(dept)
-                            setDepartments((prev) => {
-                              const next = [...prev]
-                              next.splice(index, 1)
-                              return next
-                            })
-                            setTimeout(() => {
-                              if (departmentInputRef.current) {
-                                departmentInputRef.current.focus()
-                                departmentInputRef.current.select()
-                              }
-                            }, 0)
-                          }}
+                          onDoubleClick={() => startEditingDepartment(dept)}
                           onDragStart={(event) => handleDepartmentDragStart(event, index)}
                           onDragOver={(event) => handleDepartmentDragOver(event, index)}
                           onDrop={(event) => handleDepartmentDrop(event, index)}
                           onDragEnd={handleDepartmentDragEnd}
                           data-active={isActive || undefined}
+                          style={chipStyle as CSSProperties}
+                          draggable={!editingDepartmentId}
                         >
-                          <span className="inline-flex items-center gap-2">
-                            <GripVertical
-                              className={`size-4 ${isActive ? "text-primary" : "text-primary/60"}`}
-                              aria-hidden
-                            />
-                            <span className="max-w-[12rem] truncate" title={dept}>
-                              {dept}
+                          {editingDepartmentId === dept ? (
+                            <span className="relative inline-flex flex-1 items-center min-w-0 gap-3">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  commitEditingDepartment(dept)
+                                }}
+                                className="absolute -left-9 top-1/2 size-8 -translate-y-1/2 inline-flex items-center justify-center rounded-full border border-primary/40 bg-white/80 text-primary shadow-sm transition hover:border-primary/60 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                aria-label={`Save ${dept}`}
+                                data-cy="project-department-save"
+                                data-department={dept}
+                              >
+                                <Check className="size-4" />
+                              </button>
+                              <Input
+                                value={editingDepartmentName}
+                                onChange={(event) => setEditingDepartmentName(event.target.value)}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") {
+                                    event.preventDefault()
+                                    commitEditingDepartment(dept)
+                                  }
+                                  if (event.key === "Escape") {
+                                    event.preventDefault()
+                                    cancelEditingDepartment()
+                                  }
+                                }}
+                                className="max-w-[30rem] flex-1 truncate rounded-lg bg-white/70 pl-2 text-sm font-semibold text-foreground shadow-sm"
+                                autoFocus
+                              />
                             </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-2">
+                              <GripVertical
+                                className={`size-4 ${isActive ? "text-primary" : "text-primary/60"}`}
+                                aria-hidden
+                              />
+                              <span className="max-w-[12rem] truncate" title={dept}>
+                                {dept}
+                              </span>
+                            </span>
+                          )}
+                          <span className="ml-auto inline-flex items-center gap-2">
+                            <DepartmentColorMenu
+                              color={baseChipColors.color}
+                              quickColors={QUICK_DEPARTMENT_COLORS}
+                              onSelectColor={(color) => {
+                                handleDepartmentColorChange(dept, color)
+                                setPreviewDeptId(null)
+                                setPreviewColor(null)
+                              }}
+                              onPreviewColor={(color) => {
+                                setPreviewDeptId(color ? dept : null)
+                                setPreviewColor(color)
+                              }}
+                              onOpenChange={(open) => {
+                                if (!open) {
+                                  setPreviewDeptId(null)
+                                  setPreviewColor(null)
+                                }
+                              }}
+                              trigger={
+                                <button
+                                  type="button"
+                                  className="inline-flex size-8 items-center justify-center rounded-full border border-white/60 bg-white/60 text-primary shadow-sm transition hover:border-white/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                                  aria-label={`Change ${dept} color`}
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  <span
+                                    className="block size-4 rounded-full border border-black/10"
+                                    style={{ backgroundColor: chipColors.color }}
+                                  />
+                                </button>
+                              }
+                            />
+                            {editingDepartmentId === dept ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.stopPropagation()
+                                    cancelEditingDepartment()
+                                  }}
+                                  className={chipActionButtonClass}
+                                  aria-label={`Cancel editing ${dept}`}
+                                  data-cy="project-department-cancel"
+                                  data-department={dept}
+                                >
+                                  <X className="size-4" />
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation()
+                                  setDeleteTarget(dept)
+                                  setDeleteDialogOpen(true)
+                                }}
+                                className={chipActionButtonClass}
+                                aria-label={`Remove ${dept}`}
+                                data-cy="project-department-remove"
+                                data-department={dept}
+                              >
+                                <X className="size-4" />
+                              </button>
+                            )}
                           </span>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              handleRemoveDepartment(dept)
-                            }}
-                            className={`${chipActionButtonClass} ml-auto`}
-                            aria-label={`Remove ${dept}`}
-                            data-cy="project-department-remove"
-                            data-department={dept}
-                          >
-                            <X className="size-4" />
-                          </button>
                         </span>
                       </TooltipTrigger>
-                      <TooltipContent side="top" sideOffset={6}>
-                        Double-click to edit
-                      </TooltipContent>
+                      {editingDepartmentId === dept ? null : (
+                        <TooltipContent side="top" sideOffset={6}>
+                          Double-click to edit
+                        </TooltipContent>
+                      )}
                     </Tooltip>
                   )
                 })}
@@ -949,6 +1199,19 @@ export function ProjectForm({
         className="sr-only"
         onChange={handleImageSelect}
         data-cy="project-image-file-input"
+      />
+
+      <DepartmentDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open)
+          if (!open) {
+            setDeleteTarget(null)
+          }
+        }}
+        departmentName={deleteTarget ?? ""}
+        onConfirm={confirmRemoveDepartment}
+        deleting={false}
       />
     </div>
   )

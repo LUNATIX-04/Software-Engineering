@@ -3,9 +3,8 @@
 import * as React from "react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { ProgressBar } from "@/components/ui/progress-bar"
 import { ProjectForm } from "@/components/projects/ProjectForm"
 import type { ProjectFormValues } from "@/components/projects/ProjectForm/types"
 import { usePreferences } from "@/contexts/preferences"
@@ -13,6 +12,13 @@ import { type ProjectRecord, updateProject } from "@/utils/projects/api"
 import { loadProjectRecord } from "@/utils/projects/prefetch"
 import { uploadProjectImage } from "@/utils/projects/media"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
+import BackButton from "@/components/navigation/BackButton"
+import {
+  fetchProjectDepartments,
+  createProjectDepartment,
+  updateProjectDepartment,
+} from "@/utils/projects/departments"
+import { getContrastingTextColor, generatePastelColor, sanitizeHexColor } from "@/utils/colors"
 
 type EditProjectPageProps = {
   params: Promise<{
@@ -23,7 +29,6 @@ type EditProjectPageProps = {
 export default function EditProjectPage({ params }: EditProjectPageProps) {
   const { projectId } = React.use(params)
   const router = useRouter()
-  const handleNavigateBack = useCallback(() => router.push("/projects"), [router])
   const { profile } = usePreferences()
   const preferredDepartmentLayout = profile?.departmentLayout ?? "fullWidth"
   const [project, setProject] = useState<ProjectRecord | null>(null)
@@ -31,6 +36,10 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [departmentColors, setDepartmentColors] = useState<
+    Record<string, { color: string; textColor: string }>
+  >({})
+  const [departmentColorsLoading, setDepartmentColorsLoading] = useState(true)
 
   useEffect(() => {
     if (!projectId) {
@@ -66,6 +75,37 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
     }
   }, [projectId])
 
+  useEffect(() => {
+    if (!projectId) {
+      return
+    }
+    let active = true
+    setDepartmentColorsLoading(true)
+    fetchProjectDepartments(projectId)
+      .then((departments) => {
+        if (!active) return
+        const mapped = departments.reduce<Record<string, { color: string; textColor: string }>>(
+          (acc, dept) => {
+            acc[dept.name] = { color: dept.color, textColor: dept.textColor }
+            return acc
+          },
+          {}
+        )
+        setDepartmentColors(mapped)
+      })
+      .catch((error) => {
+        console.error("Failed to load project departments", error)
+      })
+      .finally(() => {
+        if (active) {
+          setDepartmentColorsLoading(false)
+        }
+      })
+    return () => {
+      active = false
+    }
+  }, [projectId])
+
   const initialValues = useMemo(() => {
     if (!project) {
       return undefined
@@ -75,8 +115,9 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
       detail: project.description ?? "",
       departments: project.departments ?? [],
       imageUrl: project.imageUrl,
+      departmentColors,
     }
-  }, [project])
+  }, [departmentColors, project])
 
   const handleSubmit = useCallback(
     async (values: ProjectFormValues) => {
@@ -112,12 +153,50 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
           departments,
           imageUrl,
         })
+
+        try {
+          const departmentColors = values.departmentColors ?? {}
+          const existingDepartments = await fetchProjectDepartments(projectId).catch(() => [])
+          const existingByName = new Map(
+            existingDepartments.map((dept) => [dept.name.toLowerCase(), dept])
+          )
+
+          for (const name of departments) {
+            const colorConfig = departmentColors[name]
+            const desiredColor = colorConfig?.color ? sanitizeHexColor(colorConfig.color) : null
+            const match = existingByName.get(name.toLowerCase())
+
+            if (match) {
+              if (desiredColor && match.color.toLowerCase() !== desiredColor.toLowerCase()) {
+                const textColor = getContrastingTextColor(desiredColor)
+                await updateProjectDepartment(projectId, match.id, {
+                  color: desiredColor,
+                  textColor,
+                })
+              } else {
+                // populate initial values with existing colors for the form
+                values.departmentColors ??= {}
+                values.departmentColors[name] = {
+                  color: match.color,
+                  textColor: match.textColor,
+                }
+              }
+            } else {
+              const color = desiredColor ?? generatePastelColor()
+              const textColor = getContrastingTextColor(color)
+              await createProjectDepartment(projectId, { name, color, textColor })
+            }
+          }
+        } catch (error) {
+          console.error("Failed to sync department colors", error)
+        }
+
         if (typeof window !== "undefined") {
           window.dispatchEvent(
             new CustomEvent(PROJECT_REFRESH_EVENT, { detail: { projectId } })
           )
         }
-        router.push("/projects")
+        router.back()
       } catch (error) {
         console.error("Failed to update project", error)
         const raw =
@@ -137,8 +216,17 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
   const renderContent = () => {
     if (loading) {
       return (
-        <div className="mx-auto w-full max-w-full px-6 py-12 text-center text-foreground/70">
-          Loading project details…
+        <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-4 px-6 py-12 text-center text-primary page-slide">
+          <span className="text-base font-semibold">Loading project details…</span>
+          <ProgressBar className="w-full" />
+        </div>
+      )
+    }
+    if (departmentColorsLoading) {
+      return (
+        <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-4 px-6 py-12 text-center text-primary page-slide">
+          <span className="text-base font-semibold">Loading departments…</span>
+          <ProgressBar className="w-full" />
         </div>
       )
     }
@@ -149,11 +237,11 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
         </div>
       )
     }
-    if (!project || !initialValues) {
+    if (!project || !initialValues || departmentColorsLoading) {
       return null
     }
     return (
-      <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className="form-entry">
         <ProjectForm
           heading="Edit Project"
           submitLabel={submitting ? "Saving" : "Save"}
@@ -169,17 +257,7 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
   return (
     <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">
       <div className="flex w-full flex-col items-start gap-4 lg:flex-row lg:items-start lg:gap-6">
-        <div className="sticky top-1 z-10 -ml-3 flex flex-shrink-0 items-start justify-start lg:-mt-0">
-          <Button
-            type="button"
-            onClick={handleNavigateBack}
-            variant="ghost"
-            className="inline-flex size-12 items-center justify-center rounded-full border border-primary/20 bg-white text-primary shadow-sm transition hover:border-primary/40 hover:bg-primary/10 focus-visible:border-primary focus-visible:ring-0"
-            aria-label="Back to projects"
-          >
-            <ArrowLeft className="size-6" aria-hidden="true" />
-          </Button>
-        </div>
+        <BackButton dataCy="project-edit-back-button" ariaLabel="Back to projects" />
         <div className="flex-1 lg:mt-10">
           {renderContent()}
         </div>

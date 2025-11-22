@@ -13,6 +13,7 @@ import { INVITE_EXPIRY_OPTIONS, INVITE_ROLE_OPTIONS } from "@/components/layout/
 import { ProjectInvitesState } from "../hooks/useProjectInvites"
 import { PROJECT_ROLE } from "@/types/projects"
 import { Check, ChevronDown } from "lucide-react"
+import { ProgressBar } from "@/components/ui/progress-bar"
 
 type ProjectInviteDialogProps = {
   manager: ProjectInvitesState
@@ -65,11 +66,17 @@ export function ProjectInviteDialog({
 
   return (
     <Dialog open={inviteDialogOpen} onOpenChange={closeInviteDialog}>
-      <DialogContent className="max-w-2xl rounded-[2rem] border-2 border-primary/30 bg-white px-8 py-8 shadow-xl">
+      <DialogContent
+        className={cn(
+          "max-w-2xl rounded-[2rem] border-2 border-primary/30 bg-white px-8 py-8 shadow-xl",
+          "flex flex-col overflow-hidden",
+          "max-h-[85vh]"
+        )}
+      >
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-[#2F2766]">Invite teammates</DialogTitle>
         </DialogHeader>
-        <div className="space-y-6">
+        <div className="space-y-6 flex-1 overflow-hideen pr-1">
           <div className="space-y-3">
             <label className="text-sm font-semibold text-[#2F2766]">Link expiry</label>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
@@ -303,7 +310,10 @@ export function ProjectInviteDialog({
             data-cy="project-invite-list"
           >
             {invitesLoading ? (
-              <p className="text-sm text-muted-foreground">Loading invite links…</p>
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">Loading invite links…</p>
+                <ProgressBar />
+              </div>
             ) : invites.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No invite links yet. Generate one to start inviting your team.

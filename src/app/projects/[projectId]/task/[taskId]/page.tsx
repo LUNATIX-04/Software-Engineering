@@ -49,6 +49,7 @@ import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import { useNotifications } from "@/components/notifications/Notification"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar"
+import { ProgressBar } from "@/components/ui/progress-bar"
 
 const TASK_STATUS_COLORS: Record<TaskStatus, { background: string; text: string }> = {
   SUBMITTED: {
@@ -456,14 +457,14 @@ function TaskSubmissionDialogContent({
         <label className="sr-only" htmlFor="submission-description">
           Submission description
         </label>
-        <div className="group/textarea overflow-hidden rounded-[1.25rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.25)]">
+        <div className="textarea-surface group/textarea overflow-hidden rounded-[1.25rem]">
           <Textarea
             id="submission-description"
             value={submissionDescription}
             data-cy="project-task-detail-submission-description"
             onChange={(event) => onSubmissionDescriptionChange(event.target.value)}
             placeholder="Explain your submission…"
-            className="min-h-[8rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-4 py-3 text-sm text-[var(--task-subtle-text)] placeholder:text-[var(--task-placeholder)] shadow-none focus-visible:outline-none focus-visible:ring-0"
+            className="min-h-[8rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-4 py-3 text-sm shadow-none focus-visible:outline-none focus-visible:ring-0"
           />
         </div>
 
@@ -811,12 +812,12 @@ function TaskReviewSection({
           </DropdownMenu>
         </div>
       </div>
-      <div className="group/textarea overflow-hidden rounded-[1.25rem] border-2 border-primary/40 bg-white/80 transition-[box-shadow,border-color] focus-within:border-primary focus-within:shadow-[0_0_0_3px_rgba(0,0,0,0.25)]">
+      <div className="textarea-surface group/textarea overflow-hidden rounded-[1.25rem]">
         <Textarea
           value={reviewComment}
           onChange={(event) => onReviewCommentChange(event.target.value)}
           data-cy="project-task-detail-review-comment"
-          className="project-detail-scroll min-h-[8rem] w-full border-none bg-transparent px-4 py-3 text-sm text-[var(--task-subtle-text)] placeholder:text-[var(--task-placeholder)] shadow-none focus-visible:outline-none focus-visible:ring-0"
+          className="project-detail-scroll min-h-[8rem] w-full border-none bg-transparent px-4 py-3 text-sm shadow-none focus-visible:outline-none focus-visible:ring-0"
           placeholder="Share feedback…"
         />
       </div>
@@ -1554,8 +1555,13 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
   if (loading) {
     return (
-      <div className="mx-auto flex w-full max-w-full flex-1 flex-col items-center justify-center gap-6 px-6 py-16 text-center text-primary">
-        Loading task…
+      <div className="mx-auto flex w-full max-w-full flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+        <div className="flex min-h-[11rem] w-full max-w-xl flex-col items-center justify-center gap-3 rounded-2xl border border-primary/20 bg-primary/5 px-6 py-6 text-sm text-primary shadow-[0_6px_0_rgba(144,122,214,0.15)]">
+          <span className="text-base font-semibold">Loading task…</span>
+          <div className="w-full max-w-sm">
+            <ProgressBar />
+          </div>
+        </div>
       </div>
     )
   }

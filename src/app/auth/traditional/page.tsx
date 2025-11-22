@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import type { CSSProperties } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import type { Session } from "@supabase/supabase-js"
 import { useForm } from "react-hook-form"
@@ -217,12 +218,20 @@ export default function TraditionalAuthPage() {
       <div className="absolute right-[8%] top-10 size-48 rounded-full bg-white/20 blur-3xl" />
       <div className="absolute left-[12%] bottom-10 size-56 rounded-[45%] bg-accent/30 blur-3xl" />
       <div className="relative z-10 grid w-full max-w-6xl gap-x-[clamp(2rem,6vw,4rem)] lg:grid-cols-[1.1fr_1fr]">
-        <div className="flex flex-col justify-center gap-[clamp(1.5rem,4vh,2.5rem)] text-primary-foreground">
+        <div
+          className="flex flex-col justify-center gap-[clamp(1.5rem,4vh,2.5rem)] text-primary-foreground"
+          data-animate="fade-up"
+          style={{ ["--animate-delay" as keyof CSSProperties]: "80ms" }}
+        >
           <TraditionalHero highlights={HERO_HIGHLIGHTS} />
         </div>
 
         <div className="flex items-center">
-          <div className="relative w-full min-h-[32rem] overflow-hidden rounded-[2.5rem] border border-white/40 bg-card/90 pt-[clamp(1.4rem,1vw,2.75rem)] px-[clamp(1.75rem,4vw,2.75rem)] pb-[clamp(1.75rem,4vw,2.75rem)] shadow-[0_30px_80px_-20px_rgba(44,42,74,0.35)] backdrop-blur-md transition-[min-height] duration-300">
+          <div
+            className="relative w-full min-h-[32rem] overflow-hidden rounded-[2.5rem] border border-white/40 bg-card/90 pt-[clamp(1.4rem,1vw,2.75rem)] px-[clamp(1.75rem,4vw,2.75rem)] pb-[clamp(1.75rem,4vw,2.75rem)] shadow-[0_30px_80px_-20px_rgba(44,42,74,0.35)] backdrop-blur-md transition-[min-height] duration-300"
+            data-animate="pop"
+            style={{ ["--animate-delay" as keyof CSSProperties]: "140ms" }}
+          >
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-[clamp(1.6rem,3.2vw,2.2rem)] font-semibold text-card-foreground">
