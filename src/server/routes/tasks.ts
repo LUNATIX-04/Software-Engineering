@@ -890,14 +890,18 @@ export function registerTaskRoutes(app: Elysia) {
     if (status) {
       submission.status = status
     }
-
+    const now = new Date()
     const updatedSubmission = await projectTaskSubmissions.update({
       where: { id: submission.id },
       data: {
         description,
         reviewerComment,
         status: status ?? submission.status,
-        acknowledgedAt: null,
+        ...(submission.submittedById === membership.id ? { acknowledgedAt: null } : {}),
+        ownerAcknowledgedAt: null,
+        reviewerId:
+          membership.id !== submission.submittedById ? membership.id : submission.reviewerId,
+        updatedAt: now,
         attachmentMetadata:
           attachments !== undefined ? (attachments.length > 0 ? attachments : null) : submission.attachmentMetadata,
       },
@@ -930,10 +934,12 @@ export function registerTaskRoutes(app: Elysia) {
       return new Response(JSON.stringify({ error: "Submission not found" }), { status: 404 })
     }
 
+    const now = new Date()
     const updatedSubmission = await projectTaskSubmissions.update({
       where: { id: submission.id },
       data: {
-        acknowledgedAt: submission.updatedAt,
+        acknowledgedAt: now,
+        updatedAt: now,
       },
       include: {
         submittedBy: { select: { id: true, username: true, role: true } },
@@ -949,9 +955,12 @@ export function registerTaskRoutes(app: Elysia) {
     if (!membership) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
     }
+    const assignee = await projectTaskAssignees.findFirst({
+      where: { taskId: params.taskId, memberId: membership.id },
+    })
     const isTaskOwner = membership.role === PROJECT_ROLE.OWNER
     const isHeader = membership.role === PROJECT_ROLE.HEADER
-    if (!isTaskOwner && !isHeader) {
+    if (!assignee && !isTaskOwner && !isHeader) {
       return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403 })
     }
 
@@ -962,10 +971,12 @@ export function registerTaskRoutes(app: Elysia) {
       return new Response(JSON.stringify({ error: "Submission not found" }), { status: 404 })
     }
 
+    const now = new Date()
     const updatedSubmission = await projectTaskSubmissions.update({
       where: { id: submission.id },
       data: {
-        ownerAcknowledgedAt: new Date(),
+        ownerAcknowledgedAt: now,
+        updatedAt: now,
       },
       include: {
         submittedBy: { select: { id: true, username: true, role: true } },

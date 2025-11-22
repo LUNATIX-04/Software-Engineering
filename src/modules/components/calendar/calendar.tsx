@@ -54,6 +54,25 @@ function mapTasksToEvents(tasks: TaskRecord[], projectId: string): IEvent[] {
     const userSource = task.assignees[0] ?? task.createdBy
     const avatarUrl = userSource.avatarUrl ?? null
     const color = STATUS_COLOR_MAP[task.status] ?? DEFAULT_EVENT_COLOR
+    const departmentIds = new Set<string>()
+    const departmentNames = new Set<string>()
+    if (task.department) {
+      if (task.department.id) {
+        departmentIds.add(task.department.id)
+      }
+      if (task.department.name?.trim()) {
+        departmentNames.add(task.department.name.trim())
+      }
+    }
+    task.assignees.forEach((assignee) => {
+      if (assignee.departmentId) {
+        departmentIds.add(assignee.departmentId)
+      }
+    })
+    const primaryDepartmentId = task.department?.id ?? Array.from(departmentIds)[0] ?? null
+    const primaryDepartmentName = task.department?.name ?? Array.from(departmentNames)[0] ?? null
+    const departmentIdList = Array.from(departmentIds)
+    const departmentNameList = Array.from(departmentNames)
     return {
       id: toEventId(task.id),
       startDate: startDate.toISOString(),
@@ -71,10 +90,12 @@ function mapTasksToEvents(tasks: TaskRecord[], projectId: string): IEvent[] {
       status: task.status,
       accentColor: task.cardColor,
       accentTextColor: task.cardTextColor,
-      departmentId: task.department?.id ?? null,
-      departmentName: task.department?.name ?? null,
+      departmentId: primaryDepartmentId,
+      departmentName: primaryDepartmentName,
       departmentColor: task.department?.color ?? null,
       departmentTextColor: task.department?.textColor ?? null,
+      departmentIds: departmentIdList,
+      departmentNames: departmentNameList,
     }
   })
 }
@@ -181,16 +202,36 @@ export function Calendar({ projectId }: CalendarProps) {
     !membershipLoading && membershipRole !== PROJECT_ROLE.MEMBER
 
   return (
-    <div className="flex flex-col gap-3" data-cy="project-calendar-root">
-      {loading && (
-        <div
-          className="flex flex-col gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-primary"
-          data-cy="project-calendar-loading"
-        >
-          <span>Loading tasks…</span>
-          <ProgressBar />
+    <div className="relative flex flex-col gap-3" data-cy="project-calendar-root">
+      <div className="w-full border rounded-xl overflow-hidden">
+        <div className="relative">
+          <CalendarProvider
+            events={events}
+            users={users}
+            view="month"
+            projectId={projectId}
+            canCreateTasks={canCreateTasks}
+          >
+            <DndProvider showConfirmation={false}>
+              <CalendarHeader />
+              <CalendarBody />
+            </DndProvider>
+          </CalendarProvider>
+          {loading && (
+            <div
+              className="absolute inset-0 z-20 flex flex-col items-center justify-start gap-3 bg-white/80 p-5 pt-6 backdrop-blur-sm"
+              data-cy="project-calendar-loading"
+            >
+              <span className="text-sm font-semibold uppercase tracking-[0.25em] text-primary">
+                Loading tasks…
+              </span>
+              <div className="w-full max-w-sm">
+                <ProgressBar />
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
       {error && (
         <div
           className="rounded-2xl border border-destructive/60 bg-destructive/10 px-4 py-3 text-sm text-destructive"
@@ -199,20 +240,6 @@ export function Calendar({ projectId }: CalendarProps) {
           {error}
         </div>
       )}
-      <CalendarProvider
-        events={events}
-        users={users}
-        view="month"
-        projectId={projectId}
-        canCreateTasks={canCreateTasks}
-      >
-        <DndProvider showConfirmation={false}>
-          <div className="w-full border rounded-xl">
-            <CalendarHeader />
-            <CalendarBody />
-          </div>
-        </DndProvider>
-      </CalendarProvider>
     </div>
   )
 }

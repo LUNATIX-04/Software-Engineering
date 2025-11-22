@@ -352,7 +352,10 @@ function AssigneeListDialog({
           <DialogTitle className="text-2xl font-bold text-[var(--task-hero-text)]">Assignees</DialogTitle>
         </DialogHeader>
         {loading ? (
-          <p className="mx-auto mt-4 text-sm font-semibold text-[var(--task-subtle-text)]">Loading assignees…</p>
+          <div className="mx-auto flex w-full max-w-sm flex-col gap-3 text-center">
+            <p className="text-sm font-semibold text-[var(--task-subtle-text)]">Loading assignees…</p>
+            <ProgressBar className="h-1.5 rounded-full" />
+          </div>
         ) : error ? (
           <p className="mx-auto mt-4 text-sm font-semibold text-destructive">{error}</p>
         ) : (
@@ -563,6 +566,10 @@ type TaskSubmissionPanelProps = {
   submissionDialogOpen: boolean
   setSubmissionDialogOpen: (open: boolean) => void
   submissionDialogProps: TaskSubmissionDialogContentProps
+  feedbackMarker: string | null
+  feedbackAcknowledgedMarker: string | null
+  acknowledgingSubmission: boolean
+  handleFeedbackAcknowledgement: (message: string) => void
 }
 
 function TaskSubmissionPanel({
@@ -573,7 +580,16 @@ function TaskSubmissionPanel({
   submissionDialogOpen,
   setSubmissionDialogOpen,
   submissionDialogProps,
+  feedbackMarker,
+  feedbackAcknowledgedMarker,
+  acknowledgingSubmission,
+  handleFeedbackAcknowledgement,
 }: TaskSubmissionPanelProps) {
+  const shouldShowAckButton =
+    shouldShowWaitingHint &&
+    Boolean(feedbackMarker) &&
+    !feedbackAcknowledgedMarker
+  const waitingFeedbackLabel = feedbackMarker ?? "latest"
   return (
     <div className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-5 shadow-inner">
       <div className="flex items-start justify-between gap-3">
@@ -608,6 +624,23 @@ function TaskSubmissionPanel({
           </Dialog>
         )}
       </div>
+      {shouldShowAckButton && (
+        <div className="mt-4 flex justify-end">
+          <Button
+            type="button"
+            data-cy="project-task-detail-submission-waiting-acknowledge"
+            onClick={() =>
+              handleFeedbackAcknowledgement(
+                `You read the ${waitingFeedbackLabel} feedback.`,
+              )
+            }
+            disabled={acknowledgingSubmission}
+            className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-white shadow-[0_4px_0_rgba(63,52,120,0.2)] transition hover:bg-primary/90 disabled:opacity-60 disabled:hover:bg-primary"
+          >
+            {acknowledgingSubmission ? "Marking..." : "Mark as seen"}
+          </Button>
+        </div>
+      )}
     </div>
   )
 }
@@ -618,7 +651,7 @@ type TaskFeedbackPanelProps = {
   feedbackAcknowledgedMarker: string | null
   acknowledgingSubmission: boolean
   lastReviewerComment: string | null
-  handleAcknowledgeSubmission: (message: string) => void
+  handleFeedbackAcknowledgement: (message: string) => void
 }
 
 function TaskFeedbackPanel({
@@ -626,31 +659,35 @@ function TaskFeedbackPanel({
   feedbackAcknowledgedMarker,
   acknowledgingSubmission,
   lastReviewerComment,
-  handleAcknowledgeSubmission,
+  handleFeedbackAcknowledgement,
 }: TaskFeedbackPanelProps) {
   return (
     <div className="rounded-[2rem] border border-primary/30 bg-white/90 px-6 py-5 shadow-inner space-y-4">
       <div className="flex items-center justify-between gap-3">
         <p className="text-base font-semibold text-[var(--task-hero-text)]">Review feedback</p>
         <div className="flex items-center gap-3">
-          {!feedbackMarker && (
-            <span className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/60">
-              Waiting for owner response
-            </span>
-          )}
-          {feedbackMarker && feedbackAcknowledgedMarker === feedbackMarker && (
-            <p className="text-xs uppercase tracking-[0.3em] text-primary/70">Last review: {feedbackMarker}</p>
-          )}
-          {feedbackMarker && feedbackMarker !== feedbackAcknowledgedMarker && (
+          {feedbackMarker && feedbackAcknowledgedMarker ? (
+            <p className="text-xs uppercase tracking-[0.3em] text-primary/70">
+              Seen at {feedbackAcknowledgedMarker}
+            </p>
+          ) : feedbackMarker ? (
             <Button
               type="button"
               data-cy="project-task-detail-feedback-acknowledge"
-              onClick={() => handleAcknowledgeSubmission(`You read the ${feedbackMarker} feedback.`)}
+              onClick={() =>
+                handleFeedbackAcknowledgement(
+                  `You read the ${feedbackMarker ?? "latest"} feedback.`,
+                )
+              }
               disabled={acknowledgingSubmission}
               className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-white shadow-[0_4px_0_rgba(63,52,120,0.2)] transition hover:bg-primary/90 disabled:opacity-60 disabled:hover:bg-primary"
             >
               {acknowledgingSubmission ? "Marking..." : "Mark as seen"}
             </Button>
+          ) : (
+            <span className="text-xs font-semibold uppercase tracking-[0.3em] text-primary/60">
+              Waiting for owner response
+            </span>
           )}
         </div>
       </div>
@@ -667,7 +704,7 @@ type TaskSubmissionDetailsPanelProps = {
   hasPendingSubmissionAcknowledgement: boolean
   acknowledgingSubmission: boolean
   taskSubmission: TaskSubmission | null | undefined
-  handleAcknowledgeSubmission: (message: string) => void
+  handleSubmissionAcknowledgement: (message: string) => void
 }
 
 function TaskSubmissionDetailsPanel({
@@ -675,7 +712,7 @@ function TaskSubmissionDetailsPanel({
   hasPendingSubmissionAcknowledgement,
   acknowledgingSubmission,
   taskSubmission,
-  handleAcknowledgeSubmission,
+  handleSubmissionAcknowledgement,
 }: TaskSubmissionDetailsPanelProps) {
   return (
     <div className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-5 shadow-inner space-y-4">
@@ -692,7 +729,9 @@ function TaskSubmissionDetailsPanel({
           <Button
             type="button"
             data-cy="project-task-detail-submission-acknowledge"
-            onClick={() => handleAcknowledgeSubmission("The assignee will know you saw the work.")}
+            onClick={() =>
+              handleSubmissionAcknowledgement("The assignee will know you saw the work.")
+            }
             disabled={acknowledgingSubmission}
             className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-white shadow-[0_4px_0_rgba(63,52,120,0.2)] transition hover:bg-primary/90 disabled:opacity-60 disabled:hover:bg-primary"
           >
@@ -867,6 +906,16 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [submissionAcknowledgedMarker, setSubmissionAcknowledgedMarker] = useState<string | null>(null)
   const [feedbackMarker, setFeedbackMarker] = useState<string | null>(null)
   const [feedbackAcknowledgedMarker, setFeedbackAcknowledgedMarker] = useState<string | null>(null)
+  const formatTimestampLabel = useCallback((value: string | null) => {
+    if (!value) {
+      return null
+    }
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) {
+      return null
+    }
+    return date.toLocaleString()
+  }, [])
   const [assignerProfile, setAssignerProfile] = useState<ProjectMemberDetail | null>(null)
   const [assignerDialogOpen, setAssignerDialogOpen] = useState(false)
   const [assignerProfileLoading, setAssignerProfileLoading] = useState(false)
@@ -1005,9 +1054,6 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
   const handleAssigneeDetailClose = useCallback((open: boolean) => {
     setAssigneeDetailOpen(open)
-    if (!open) {
-      setAssigneeDetailTarget(null)
-    }
   }, [])
 
   const resolvedAssigneeList = React.useMemo<ProjectMemberDetail[]>(() => {
@@ -1057,29 +1103,26 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       return
     }
     submissionUpdatedAtRef.current = updatedAt
-    const markerLabel = new Date(updatedAt).toLocaleString()
-    const acknowledgedAtLabel = submission.acknowledgedAt
-      ? new Date(submission.acknowledgedAt).toLocaleString()
-      : null
+    const markerLabel = formatTimestampLabel(updatedAt)
+    const ownerAcknowledgedLabel = formatTimestampLabel(submission.ownerAcknowledgedAt ?? null)
+    const reviewerAcknowledgedLabel = formatTimestampLabel(submission.acknowledgedAt ?? null)
     const reviewerCommentPresent = Boolean(submission.reviewerComment?.trim())
-    const ackExists = Boolean(submission.acknowledgedAt)
-    const treatAsFeedback =
-      submission.status !== "SUBMITTED" ||
-      (submission.status === "SUBMITTED" &&
-        reviewerCommentPresent &&
-        !ackExists)
-    if (treatAsFeedback) {
+    const treatAsFeedback = reviewerCommentPresent && !ownerAcknowledgedLabel
+    if (reviewerCommentPresent) {
       setFeedbackMarker(markerLabel)
-      setFeedbackAcknowledgedMarker(acknowledgedAtLabel)
+      setFeedbackAcknowledgedMarker(ownerAcknowledgedLabel)
+    } else {
+      setFeedbackMarker(null)
+      setFeedbackAcknowledgedMarker(null)
+    }
+    if (treatAsFeedback) {
       setSubmissionMarker(null)
       setSubmissionAcknowledgedMarker(null)
     } else {
       setSubmissionMarker(markerLabel)
-      setSubmissionAcknowledgedMarker(acknowledgedAtLabel)
-      setFeedbackMarker(null)
-      setFeedbackAcknowledgedMarker(null)
+      setSubmissionAcknowledgedMarker(reviewerAcknowledgedLabel)
     }
-  }, [task?.submission])
+  }, [task?.submission, formatTimestampLabel])
 
   React.useEffect(() => {
     setLastReviewerComment(task?.submission?.reviewerComment ?? null)
@@ -1193,14 +1236,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   }, [task])
   const isAssignedMember = membership ? assignedMemberIds.has(membership.id) : false
   const viewerIsAssigner = Boolean(task && membership?.id === task.createdBy.id)
-  const isAssigneeMember =
-    Boolean(membership) &&
-    membership?.role === PROJECT_ROLE.MEMBER &&
-    isAssignedMember &&
-    !viewerIsAssigner
+  const isAssignee = Boolean(membership) && isAssignedMember && !viewerIsAssigner
   const taskBlocked = status === "BLOCKED"
   const taskComplete = status === "SUBMITTED"
-  const canSubmitTask = isAssigneeMember && !taskBlocked && !taskComplete
+  const canSubmitTask = isAssignee && !taskBlocked && !taskComplete
   const assigneeStatusNotice = taskBlocked
     ? "This task is blocked by the owner; you cannot edit or resubmit the submission."
     : taskComplete
@@ -1208,7 +1247,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       : null
   const canReviewSubmission = viewerIsAssigner && Boolean(task?.submission)
   const ownerViewingSubmission = viewerIsAssigner && Boolean(task?.submission)
-  const assignedMemberWaitingReview = Boolean(task?.submission) && isAssignedMember && !viewerIsAssigner
+  const assignedMemberWaitingReview = Boolean(task?.submission) && isAssignee
 
   const readFileAsDataUrl = (file: File) =>
     new Promise<{ name: string; url: string }>((resolve, reject) => {
@@ -1258,17 +1297,22 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         })
       )
       const filteredAttachments = attachments.filter((attachment) => Boolean(attachment.url))
+      const isUpdatingSubmission = Boolean(task?.submission)
+      const submissionPayload: Record<string, unknown> = {
+        description: submissionDescription,
+        attachments: filteredAttachments,
+      }
+      if (isUpdatingSubmission && task?.submission?.id) {
+        submissionPayload.submissionId = task.submission.id
+      }
       const response = await fetch(
         `/api/projects/${projectId}/tasks/${taskId}/submission`,
         {
-          method: "POST",
+          method: isUpdatingSubmission ? "PATCH" : "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            description: submissionDescription,
-            attachments: filteredAttachments,
-          }),
+          body: JSON.stringify(submissionPayload),
         }
       )
       if (!response.ok) {
@@ -1301,49 +1345,101 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     }
   }
 
-  const handleAcknowledgeSubmission = useCallback(
+  const handleSubmissionAcknowledgement = useCallback(
     async (notifyDescription: string, notifyTitle = "Acknowledged") => {
-    if (!task) {
-      return
-    }
-    setAcknowledgingSubmission(true)
-    try {
-      const response = await fetch(
-        `/api/projects/${projectId}/tasks/${taskId}/submission/acknowledge`,
-        {
-          method: "POST",
-        }
-      )
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null)
-        throw new Error(
-          typeof payload?.error === "string"
-            ? payload.error
-            : "Unable to acknowledge submission"
-        )
+      if (!task) {
+        return
       }
-      const result = (await response.json()) as { submission: TaskSubmission }
-      setTask((prev) => (prev ? { ...prev, submission: result.submission } : prev))
-      setFeedbackAcknowledgedMarker(feedbackMarker ?? null)
-      notify({
-        title: notifyTitle,
-        description: notifyDescription,
-        variant: "success",
-      })
-    } catch (ackError) {
-      console.error(ackError)
-      notify({
-        title: "Acknowledgement failed",
-        description:
-          ackError instanceof Error
-            ? ackError.message
-            : "Unable to acknowledge submission",
-        variant: "destructive",
-      })
-    } finally {
-      setAcknowledgingSubmission(false)
-    }
-  }, [projectId, taskId, task, notify])
+      setAcknowledgingSubmission(true)
+      try {
+        const response = await fetch(
+          `/api/projects/${projectId}/tasks/${taskId}/submission/acknowledge`,
+          {
+            method: "POST",
+          }
+        )
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null)
+          throw new Error(
+            typeof payload?.error === "string"
+              ? payload.error
+              : "Unable to acknowledge submission"
+          )
+        }
+        const result = (await response.json()) as { submission: TaskSubmission }
+        setTask((prev) => (prev ? { ...prev, submission: result.submission } : prev))
+        setSubmissionAcknowledgedMarker(
+          formatTimestampLabel(result.submission.acknowledgedAt ?? null),
+        )
+        notify({
+          title: notifyTitle,
+          description: notifyDescription,
+          variant: "success",
+        })
+      } catch (ackError) {
+        console.error(ackError)
+        notify({
+          title: "Acknowledgement failed",
+          description:
+            ackError instanceof Error
+              ? ackError.message
+              : "Unable to acknowledge submission",
+          variant: "destructive",
+        })
+      } finally {
+        setAcknowledgingSubmission(false)
+      }
+    },
+    [projectId, taskId, task, notify, formatTimestampLabel],
+  )
+
+  const handleFeedbackAcknowledgement = useCallback(
+    async (notifyDescription: string, notifyTitle = "Feedback seen") => {
+      if (!task) {
+        return
+      }
+      setAcknowledgingSubmission(true)
+      try {
+        const response = await fetch(
+          `/api/projects/${projectId}/tasks/${taskId}/submission/owner-acknowledge`,
+          {
+            method: "POST",
+          },
+        )
+        if (!response.ok) {
+          const payload = await response.json().catch(() => null)
+          throw new Error(
+            typeof payload?.error === "string"
+              ? payload.error
+              : "Unable to mark feedback as seen"
+          )
+        }
+        const result = (await response.json()) as { submission: TaskSubmission }
+        setTask((prev) => (prev ? { ...prev, submission: result.submission } : prev))
+        setFeedbackAcknowledgedMarker(
+          formatTimestampLabel(result.submission.ownerAcknowledgedAt ?? null),
+        )
+        notify({
+          title: notifyTitle,
+          description: notifyDescription,
+          variant: "success",
+        })
+      } catch (ackError) {
+        console.error(ackError)
+        notify({
+          title: "Acknowledgement failed",
+          description:
+            ackError instanceof Error
+              ? ackError.message
+              : "Unable to mark feedback as seen",
+          variant: "destructive",
+        })
+      } finally {
+        setAcknowledgingSubmission(false)
+      }
+    },
+    [projectId, taskId, task, notify, formatTimestampLabel],
+  )
 
   React.useEffect(() => {
     if (!submissionDialogOpen) {
@@ -1438,8 +1534,6 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const statusColors = TASK_STATUS_COLORS[status]
   const submissionRecord = task?.submission
   const hasSubmission = Boolean(submissionRecord)
-  const pendingFeedbackCycle =
-    Boolean(feedbackMarker) && feedbackMarker !== feedbackAcknowledgedMarker
   const waitingForOwnerResponse =
     Boolean(submissionRecord && submissionRecord.status === "SUBMITTED" && !submissionRecord.acknowledgedAt)
   const effectiveHasSubmission = hasSubmission && !waitingForOwnerResponse
@@ -1753,7 +1847,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
             <div className="space-y-6 w-full max-w-2xl">
 
-              {!viewerIsAssigner && isAssigneeMember && (
+              {!viewerIsAssigner && isAssignee && (
                 <TaskSubmissionPanel
                   shouldShowWaitingHint={shouldShowWaitingHint}
                   hasSubmission={hasSubmission}
@@ -1776,6 +1870,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                     onSubmit: handleSubmissionSubmit,
                     onClose: () => setSubmissionDialogOpen(false),
                   }}
+                  feedbackMarker={feedbackMarker}
+                  feedbackAcknowledgedMarker={feedbackAcknowledgedMarker}
+                  acknowledgingSubmission={acknowledgingSubmission}
+                  handleFeedbackAcknowledgement={handleFeedbackAcknowledgement}
                 />
               )}
 
@@ -1794,7 +1892,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                   feedbackAcknowledgedMarker={feedbackAcknowledgedMarker}
                   acknowledgingSubmission={acknowledgingSubmission}
                   lastReviewerComment={lastReviewerComment}
-                  handleAcknowledgeSubmission={handleAcknowledgeSubmission}
+                  handleFeedbackAcknowledgement={handleFeedbackAcknowledgement}
                 />
               )}
 
@@ -1805,7 +1903,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                   hasPendingSubmissionAcknowledgement={hasPendingSubmissionAcknowledgement}
                   acknowledgingSubmission={acknowledgingSubmission}
                   taskSubmission={task.submission}
-                  handleAcknowledgeSubmission={handleAcknowledgeSubmission}
+                  handleSubmissionAcknowledgement={handleSubmissionAcknowledgement}
                 />
               )}
 

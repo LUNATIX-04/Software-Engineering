@@ -6,29 +6,30 @@ import {
 	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
 	DropdownMenuItem,
-	DropdownMenuLabel,
-	DropdownMenuRadioGroup,
-	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Toggle } from "@/components/ui/toggle";
 import { cn } from "@/lib/utils";
 import { useCalendar } from "@/modules/components/calendar/contexts/calendar-context";
+import { QUICK_COLOR_OPTIONS } from "@/constants/task-colors";
+import { QUICK_DEPARTMENT_COLORS } from "@/components/projects/DepartmentColorMenu";
 import type { ProjectDepartmentRecord } from "@/utils/projects/departments";
 import { fetchProjectDepartments } from "@/utils/projects/departments";
-import { fetchProjectMembership } from "@/utils/projects/api";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-type TaskScope = "all" | "assignee" | "assigner";
+type FilterMode = "department" | "color";
 
 export default function FilterEvents() {
 	const {
 		availableDepartments,
+		availableColors,
 		departmentMeta,
 		selectedDepartmentNames,
 		selectedDepartmentIds,
+		selectedColors,
 		filterEventsBySelectedUser,
+		filterEventsBySelectedColors,
 		clearFilter,
 		selectedUserId,
 		toggleDepartmentFilter,
@@ -36,46 +37,8 @@ export default function FilterEvents() {
 	} = useCalendar();
 
 	const [menuOpen, setMenuOpen] = useState(false);
-	const [taskScope, setTaskScope] = useState<TaskScope>("all");
-	const [membershipId, setMembershipId] = useState<string | null>(null);
-	const [membershipLoading, setMembershipLoading] = useState(false);
+	const [filterMode, setFilterMode] = useState<FilterMode>("department");
 	const [remoteDepartments, setRemoteDepartments] = useState<ProjectDepartmentRecord[]>([]);
-
-	useEffect(() => {
-		let active = true;
-
-		if (!projectId) {
-			setMembershipId(null);
-			setMembershipLoading(false);
-			return;
-		}
-
-		setMembershipLoading(true);
-
-		fetchProjectMembership(projectId)
-			.then((membership) => {
-				if (!active) {
-					return;
-				}
-				setMembershipId(membership?.id ?? null);
-			})
-			.catch(() => {
-				if (!active) {
-					return;
-				}
-				setMembershipId(null);
-			})
-			.finally(() => {
-				if (!active) {
-					return;
-				}
-				setMembershipLoading(false);
-			});
-
-		return () => {
-			active = false;
-		};
-	}, [projectId]);
 
 	useEffect(() => {
 		let active = true;
@@ -109,13 +72,6 @@ export default function FilterEvents() {
 		};
 	}, [projectId]);
 
-	useEffect(() => {
-		if (!membershipId && taskScope !== "all") {
-			setTaskScope("all");
-			filterEventsBySelectedUser("all");
-		}
-	}, [filterEventsBySelectedUser, membershipId, taskScope]);
-
 	const remoteDepartmentByName = useMemo(
 		() =>
 			remoteDepartments.reduce<Record<string, ProjectDepartmentRecord>>((acc, department) => {
@@ -137,9 +93,23 @@ export default function FilterEvents() {
 		);
 	}, [availableDepartments, remoteDepartments]);
 
-	const hasDepartmentFilters =
-		selectedDepartmentNames.length > 0 || selectedDepartmentIds.length > 0;
-	const filterActive = hasDepartmentFilters || selectedUserId !== "all";
+	const departmentFilterCount = useMemo(() => {
+		const nameSet = new Set(
+			selectedDepartmentNames.map((name) => name.trim().toLowerCase()).filter(Boolean),
+		);
+		selectedDepartmentIds.forEach((id) => {
+			if (id) {
+				nameSet.add(String(id).trim());
+			}
+		});
+		return nameSet.size;
+	}, [selectedDepartmentIds, selectedDepartmentNames]);
+	const userFilterCount = selectedUserId !== "all" ? 1 : 0;
+	const colorFilterCount = selectedColors.length;
+	const filterCount = departmentFilterCount + userFilterCount + colorFilterCount;
+	const filterActive = filterCount > 0;
+	const departmentFilterActive = departmentFilterCount > 0;
+	const colorFilterActive = colorFilterCount > 0;
 
 	const handleToggleDepartmentFilter = useCallback(
 		(department: string) => {
@@ -149,35 +119,72 @@ export default function FilterEvents() {
 		[departmentMeta, remoteDepartmentByName, toggleDepartmentFilter],
 	);
 
-	const applyTaskScope = useCallback(
-		(nextScope: TaskScope) => {
-			if (nextScope === "all" || !membershipId) {
-				filterEventsBySelectedUser("all");
-				return;
-			}
-			filterEventsBySelectedUser(membershipId);
-		},
-		[filterEventsBySelectedUser, membershipId],
-	);
-
-	const handleTaskScopeChange = useCallback(
-		(nextScope: TaskScope) => {
-			if (nextScope !== "all" && !membershipId) {
-				return;
-			}
-			setTaskScope(nextScope);
-			applyTaskScope(nextScope);
-		},
-		[applyTaskScope, membershipId],
-	);
-
 	const handleResetFilters = useCallback(() => {
 		clearFilter();
-		setTaskScope("all");
 		filterEventsBySelectedUser("all");
 	}, [clearFilter, filterEventsBySelectedUser]);
 
-	const isTaskScopeSelectionDisabled = membershipLoading || !membershipId;
+	const { paletteColors, customColors } = useMemo(() => {
+		const paletteLabelMap = new Map<string, string>();
+		[...QUICK_COLOR_OPTIONS, ...QUICK_DEPARTMENT_COLORS].forEach((item) => {
+			if (item?.value) {
+				paletteLabelMap.set(item.value.toLowerCase(), item.label);
+			}
+		});
+
+		const normalizedColors = availableColors
+			.map((color) => color?.trim().toLowerCase())
+			.filter((color): color is string => Boolean(color));
+
+		const seen = new Set<string>();
+		let customIndex = 0;
+		const palette: Array<{ label: string; value: string }> = [];
+		const custom: string[] = [];
+
+		normalizedColors.forEach((color) => {
+			if (seen.has(color)) {
+				return;
+			}
+			seen.add(color);
+			const paletteLabel = paletteLabelMap.get(color);
+			if (paletteLabel) {
+				palette.push({ label: paletteLabel, value: color });
+			} else {
+				customIndex += 1;
+				custom.push(color);
+				palette.push({ label: `Custom Color ${customIndex}`, value: color });
+			}
+		});
+
+		return { paletteColors: palette, customColors: custom };
+	}, [availableColors]);
+
+	const renderColorItem = useCallback(
+		(color: string, label?: string) => {
+			const normalized = color.trim().toLowerCase();
+			const isChecked = selectedColors.includes(normalized);
+			return (
+				<DropdownMenuCheckboxItem
+					key={normalized}
+					checked={isChecked}
+					onCheckedChange={() => filterEventsBySelectedColors(normalized)}
+					onSelect={(event) => event.preventDefault()}
+					className="rounded-2xl px-3 py-2 pr-10 text-foreground focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
+				>
+					<span className="inline-flex items-center gap-2">
+						<span
+							className="size-3 rounded-full border border-black/10"
+							style={{ backgroundColor: normalized }}
+						/>
+						<span className="block max-w-[10rem] truncate">
+							{label ?? normalized.charAt(0).toUpperCase() + normalized.slice(1)}
+						</span>
+					</span>
+				</DropdownMenuCheckboxItem>
+			);
+		},
+		[filterEventsBySelectedColors, selectedColors],
+	);
 
 	return (
 		<DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
@@ -185,7 +192,7 @@ export default function FilterEvents() {
 				<Toggle
 					variant="outline"
 					className={cn(
-						"cursor-pointer w-fit",
+						"cursor-pointer w-fit relative",
 						filterActive ? "border-primary bg-primary/10 text-primary" : "",
 					)}
 					aria-label="Open calendar filters"
@@ -212,72 +219,90 @@ export default function FilterEvents() {
 					</button>
 				</div>
 
-				<DropdownMenuSeparator className="my-1 bg-primary/15" />
-
-				<div className="asap-scroll max-h-[18rem] overflow-y-auto">
-					{departmentOptions.length === 0 ? (
-						<div className="px-2 py-3 text-xs font-semibold uppercase tracking-wide text-primary/60">
-							No departments yet
-						</div>
-					) : (
-						departmentOptions.map((department) => {
-							const meta = remoteDepartmentByName[department] ?? departmentMeta[department];
-							const isChecked =
-								selectedDepartmentNames.some(
-									(name) => name.trim().toLowerCase() === department.trim().toLowerCase(),
-								) ||
-								(meta?.id ? selectedDepartmentIds.includes(meta.id) : false);
-							return (
-								<DropdownMenuCheckboxItem
-									key={department}
-									checked={isChecked}
-									onCheckedChange={() => handleToggleDepartmentFilter(department)}
-									onSelect={(event) => event.preventDefault()}
-									className="rounded-2xl px-3 py-2 pr-10 text-foreground focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
-								>
-									<span className="inline-flex items-center gap-2">
-										<span
-											className="size-3 rounded-full border border-black/10"
-											style={{
-												backgroundColor: meta?.color ?? "#D9D6FF",
-											}}
-										/>
-										<span className="block max-w-[10rem] truncate">{department}</span>
-									</span>
-								</DropdownMenuCheckboxItem>
-							);
-						})
-					)}
+				<div className="flex items-center justify-end gap-2 px-1 pb-2">
+					<button
+						type="button"
+						className={cn(
+							"rounded-full px-3 py-1 text-xs font-semibold transition",
+							filterMode === "department"
+								? "bg-primary/10 text-primary"
+								: "text-primary/70 hover:bg-primary/10 hover:text-primary",
+						)}
+						onClick={() => setFilterMode("department")}
+					>
+						Departments
+					</button>
+					<button
+						type="button"
+						className={cn(
+							"rounded-full px-3 py-1 text-xs font-semibold transition",
+							filterMode === "color"
+								? "bg-primary/10 text-primary"
+								: "text-primary/70 hover:bg-primary/10 hover:text-primary",
+						)}
+						onClick={() => setFilterMode("color")}
+					>
+						Colors
+					</button>
 				</div>
 
-				<DropdownMenuSeparator className="my-2 bg-primary/20" />
+				<DropdownMenuSeparator className="my-1 bg-primary/15" />
 
-				<DropdownMenuLabel className="px-3 pt-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60">
-					Task scope
-				</DropdownMenuLabel>
-
-				<DropdownMenuRadioGroup value={taskScope} onValueChange={(value) => handleTaskScopeChange(value as TaskScope)}>
-					<DropdownMenuRadioItem
-						value="all"
-						className="rounded-2xl px-3 py-2 pr-10 focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
-					>
-						All tasks
-					</DropdownMenuRadioItem>
-					<DropdownMenuRadioItem
-						value="assignee"
-						disabled={isTaskScopeSelectionDisabled}
-						className="rounded-2xl px-3 py-2 pr-10 focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
-					>
-						My Tasks (Assignee)
-					</DropdownMenuRadioItem>
-					<DropdownMenuRadioItem
-						value="assigner"
-						disabled={isTaskScopeSelectionDisabled}
-						className="rounded-2xl px-3 py-2 pr-10 focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
-					>
-						Assigned Tasks (Assigner)
-					</DropdownMenuRadioItem>
-				</DropdownMenuRadioGroup>
+				{filterMode === "department" ? (
+					<div className="member-filter-scroll max-h-[22rem] overflow-y-auto px-2 py-1">
+						{departmentOptions.length === 0 ? (
+							<div className="px-2 py-3 text-xs font-semibold uppercase tracking-wide text-primary/60">
+								No departments yet
+							</div>
+						) : (
+							departmentOptions.map((department) => {
+								const meta = remoteDepartmentByName[department] ?? departmentMeta[department];
+								const isChecked =
+									selectedDepartmentNames.some(
+										(name) => name.trim().toLowerCase() === department.trim().toLowerCase(),
+									) ||
+									(meta?.id ? selectedDepartmentIds.includes(meta.id) : false);
+								return (
+									<DropdownMenuCheckboxItem
+										key={department}
+										checked={isChecked}
+										onCheckedChange={() => handleToggleDepartmentFilter(department)}
+										onSelect={(event) => event.preventDefault()}
+										className="rounded-2xl px-3 py-2 pr-10 text-foreground focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
+									>
+										<span className="inline-flex items-center gap-2">
+											<span
+												className="size-3 rounded-full border border-black/10"
+												style={{
+													backgroundColor: meta?.color ?? "#D9D6FF",
+												}}
+											/>
+											<span className="block max-w-[10rem] truncate">{department}</span>
+										</span>
+									</DropdownMenuCheckboxItem>
+								);
+							})
+						)}
+					</div>
+				) : (
+					<div className="member-filter-scroll max-h-[22rem] overflow-y-auto space-y-2 px-2 py-1">
+						{paletteColors
+							.filter((item) => item.label && !item.label.toLowerCase().startsWith("custom color"))
+							.map((item) => renderColorItem(item.value, item.label))}
+						{paletteColors.length === 0 && customColors.length === 0 ? (
+							<div className="px-2 py-3 text-xs font-semibold uppercase tracking-wide text-primary/60">
+								No colors available
+							</div>
+						) : null}
+						{customColors.length > 0 ? (
+							<>
+								{customColors.map((color, index) =>
+									renderColorItem(color, `Custom Color ${index + 1}`),
+								)}
+							</>
+						) : null}
+					</div>
+				)}
 
 				<DropdownMenuSeparator className="my-2 bg-primary/20" />
 

@@ -61,7 +61,11 @@ export default function CreateTaskPage({ params }: CreateTaskPageProps) {
           new CustomEvent(PROJECT_REFRESH_EVENT, { detail: { projectId } })
         )
       }
-      router.push(`/projects/${projectId}/task`)
+      if (typeof window !== "undefined" && window.history.length > 1) {
+        router.back()
+      } else {
+        router.push(`/projects/${projectId}/task`)
+      }
     } catch (error) {
       console.error(error)
       notify({

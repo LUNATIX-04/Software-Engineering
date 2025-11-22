@@ -36,6 +36,7 @@ interface ICalendarContext {
 	selectedDepartmentIds: string[];
 	toggleDepartmentFilter: (departmentName: string, departmentId?: string | null) => void;
 	availableDepartments: string[];
+	availableColors: string[];
 	departmentMeta: Record<string, { id?: string | null; color?: string; textColor?: string }>;
 	clearDepartmentFilters: () => void;
 	users: IUser[];
@@ -127,8 +128,28 @@ export function CalendarProvider({
 			if (normalized) {
 				names.add(normalized);
 			}
+			(event.departmentNames ?? []).forEach((name) => {
+				const derived = name?.trim();
+				if (derived) {
+					names.add(derived);
+				}
+			});
 		});
 		return Array.from(names);
+	}, [allEvents]);
+
+	const availableColors = useMemo(() => {
+		const set = new Set<string>();
+		allEvents.forEach((event) => {
+			const candidate = event.accentColor ?? event.color;
+			if (candidate) {
+				const normalized = candidate.trim().toLowerCase();
+				if (normalized) {
+					set.add(normalized);
+				}
+			}
+		});
+		return Array.from(set);
 	}, [allEvents]);
 
 	const departmentMeta = useMemo(() => {
@@ -147,6 +168,16 @@ export function CalendarProvider({
 				color: event.departmentColor ?? existing?.color,
 				textColor: event.departmentTextColor ?? existing?.textColor,
 			};
+			(event.departmentNames ?? []).forEach((name) => {
+				const normalized = name?.trim();
+				if (!normalized) return;
+				const current = meta[normalized];
+				meta[normalized] = {
+					id: current?.id ?? event.departmentId ?? null,
+					color: current?.color ?? event.departmentColor ?? null,
+					textColor: current?.textColor ?? event.departmentTextColor ?? null,
+				};
+			});
 		});
 		return meta;
 	}, [allEvents]);
@@ -158,23 +189,49 @@ export function CalendarProvider({
 			.filter(Boolean);
 		const selectedDepartmentNamesSet = new Set(selectedDepartmentNamesLower);
 		const selectedDepartmentIdsSet = new Set(
-			selectedDepartmentIds.map((id) => id.trim()).filter(Boolean),
+			selectedDepartmentIds
+				.map((id) => String(id).trim())
+				.filter(Boolean),
 		);
 
 		if (selectedColors.length > 0) {
 			nextEvents = nextEvents.filter((event) => {
-				const eventColor = event.color || "blue";
+				const eventColor = (event.accentColor ?? event.color)?.toLowerCase().trim();
+				if (!eventColor) return false;
 				return selectedColors.includes(eventColor);
 			});
 		}
 
 		if (selectedDepartmentNames.length > 0 || selectedDepartmentIds.length > 0) {
 			nextEvents = nextEvents.filter((event) => {
-				const departmentName = event.departmentName?.trim().toLowerCase() ?? "";
-				const departmentId = event.departmentId ?? "";
+				const departmentNameSet = new Set<string>();
+				if (event.departmentName?.trim()) {
+					departmentNameSet.add(event.departmentName.trim().toLowerCase());
+				}
+				(event.departmentNames ?? []).forEach((name) => {
+					const normalized = name?.trim().toLowerCase();
+					if (normalized) {
+						departmentNameSet.add(normalized);
+					}
+				});
+
+				const departmentIdSet = new Set<string>();
+				const addDepartmentId = (value?: string | null) => {
+					if (!value) return;
+					const normalized = String(value).trim();
+					if (normalized) {
+						departmentIdSet.add(normalized);
+					}
+				};
+				addDepartmentId(event.departmentId ?? null);
+				(event.departmentIds ?? []).forEach((id) => addDepartmentId(id));
+
 				const matchesName =
-					departmentName.length > 0 && selectedDepartmentNamesSet.has(departmentName);
-				const matchesId = departmentId && selectedDepartmentIdsSet.has(departmentId);
+					departmentNameSet.size > 0 &&
+					Array.from(departmentNameSet).some((name) => selectedDepartmentNamesSet.has(name));
+				const matchesId =
+					departmentIdSet.size > 0 &&
+					Array.from(departmentIdSet).some((id) => selectedDepartmentIdsSet.has(id));
 				if (!matchesName && !matchesId) {
 					return false;
 				}
@@ -224,11 +281,13 @@ export function CalendarProvider({
 	};
 
 	const filterEventsBySelectedColors = (color: TEventColor) => {
+		const normalized = color?.toLowerCase().trim() as TEventColor;
+		if (!normalized) return;
 		setSelectedColors((prev) => {
-			if (prev.includes(color)) {
-				return prev.filter((c) => c !== color);
+			if (prev.includes(normalized)) {
+				return prev.filter((c) => c !== normalized);
 			}
-			return [...prev, color];
+			return [...prev, normalized];
 		});
 	};
 
@@ -317,6 +376,7 @@ export function CalendarProvider({
 			selectedDepartmentIds,
 			toggleDepartmentFilter,
 			availableDepartments,
+			availableColors,
 			departmentMeta,
 			clearDepartmentFilters,
 			filterEventsBySelectedColors,

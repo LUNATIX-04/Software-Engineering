@@ -880,6 +880,16 @@ body[data-theme-init="pending"] {
     box-shadow: 0 10px 30px color-mix(in srgb, var(--primary) 25%, transparent);
   }
 
+  .filter-flag {
+    display: inline-block;
+    margin-left: 0.35rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: #ef4444;
+    box-shadow: 0 0 0 2px #ffffff;
+  }
+
   [data-slot="dropdown-menu-content"] {
     background-color: var(--popover);
     color: var(--popover-foreground);

@@ -25,7 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { TOOLTIP_DELAY_DURATION_MS } from "@/constants/ui"
-import { format } from "date-fns"
+import { addMinutes, format } from "date-fns"
 import { usePreferences } from "@/contexts/preferences"
 import type { DepartmentLayoutOption } from "@/types/preferences"
 import { cn } from "@/lib/utils"
@@ -39,6 +39,19 @@ import { HexColorPicker } from "react-colorful"
 import { DEFAULT_TASK_CARD_COLOR, QUICK_COLOR_OPTIONS } from "@/constants/task-colors"
 import { SearchField } from "@/components/ui/search-field"
 import { ScrollArea, ScrollBar, type ScrollAreaViewportElement } from "@/components/ui/scroll-area"
+import { DateTimePicker } from "@/components/ui/date-time-picker"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import {
+  Modal,
+  ModalClose,
+  ModalContent,
+  ModalDescription,
+  ModalFooter,
+  ModalHeader,
+  ModalTitle,
+  ModalTrigger,
+} from "@/components/ui/responsive-modal"
+import { useForm } from "react-hook-form"
 import type { DateRange } from "react-day-picker"
 
 type TaskFormValues = {
@@ -289,21 +302,21 @@ function TaskAssigneeSection({
             </button>
           </PopoverTrigger>
           {assigneeOptions.length > 0 ? (
-            <PopoverContent
-              align="start"
-              side="right"
-              sideOffset={8}
-              className="w-[22rem] rounded-3xl border border-primary/40 bg-white px-4 py-4 text-sm font-semibold text-[#2F2766] shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
-            >
-              <div className="space-y-4">
-                  <SearchField
-                    wrapperClassName="relative"
-                    value={assigneeSearch}
+          <PopoverContent
+            align="start"
+            side="right"
+            sideOffset={8}
+            className="w-[22rem] h-[30rem] rounded-3xl border border-primary/40 bg-white px-4 py-4 text-sm font-semibold text-[#2F2766] shadow-[0_16px_30px_rgba(39,36,66,0.15)]"
+          >
+            <div className="flex h-full flex-col gap-4">
+              <SearchField
+                wrapperClassName="relative"
+                value={assigneeSearch}
                     onChange={(event) => setAssigneeSearch(event.target.value)}
                     placeholder="Search member"
                   />
                 {(availableDepartmentFilters.length > 0 || availableRoleFilters.length > 0) && (
-                  <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-primary/60">
+              <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-primary/60">
                     {availableDepartmentFilters.length > 0 ? (
                       <div>
                         <p className="text-[0.65rem]">Departments</p>
@@ -377,7 +390,7 @@ function TaskAssigneeSection({
                     ) : null}
                   </div>
                 )}
-                <div className="asap-scroll [scrollbar-gutter:stable] max-h-64 space-y-1 overflow-y-auto overflow-x-scroll pr-1">
+                <div className="asap-scroll [scrollbar-gutter:stable] flex-1 space-y-1 overflow-y-auto pr-1">
                   {filteredAssigneeOptions.length > 0 ? (
                     filteredAssigneeOptions.map((option) => {
                       const isSelected = assigneeIds.includes(option.id)
@@ -606,6 +619,32 @@ function parseTime(value: string | null | undefined) {
   return { hours: safeHours, minutes: safeMinutes }
 }
 
+function parseTimeFlexible(value: string | null | undefined) {
+  if (!value) {
+    return null
+  }
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return null
+  }
+  if (trimmed.includes(":")) {
+    const [rawHours, rawMinutes = ""] = trimmed.split(":")
+    const minutes = rawMinutes || "00"
+    return parseTime(`${rawHours}:${minutes}`)
+  }
+  const digits = trimmed.replace(/\D/g, "")
+  if (!digits) {
+    return null
+  }
+  if (digits.length <= 2) {
+    const padded = `${digits.padStart(1, "0")}:${"00"}`
+    return parseTime(padded)
+  }
+  const hours = digits.slice(0, digits.length - 2)
+  const minutes = digits.slice(-2)
+  return parseTime(`${hours}:${minutes}`)
+}
+
 function parseDeadline(value: string | null | undefined): Date | null {
   if (!value) {
     return null
@@ -786,6 +825,8 @@ type TaskTimelinePanelProps = {
   formattedStartLabel: string
   formattedDeadlineLabel: string
   handleResetDeadline: () => void
+  startDateTime: Date | null
+  deadline: Date | null
   calendarSelectedRange: DateRange | undefined
   calendarMonth: Date
   handleCalendarSelect: (range?: DateRange) => void
@@ -804,12 +845,18 @@ type TaskTimelinePanelProps = {
   endMinuteViewportRef: React.RefObject<ScrollAreaViewportElement | null>
   todayStart: Date
   timeScrollerHeightClass: string
+  startTimeText: string
+  deadlineTimeText: string
+  onFillDateTimeValues: (startValue: string, deadlineValue: string) => void
+  calendarRange: DateRange | undefined
 }
 
 function TaskTimelinePanel({
   formattedStartLabel,
   formattedDeadlineLabel,
   handleResetDeadline,
+  startDateTime,
+  deadline,
   calendarSelectedRange,
   calendarMonth,
   handleCalendarSelect,
@@ -823,42 +870,56 @@ function TaskTimelinePanel({
   endHourViewportRef,
   endMinuteViewportRef,
   todayStart,
-  timeScrollerHeightClass,
-}: TaskTimelinePanelProps) {
+        timeScrollerHeightClass,
+        startTimeText,
+        deadlineTimeText,
+        onFillDateTimeValues,
+        calendarRange,
+      }: TaskTimelinePanelProps) {
+  const [modalOpen, setModalOpen] = React.useState(false)
+  const fillDefaults = React.useMemo<FillDateTimeForm>(() => {
+    const baseStart = calendarRange?.from ?? startDateTime ?? todayStart
+    const baseEnd = calendarRange?.to ?? deadline ?? addMinutes(baseStart, 30)
+    return {
+      startDate: new Date(baseStart),
+      endDate: new Date(baseEnd),
+    }
+  }, [calendarRange?.from, calendarRange?.to, startDateTime, deadline, todayStart])
+  const fillForm = useForm<FillDateTimeForm>({
+    defaultValues: fillDefaults,
+  })
+  const handleModalSubmit = fillForm.handleSubmit((values) => {
+    onFillDateTimeValues(format(values.startDate, "HH:mm"), format(values.endDate, "HH:mm"))
+    setModalOpen(false)
+  })
+  React.useEffect(() => {
+    if (modalOpen) {
+      fillForm.reset(fillDefaults)
+    }
+  }, [fillDefaults, fillForm, modalOpen])
   return (
     <div className="mt-0 flex w-full flex-col gap-10 pr-6 md:pr-3">
       <div className="flex w-full max-w-full flex-col gap-6 rounded-[3rem] border-2 border-primary/40 bg-white/90 px-6 py-6 shadow-[0_6px_0_rgba(144,122,214,0.2)]">
         <div className="rounded-[2rem] border border-primary/20 bg-white/80 p-5">
-          <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-start">
-            <div className="space-y-1">
+          <div className="grid gap-2">
+            <div className="grid items-center gap-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
               <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">Startline</p>
-              <p className="text-base font-semibold text-[#2F2766]">{formattedStartLabel}</p>
-            </div>
-            <div className="space-y-2 md:text-right">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-primary/60">Deadline</p>
-                <p className="text-base font-semibold text-[#2F2766]">{formattedDeadlineLabel}</p>
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={handleResetDeadline}
+                  className="inline-flex select-none items-center rounded-full border border-primary/30 px-4 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary transition hover:border-primary hover:bg-primary/10"
+                >
+                  Reset date &amp; time
+                </button>
               </div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-primary/60 text-right">Deadline</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-start">
+              <p className="text-base font-semibold text-[#2F2766]">{formattedStartLabel}</p>
+              <p className="text-base font-semibold text-[#2F2766] text-right">{formattedDeadlineLabel}</p>
             </div>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="inline-flex select-none items-center gap-2 rounded-full border border-primary/30 px-4 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary transition hover:border-primary hover:bg-primary/10"
-            >
-              <CalendarDays className="size-4" />
-              Full Calendar
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={handleResetDeadline}
-            className="inline-flex select-none items-center rounded-full border border-primary/30 px-4 py-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary transition hover:border-primary hover:bg-primary/10"
-          >
-            Reset date &amp; time
-          </button>
         </div>
         <div className="relative flex flex-col gap-8 lg:grid lg:grid-cols-[minmax(0,0.35fr)_minmax(0,1fr)_minmax(0,0.35fr)] lg:items-start">
           <TaskTimeScrollerColumn
@@ -927,8 +988,7 @@ export function TaskForm({
   const defaultStartDateTime = React.useMemo(() => new Date(), [])
   const defaultDeadlineDateTime = React.useMemo(() => {
     const next = new Date(defaultStartDateTime)
-    next.setDate(next.getDate() + 1)
-    next.setHours(0, 0, 0, 0)
+    next.setHours(23, 59, 0, 0)
     return next
   }, [defaultStartDateTime])
 
@@ -1263,7 +1323,7 @@ export function TaskForm({
       setDeadline(null)
       setDeadlineDateText("")
       setDeadlineTimeText("")
-      setCalendarMonth(new Date(todayStart))
+    setCalendarMonth(new Date(todayStart))
       return
     }
     let boundedFrom = clampCalendarDate(range.from)
@@ -1288,7 +1348,7 @@ export function TaskForm({
     } else if (deadline) {
       nextEndDate.setHours(deadline.getHours(), deadline.getMinutes(), 0, 0)
     } else {
-      nextEndDate.setHours(0, 0, 0, 0)
+      nextEndDate.setHours(23, 59, 0, 0)
     }
 
     if (nextEndDate < nextStartDate) {
@@ -1297,37 +1357,11 @@ export function TaskForm({
     }
 
     setDeadline(nextEndDate)
-    setCalendarMonth(boundedFrom)
     setDeadlineDateText(format(boundedTo, "dd/MM/yyyy"))
     if (!deadlineTimeText) {
       setDeadlineTimeText(format(nextEndDate, "HH:mm"))
     }
     setCalendarRange({ from: boundedFrom, to: boundedTo })
-  }
-
-  const handleResetDeadline = () => {
-    const now = new Date()
-    const resetStart = clampCalendarDate(now)
-    const resetEnd = new Date(resetStart)
-    resetEnd.setDate(resetEnd.getDate() + 1)
-    resetEnd.setHours(0, 0, 0, 0)
-
-    setCalendarRange({ from: resetStart, to: clampCalendarDate(resetEnd) })
-    setCalendarMonth(resetStart)
-
-    setStartDateTime(new Date(now))
-    setStartDateText(format(now, "dd/MM/yyyy"))
-    setStartTimeText(format(now, "HH:mm"))
-
-    setDeadline(new Date(resetEnd))
-    setDeadlineDateText(format(resetEnd, "dd/MM/yyyy"))
-    setDeadlineTimeText(format(resetEnd, "HH:mm"))
-    scrollTimePanels(
-      now.getHours(),
-      now.getMinutes(),
-      resetEnd.getHours(),
-      resetEnd.getMinutes()
-    )
   }
 
   const timeOptions = React.useMemo(
@@ -1351,9 +1385,14 @@ export function TaskForm({
       const target = viewport.querySelector(`[data-scroll-target="${selector}"]`) as
         | HTMLElement
         | null
-      if (target) {
-        target.scrollIntoView({ block: "center" })
+      if (!target) {
+        return
       }
+      const targetCenter = target.offsetTop + target.offsetHeight / 2
+      const viewportCenter = viewport.clientHeight / 2
+      const desiredScrollTop = targetCenter - viewportCenter
+      const maxScrollTop = viewport.scrollHeight - viewport.clientHeight
+      viewport.scrollTop = Math.max(0, Math.min(desiredScrollTop, Math.max(0, maxScrollTop)))
     },
     []
   )
@@ -1369,6 +1408,27 @@ export function TaskForm({
     },
     [scrollToTarget]
   )
+
+  const handleResetDeadline = () => {
+    const now = new Date()
+    const resetStart = clampCalendarDate(now)
+    const resetEnd = new Date(resetStart)
+    resetEnd.setDate(resetEnd.getDate() + 1)
+    resetEnd.setHours(0, 0, 0, 0)
+
+    const adjustedEnd = new Date(resetEnd)
+    adjustedEnd.setHours(23, 59, 0, 0)
+    setCalendarRange({ from: resetStart, to: clampCalendarDate(adjustedEnd) })
+    setCalendarMonth(resetStart)
+
+    setStartDateTime(new Date(now))
+    setStartDateText(format(now, "dd/MM/yyyy"))
+    setStartTimeText(format(now, "HH:mm"))
+
+    setDeadline(new Date(resetEnd))
+    setDeadlineDateText(format(resetEnd, "dd/MM/yyyy"))
+    setDeadlineTimeText(format(resetEnd, "HH:mm"))
+  }
 
   const parsedStartTime = React.useMemo(() => {
     const parsed = parseTime(startTimeText)
@@ -1412,7 +1472,6 @@ export function TaskForm({
         }
         setStartDateText(format(fromDate, "dd/MM/yyyy"))
         setCalendarRange({ from: fromDate, to: toDate })
-        setCalendarMonth(fromDate)
         return
       }
 
@@ -1440,6 +1499,58 @@ export function TaskForm({
     [calendarRange, deadline, parsedDeadlineTime, parsedStartTime, startDateTime, todayStart]
   )
 
+  React.useEffect(() => {
+    const startParsed =
+      parseTime(startTimeText) ??
+      (startDateTime
+        ? {
+            hours: startDateTime.getHours(),
+            minutes: startDateTime.getMinutes(),
+          }
+        : null)
+    const deadlineParsed =
+      parseTime(deadlineTimeText) ??
+      (deadline
+        ? {
+            hours: deadline.getHours(),
+            minutes: deadline.getMinutes(),
+          }
+        : null)
+    if (!startParsed || !deadlineParsed) {
+      return
+    }
+    scrollTimePanels(
+      startParsed.hours,
+      startParsed.minutes,
+      deadlineParsed.hours,
+      deadlineParsed.minutes
+    )
+  }, [
+    calendarRange?.from,
+    calendarRange?.to,
+    deadline,
+    deadlineTimeText,
+    scrollTimePanels,
+    startDateTime,
+    startTimeText,
+  ])
+
+  const handleFillDateTimeValues = React.useCallback(
+    (startValue: string, deadlineValue: string) => {
+      const parsedStart = parseTimeFlexible(startValue)
+      if (parsedStart) {
+        handleTimeSlotSelect("hour", parsedStart.hours, "start")
+        handleTimeSlotSelect("minute", parsedStart.minutes, "start")
+      }
+      const parsedDeadline = parseTimeFlexible(deadlineValue)
+      if (parsedDeadline) {
+        handleTimeSlotSelect("hour", parsedDeadline.hours, "end")
+        handleTimeSlotSelect("minute", parsedDeadline.minutes, "end")
+      }
+    },
+    [handleTimeSlotSelect]
+  )
+
   const handleAssigneeDragEnd = () => {
     setDragOverIndex(null)
     setDraggingIndex(null)
@@ -1455,9 +1566,13 @@ export function TaskForm({
       calendarRange?.from && startDateText
         ? `${startDateText.trim()} ${(startTimeText.trim() || "00:00")}`
         : ""
+    const effectiveDeadlineDateText =
+      deadlineDateText || (deadline ? format(deadline, "dd/MM/yyyy") : "")
+    const effectiveDeadlineTimeText =
+      deadlineTimeText || (deadline ? format(deadline, "HH:mm") : "")
     const deadlineValue =
-      calendarRange?.to && deadlineDateText
-        ? `${deadlineDateText.trim()} ${(deadlineTimeText.trim() || "00:00")}`
+      (calendarRange?.to || deadline) && effectiveDeadlineDateText
+        ? `${effectiveDeadlineDateText.trim()} ${(effectiveDeadlineTimeText.trim() || "00:00")}`
         : ""
     onSubmit({
       title: title.trim(),
@@ -1617,6 +1732,8 @@ export function TaskForm({
         formattedStartLabel={formattedStartLabel}
         formattedDeadlineLabel={formattedDeadlineLabel}
         handleResetDeadline={handleResetDeadline}
+        startDateTime={startDateTime}
+        deadline={deadline}
         calendarSelectedRange={calendarSelectedRange}
         calendarMonth={calendarMonth}
         handleCalendarSelect={handleCalendarSelect}
@@ -1629,6 +1746,10 @@ export function TaskForm({
         startMinuteViewportRef={startMinuteViewportRef}
         endHourViewportRef={endHourViewportRef}
         endMinuteViewportRef={endMinuteViewportRef}
+        startTimeText={startTimeText}
+        deadlineTimeText={deadlineTimeText}
+        onFillDateTimeValues={handleFillDateTimeValues}
+        calendarRange={calendarRange}
         todayStart={todayStart}
         timeScrollerHeightClass={TIME_SCROLLER_HEIGHT_CLASS}
       />

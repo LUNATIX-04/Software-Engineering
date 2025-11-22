@@ -23,6 +23,8 @@ export interface IEvent {
 	departmentName?: string | null;
 	departmentColor?: string | null;
 	departmentTextColor?: string | null;
+	departmentIds?: string[];
+	departmentNames?: string[];
 }
 
 export interface ICalendarCell {

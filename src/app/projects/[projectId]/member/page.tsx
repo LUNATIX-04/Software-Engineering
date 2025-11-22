@@ -237,6 +237,10 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     cachedDepartments === undefined
   )
   const [departmentsError, setDepartmentsError] = useState<string | null>(null)
+  const canInviteMembers = useMemo(
+    () => Boolean(membership && membership.role !== PROJECT_ROLE.MEMBER),
+    [membership]
+  )
   const redirectToProjects = useCallback(() => {
     notify({
       title: "Removed",
@@ -1266,18 +1270,20 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
                     {filteredMembers.length > 0 ? `${filteredMembers.length} members` : ""}
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="inline-flex h-12 items-center justify-center rounded-full border-primary/40 bg-white px-5 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/10"
-                  onClick={openInviteDialog}
-                  data-cy="project-member-invite-link-button"
-                >
-                  <span className="inline-flex items-center gap-2 select-none">
-                    <Link2 className="size-4" />
-                    Invite Link
-                  </span>
-                </Button>
+                {canInviteMembers && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="inline-flex h-12 items-center justify-center rounded-full border-primary/40 bg-white px-5 text-sm font-semibold text-primary transition hover:border-primary hover:bg-primary/10"
+                    onClick={openInviteDialog}
+                    data-cy="project-member-invite-link-button"
+                  >
+                    <span className="inline-flex items-center gap-2 select-none">
+                      <Link2 className="size-4" />
+                      Invite Link
+                    </span>
+                  </Button>
+                )}
               </div>
             </div>
           </section>

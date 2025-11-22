@@ -32,6 +32,7 @@ import { isRemovalError } from "@/utils/projects/removal"
 import { Skeleton } from "@/components/ui/skeleton"
 import { dispatchNavigationAbortEvent, useNavigationAbort } from "@/hooks/useNavigationAbort"
 import { BASE_PAGE_SIZE_OPTIONS } from "@/constants/pagination"
+import { getCachedProjectMembership } from "@/utils/projects/prefetch"
 
 import TaskDeleteDialog from "./components/TaskDeleteDialog"
 import TaskFilterMenu from "./components/TaskFilterMenu"
@@ -156,6 +157,10 @@ const ALL_DEPARTMENTS_LABEL = "All Departments"
 export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const { projectId } = React.use(params)
   const router = useRouter()
+  const cachedMembership = useMemo(
+    () => (projectId ? getCachedProjectMembership(projectId) : undefined),
+    [projectId]
+  )
   const redirectToProjects = useCallback(() => {
     dispatchNavigationAbortEvent()
     router.replace("/projects")
@@ -199,11 +204,13 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const [pageSizeHydrated, setPageSizeHydrated] = useState(() => typeof window !== "undefined")
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState<number | null>(null)
-  const [membership, setMembership] = useState<ProjectMembershipSummary | null>(null)
-  const [membershipLoading, setMembershipLoading] = useState(true)
+  const [membership, setMembership] = useState<ProjectMembershipSummary | null>(
+    cachedMembership ?? null
+  )
+  const [membershipLoading, setMembershipLoading] = useState(cachedMembership === undefined)
   const membershipId = membership?.id ?? null
   const canManageTasks = Boolean(membership && membership.role !== PROJECT_ROLE.MEMBER)
-  const showCreateTaskButton = membershipLoading || canManageTasks
+  const showCreateTaskButton = canManageTasks
   const colorRollbackRef = useRef<Record<string, { cardColor: string; cardTextColor: string }>>({})
   const latestColorRequestRef = useRef<Record<string, string>>({})
   const pendingColorOverridesRef = useRef<Record<string, { cardColor: string; cardTextColor: string }>>({})
@@ -260,16 +267,38 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   }, [])
 
   const sortTasksForDisplay = useCallback((list: TaskRecord[]) => {
-    const parseTimestamp = (value?: string | null) => {
-      if (!value) return 0
-      const parsed = Date.parse(value)
-      return Number.isFinite(parsed) ? parsed : 0
+    const now = Date.now()
+    const parseDueDate = (task: TaskRecord) => {
+      if (!task.dueDate) {
+        return null
+      }
+      const parsed = Date.parse(task.dueDate)
+      return Number.isFinite(parsed) ? parsed : null
     }
-    return [...list].sort((a, b) => {
-      const scoreA = parseTimestamp(a.updatedAt) || parseTimestamp(a.createdAt)
-      const scoreB = parseTimestamp(b.updatedAt) || parseTimestamp(b.createdAt)
-      return scoreB - scoreA
+    const upcoming: Array<{ task: TaskRecord; due: number }> = []
+    const past: TaskRecord[] = []
+
+    for (const task of list) {
+      const due = parseDueDate(task)
+      if (due !== null && due >= now) {
+        upcoming.push({ task, due })
+      } else {
+        past.push(task)
+      }
+    }
+
+    upcoming.sort((a, b) => {
+      if (a.due !== b.due) {
+        return a.due - b.due
+      }
+      return a.task.title.localeCompare(b.task.title, undefined, { sensitivity: "base" })
     })
+
+    past.sort((a, b) =>
+      a.title.localeCompare(b.title, undefined, { sensitivity: "base" }),
+    )
+
+    return [...upcoming.map((entry) => entry.task), ...past]
   }, [])
 
   const [tasksLoading, setTasksLoading] = useState(true)
