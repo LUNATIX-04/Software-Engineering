@@ -234,7 +234,12 @@ function AssignerDialog({
 }: AssignerDialogProps) {
   return (
     <>
-      <div className="space-y-2 space-x-2">
+      <div className="space-y-2">
+        {showStatusNotice && statusNotice ? (
+          <div className="rounded-[2rem] border border-primary/30 bg-primary/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-primary">
+            {statusNotice}
+          </div>
+        ) : null}
         <div className="inline-flex max-w-max items-center justify-center px-3 py-2 text-lg font-semibold text-[var(--task-hero-text)] pl-8">
           Assigner
         </div>
@@ -267,11 +272,6 @@ function AssignerDialog({
               {departmentLabel} • {roleLabel}
             </p>
           </div>
-          {showStatusNotice && statusNotice ? (
-            <div className="rounded-[2rem] border border-primary/30 bg-primary/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-primary">
-              {statusNotice}
-            </div>
-          ) : null}
         </button>
       </div>
       <Dialog open={dialogOpen} onOpenChange={onDialogOpenChange}>
@@ -432,43 +432,43 @@ type TaskSubmissionDialogContentProps = {
   submissionDescription: string
   onSubmissionDescriptionChange: (value: string) => void
   submissionFileEntries: SubmissionAttachmentEntry[]
+  hasSubmission: boolean
+  hasPendingSubmissionAcknowledgement: boolean
   onSubmissionFilesChange: (event: React.ChangeEvent<HTMLInputElement>) => void
   onRemoveSubmissionFile: (id: string) => void
   clearSubmissionFiles: () => void
   submissionError: string | null
   submittingSubmission: boolean
   effectiveHasSubmission: boolean
-  hasSubmission: boolean
-  hasPendingSubmissionAcknowledgement: boolean
   onSubmit: () => Promise<void> | void
   onClose: () => void
+  readOnly: boolean
 }
 
 function TaskSubmissionDialogContent({
   submissionDescription,
   onSubmissionDescriptionChange,
   submissionFileEntries,
+  hasSubmission,
+  hasPendingSubmissionAcknowledgement,
   onSubmissionFilesChange,
   onRemoveSubmissionFile,
   clearSubmissionFiles,
   submissionError,
   submittingSubmission,
   effectiveHasSubmission,
-  hasSubmission,
-  hasPendingSubmissionAcknowledgement,
   onSubmit,
   onClose,
+  readOnly,
 }: TaskSubmissionDialogContentProps) {
   return (
     <>
       <DialogHeader>
-        <DialogTitle className="text-base font-semibold text-[var(--task-hero-text)]">Submit your task</DialogTitle>
+        <DialogTitle className="text-base font-semibold text-[var(--task-hero-text)]">
+          {readOnly ? "See Submission" : "Submit your task"}
+        </DialogTitle>
         <DialogDescription className="text-xs text-[var(--task-subtle-text)]">
-          {effectiveHasSubmission
-            ? "Edit your submission to send a new version for approval."
-            : hasSubmission
-              ? "Update your existing submission. Changes will overwrite your previous description and attachments."
-              : "Add a description and upload any relevant files. Files are stored as data URLs for MVP."}
+          {hasSubmission ? "Review your latest delivery." : "Add a description and upload files."}
         </DialogDescription>
       </DialogHeader>
       {hasPendingSubmissionAcknowledgement && (
@@ -476,103 +476,172 @@ function TaskSubmissionDialogContent({
           Sent • awaiting review
         </div>
       )}
-      <div className="mt-3 space-y-4">
-        <label className="sr-only" htmlFor="submission-description">
-          Submission description
-        </label>
-        <div className="textarea-surface group/textarea overflow-hidden rounded-[1.25rem]">
-          <Textarea
-            id="submission-description"
-            value={submissionDescription}
-            data-cy="project-task-detail-submission-description"
-            onChange={(event) => onSubmissionDescriptionChange(event.target.value)}
-            placeholder="Explain your submission…"
-            className="min-h-[8rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-4 py-3 text-sm shadow-none focus-visible:outline-none focus-visible:ring-0"
-          />
-        </div>
-
-        <div className="flex items-center justify-between gap-3 text-xs uppercase tracking-[0.3em] text-primary/60">
-          <span className="text-[var(--task-subtle-text)] text-[0.7rem] font-normal lowercase">
+      {readOnly ? (
+        <div className="mt-3 space-y-4">
+          <div className="rounded-[1.5rem] border border-primary/20 bg-[var(--task-description-bg)] px-4 py-3 text-sm text-[var(--task-hero-text)]">
+            <LinkifiedText value={submissionDescription || "No description provided."} />
+          </div>
+          <div className="text-xs uppercase tracking-[0.3em] text-primary/60">
             {submissionFileEntries.length > 0
-              ? `${submissionFileEntries.length} files selected`
-              : "No files selected yet"}
-          </span>
-          <div className="flex items-center gap-2">
-            {submissionFileEntries.length > 0 && (
-              <button
-                type="button"
-                onClick={clearSubmissionFiles}
-                className="rounded-full border border-primary/30 bg-primary/5 px-4 py-1 text-[0.65rem] font-semibold text-primary transition hover:border-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                data-cy="project-task-detail-submission-clear-files"
-              >
-                Clear
-              </button>
-            )}
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-primary/40 bg-white/80 px-4 py-1 text-[0.65rem] font-semibold text-primary transition hover:border-primary/70 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
-              Add File +
-              <input
-                type="file"
-                multiple
-                className="hidden"
-                data-cy="project-task-detail-submission-file-input"
-                onChange={onSubmissionFilesChange}
-              />
-            </label>
+              ? `${submissionFileEntries.length} files attached`
+              : "No files attached"}
           </div>
-        </div>
-        {submissionFileEntries.length > 0 && (
-          <div className="asap-scroll [scrollbar-gutter:stable] max-h-[14rem] overflow-y-auto pr-1">
-            <ul className="flex flex-wrap gap-3">
-              {submissionFileEntries.map((entry) => {
-                const IconComponent = getFileTypeIcon(entry.name)
-                return (
-                  <li
-                    key={entry.id}
-                    className="flex min-w-[12rem] max-w-[100%] items-center gap-3 rounded-[1rem] border border-primary/30 bg-white px-3 py-2 shadow-[0_1px_6px_rgba(63,52,120,0.15)]"
-                  >
-                    <span className="flex h-10 w-10 items-center justify-center rounded-[0.85rem] bg-primary/10 text-primary">
-                      <IconComponent className="size-5" aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0 flex-1 truncate text-xs font-semibold text-[var(--task-hero-text)]">
-                      {entry.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onRemoveSubmissionFile(entry.id)}
-                      aria-label={`Remove ${entry.name}`}
-                      className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-transparent bg-primary/10 text-primary transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                      data-cy={`project-task-detail-submission-file-remove-${entry.id}`}
+          {submissionFileEntries.length > 0 && (
+            <div className="asap-scroll [scrollbar-gutter:stable] max-h-[14rem] overflow-y-auto pr-1">
+              <ul className="flex flex-wrap gap-3">
+                {submissionFileEntries.map((entry) => {
+                  const IconComponent = getFileTypeIcon(entry.name)
+                  return (
+                    <li
+                      key={entry.id}
+                      className="min-w-[12rem]"
                     >
-                      <X className="size-3" aria-hidden="true" />
-                    </button>
-                  </li>
-                )
-              })}
-            </ul>
+                      <a
+                        href={entry.url ?? "#"}
+                        download={entry.name}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(event) => {
+                          if (!entry.url) {
+                            event.preventDefault()
+                          }
+                        }}
+                        className="flex w-full items-center gap-3 rounded-[1rem] border border-primary/30 bg-white px-3 py-2 shadow-[0_1px_6px_rgba(63,52,120,0.15)]"
+                      >
+                        <span className="flex h-10 w-10 items-center justify-center rounded-[0.85rem] bg-primary/10 text-primary">
+                          <IconComponent className="size-5" aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-[var(--task-hero-text)]">
+                          {entry.name}
+                        </span>
+                      </a>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="mt-3 space-y-4">
+          <label className="sr-only" htmlFor="submission-description">
+            Submission description
+          </label>
+          <div className="textarea-surface group/textarea overflow-hidden rounded-[1.25rem]">
+            <Textarea
+              id="submission-description"
+              value={submissionDescription}
+              data-cy="project-task-detail-submission-description"
+              onChange={(event) => onSubmissionDescriptionChange(event.target.value)}
+              placeholder="Explain your submission…"
+              className="min-h-[8rem] w-full resize-y rounded-[inherit] border-none bg-transparent px-4 py-3 text-sm shadow-none focus-visible:outline-none focus-visible:ring-0"
+            />
           </div>
-        )}
-      </div>
-      {submissionError && <p className="mt-2 text-xs font-semibold text-destructive">{submissionError}</p>}
+          <div className="flex items-center justify-between gap-3 text-xs uppercase tracking-[0.3em] text-primary/60">
+            <span className="text-[var(--task-subtle-text)] text-[0.7rem] font-normal lowercase">
+              {submissionFileEntries.length > 0
+                ? `${submissionFileEntries.length} files selected`
+                : "No files selected yet"}
+            </span>
+            <div className="flex items-center gap-2">
+              {submissionFileEntries.length > 0 && (
+                <button
+                  type="button"
+                  onClick={clearSubmissionFiles}
+                  className="rounded-full border border-primary/30 bg-primary/5 px-4 py-1 text-[0.65rem] font-semibold text-primary transition hover:border-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                  data-cy="project-task-detail-submission-clear-files"
+                >
+                  Clear
+                </button>
+              )}
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-primary/40 bg-white/80 px-4 py-1 text-[0.65rem] font-semibold text-primary transition hover:border-primary/70 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">
+                Add File +
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  data-cy="project-task-detail-submission-file-input"
+                  onChange={onSubmissionFilesChange}
+                />
+              </label>
+            </div>
+          </div>
+          {submissionFileEntries.length > 0 && (
+            <div className="asap-scroll [scrollbar-gutter:stable] max-h-[14rem] overflow-y-auto pr-1">
+              <ul className="flex flex-wrap gap-3">
+                {submissionFileEntries.map((entry) => {
+                  const IconComponent = getFileTypeIcon(entry.name)
+                  return (
+                    <li
+                      key={entry.id}
+                      className="flex min-w-[12rem] max-w-[100%] items-center gap-3 rounded-[1rem] border border-primary/30 bg-white px-3 py-2 shadow-[0_1px_6px_rgba(63,52,120,0.15)]"
+                    >
+                      <span className="flex h-10 w-10 items-center justify-center rounded-[0.85rem] bg-primary/10 text-primary">
+                        <IconComponent className="size-5" aria-hidden="true" />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-xs font-semibold text-[var(--task-hero-text)]">
+                        {entry.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onRemoveSubmissionFile(entry.id)}
+                        aria-label={`Remove ${entry.name}`}
+                        className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-transparent bg-primary/10 text-primary transition hover:bg-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                        data-cy={`project-task-detail-submission-file-remove-${entry.id}`}
+                      >
+                        <X className="size-3" aria-hidden="true" />
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+      {!readOnly && submissionError && (
+        <p className="mt-2 text-xs font-semibold text-destructive">{submissionError}</p>
+      )}
       <DialogFooter className="mt-4 flex flex-wrap gap-3">
-        <Button
-          type="button"
-          data-cy="project-task-detail-submission-submit"
-          onClick={onSubmit}
-          disabled={submittingSubmission}
-          className={`inline-flex h-12 w-full max-w-xs items-center justify-center rounded-full px-8 text-sm font-semibold text-white shadow-[0_6px_0_rgba(63,52,120,0.2)] transition ${effectiveHasSubmission ? "bg-[var(--task-cta-bg)] hover:bg-[var(--task-cta-hover)]" : "bg-primary hover:bg-primary/90"}`}
-        >
-          {submittingSubmission ? (hasSubmission ? "Updating…" : "Submitting…") : hasSubmission ? "Update Submission" : "Submit Work"}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          data-cy="project-task-detail-submission-cancel"
-          onClick={onClose}
-          disabled={submittingSubmission}
-          className="h-12 rounded-full px-6 text-sm font-semibold uppercase tracking-[0.3em]"
-        >
-          Cancel
-        </Button>
+        {readOnly ? (
+          <Button
+            type="button"
+            variant="ghost"
+            data-cy="project-task-detail-submission-close"
+            onClick={onClose}
+            className="h-12 rounded-full px-6 text-sm font-semibold uppercase tracking-[0.3em]"
+          >
+            Close
+          </Button>
+        ) : (
+          <>
+            <Button
+              type="button"
+              data-cy="project-task-detail-submission-submit"
+              onClick={onSubmit}
+              disabled={submittingSubmission}
+              className="inline-flex h-12 w-full max-w-xs items-center justify-center rounded-full px-8 text-sm font-semibold text-white shadow-[0_6px_0_rgba(63,52,120,0.2)] transition bg-[var(--task-cta-bg)] hover:bg-[var(--task-cta-hover)]"
+            >
+              {submittingSubmission
+                ? hasSubmission
+                  ? "Updating…"
+                  : "Submitting…"
+                : hasSubmission
+                  ? "Update Submission"
+                  : "Submit Work"}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              data-cy="project-task-detail-submission-cancel"
+              onClick={onClose}
+              disabled={submittingSubmission}
+              className="h-12 rounded-full px-6 text-sm font-semibold uppercase tracking-[0.3em]"
+            >
+              Cancel
+            </Button>
+          </>
+        )}
       </DialogFooter>
     </>
   )
@@ -590,6 +659,7 @@ type TaskSubmissionPanelProps = {
   feedbackAcknowledgedMarker: string | null
   acknowledgingSubmission: boolean
   handleFeedbackAcknowledgement: (message: string) => void
+  taskStatus: TaskStatus
 }
 
 function TaskSubmissionPanel({
@@ -604,7 +674,20 @@ function TaskSubmissionPanel({
   feedbackAcknowledgedMarker,
   acknowledgingSubmission,
   handleFeedbackAcknowledgement,
+  taskStatus,
 }: TaskSubmissionPanelProps) {
+  const isSeeYourTaskMode =
+    hasSubmission &&
+    !canSubmitTask &&
+    (taskStatus === "BLOCKED" || taskStatus === "SUBMITTED")
+  const showSubmissionButton = canSubmitTask || hasSubmission
+  const descriptionText = isSeeYourTaskMode
+    ? "Submission recorded. Please wait for the owner or assignee to review and approve it."
+    : shouldShowWaitingHint
+      ? "Edit your submission to send a new version for approval."
+      : hasSubmission
+        ? "Submission recorded. Please wait for the owner or assignee to review and approve it."
+        : "Once you submit your work it will appear here for review."
   const shouldShowAckButton =
     shouldShowWaitingHint &&
     Boolean(feedbackMarker) &&
@@ -614,16 +697,12 @@ function TaskSubmissionPanel({
     <div className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-5 shadow-inner">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-base font-semibold text-[var(--task-hero-text)]">Submit your task</p>
-          <p className="text-xs text-[var(--task-subtle-text)]">
-            {shouldShowWaitingHint
-              ? "Edit your submission to send a new version for approval."
-              : hasSubmission
-                ? "Submission recorded. Please wait for the owner or assignee to review and approve it."
-                : "Add a description and upload any relevant files. Files are stored as data URLs for MVP."}
+          <p className="text-base font-semibold text-[var(--task-hero-text)]">
+            {isSeeYourTaskMode ? "See your Task" : "Submission"}
           </p>
+          <p className="text-xs text-[var(--task-subtle-text)]">{descriptionText}</p>
         </div>
-        {canSubmitTask && (
+        {showSubmissionButton && (
           <Dialog open={submissionDialogOpen} onOpenChange={setSubmissionDialogOpen}>
             <DialogTrigger asChild>
               <Button
@@ -635,7 +714,7 @@ function TaskSubmissionPanel({
                     : "bg-[var(--task-description-bg)] text-[var(--task-hero-text)] border border-primary/30 hover:border-primary/60 hover:bg-white"
                 }`}
               >
-                {hasSubmission ? "Edit Submission" : "Submission"}
+                {isSeeYourTaskMode ? "See Submission" : "Edit Submission"}
               </Button>
             </DialogTrigger>
             <DialogContent className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-6 shadow-[0_20px_60px_rgba(63,52,120,0.2)]">
@@ -711,7 +790,7 @@ function TaskFeedbackPanel({
           )}
         </div>
       </div>
-      <div className="asap-scroll rounded-[1.5rem] min-h-[6rem] max-h-[12rem] overflow-auto border-2 border-primary/30 bg-primary/5 px-4 py-3 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
+      <div className="dialog-scroll asap-scroll rounded-[1.5rem] min-h-[6rem] max-h-[12rem] overflow-y-auto overflow-x-hidden border-2 border-primary/30 bg-primary/5 px-4 py-3 text-sm text-[var(--task-hero-text)] whitespace-pre-line break-words">
         <LinkifiedText value={lastReviewerComment ?? "No reviewer comment yet."} />
       </div>
     </div>
@@ -746,17 +825,17 @@ function TaskSubmissionDetailsPanel({
           )}
         </div>
         {hasPendingSubmissionAcknowledgement && (
-          <Button
-            type="button"
-            data-cy="project-task-detail-submission-acknowledge"
-            onClick={() =>
-              handleSubmissionAcknowledgement("The assignee will know you saw the work.")
-            }
-            disabled={acknowledgingSubmission}
-            className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-white shadow-[0_4px_0_rgba(63,52,120,0.2)] transition hover:bg-primary/90 disabled:opacity-60 disabled:hover:bg-primary"
-          >
-            {acknowledgingSubmission ? "Marking..." : "Mark as seen"}
-          </Button>
+            <Button
+              type="button"
+              data-cy="project-task-detail-submission-acknowledge"
+              onClick={() =>
+                handleSubmissionAcknowledgement("You acknowledged the assignee's submission.")
+              }
+              disabled={acknowledgingSubmission}
+              className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-4 text-[0.65rem] font-semibold uppercase tracking-[0.3em] text-white shadow-[0_4px_0_rgba(63,52,120,0.2)] transition hover:bg-primary/90 disabled:opacity-60 disabled:hover:bg-primary"
+            >
+              {acknowledgingSubmission ? "Marking..." : "Mark as seen"}
+            </Button>
         )}
       </div>
       <div className="asap-scroll rounded-[1.5rem] min-h-[6rem] max-h-[12rem] overflow-auto border-2 border-primary/30 bg-[var(--task-description-bg)] px-4 py-3 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
@@ -926,6 +1005,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [submissionAcknowledgedMarker, setSubmissionAcknowledgedMarker] = useState<string | null>(null)
   const [feedbackMarker, setFeedbackMarker] = useState<string | null>(null)
   const [feedbackAcknowledgedMarker, setFeedbackAcknowledgedMarker] = useState<string | null>(null)
+  const feedbackNotifiedRef = React.useRef<string | null>(null)
   const formatTimestampLabel = useCallback((value: string | null) => {
     if (!value) {
       return null
@@ -1297,14 +1377,39 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const taskBlocked = status === "BLOCKED"
   const taskComplete = status === "SUBMITTED"
   const canSubmitTask = isAssignee && !taskBlocked && !taskComplete
-  const assigneeStatusNotice = taskBlocked
-    ? "This task is blocked by the owner; you cannot edit or resubmit the submission."
-    : taskComplete
-      ? "The owner accepted this submission, so no more edits are allowed."
-      : null
+  const savedTaskStatus = task?.status
+  const assigneeStatusNotice =
+    savedTaskStatus === "BLOCKED"
+      ? "This task is blocked by the owner; you cannot edit or resubmit the submission."
+      : savedTaskStatus === "SUBMITTED"
+        ? "The owner accepted this submission, so no more edits are allowed."
+        : null
   const canReviewSubmission = viewerIsAssigner && Boolean(task?.submission)
   const ownerViewingSubmission = viewerIsAssigner && Boolean(task?.submission)
   const assignedMemberWaitingReview = Boolean(task?.submission) && isAssignee
+
+  const detailUrl = React.useMemo(() => `/projects/${projectId}/task/${taskId}`, [projectId, taskId])
+  const pendingSubmissionNotifyRef = React.useRef<string | null>(null)
+  const pendingFeedback = Boolean(feedbackMarker) && !feedbackAcknowledgedMarker
+  React.useEffect(() => {
+    if (!isAssignee) {
+      feedbackNotifiedRef.current = null
+      return
+    }
+    if (pendingFeedback && feedbackMarker) {
+      if (feedbackNotifiedRef.current !== feedbackMarker) {
+        notify({
+          title: "New feedback",
+          description: task?.submission?.reviewerComment ?? "Submission feedback is ready.",
+          variant: "info",
+          href: detailUrl,
+        })
+        feedbackNotifiedRef.current = feedbackMarker
+      }
+    } else {
+      feedbackNotifiedRef.current = null
+    }
+  }, [detailUrl, feedbackMarker, isAssignee, notify, pendingFeedback, task?.submission?.reviewerComment])
 
   const readFileAsDataUrl = (file: File) =>
     new Promise<{ name: string; url: string }>((resolve, reject) => {
@@ -1392,11 +1497,24 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           })
         )
       }
+      notify({
+        title: isUpdatingSubmission ? "Submission updated" : "Submission submitted",
+        description: isUpdatingSubmission
+          ? "Your submission changes have been saved."
+          : "Your submission has been delivered for review.",
+        variant: "success",
+      })
     } catch (submitError) {
       console.error(submitError)
       setSubmissionError(
         submitError instanceof Error ? submitError.message : "Unable to submit task"
       )
+      notify({
+        title: "Submission failed",
+        description:
+          submitError instanceof Error ? submitError.message : "Unable to submit task",
+        variant: "destructive",
+      })
     } finally {
       setSubmittingSubmission(false)
     }
@@ -1433,6 +1551,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           description: notifyDescription,
           variant: "success",
         })
+        feedbackNotifiedRef.current = null
       } catch (ackError) {
         console.error(ackError)
         notify({
@@ -1481,6 +1600,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           description: notifyDescription,
           variant: "success",
         })
+        feedbackNotifiedRef.current = null
       } catch (ackError) {
         console.error(ackError)
         notify({
@@ -1520,6 +1640,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       setReviewError("Submission not found.")
       return
     }
+    let latestSubmission: TaskSubmission | null = null
     setReviewing(true)
     setReviewError(null)
     try {
@@ -1539,12 +1660,35 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       if (!response.ok) {
         const payload = await response.json().catch(() => null)
         const message =
-          typeof payload?.error === "string" ? payload.error : "Unable to update submission"
+          typeof payload?.error === "string"
+            ? payload.error
+            : "Unable to update submission"
         throw new Error(message)
       }
-      const result = (await response.json()) as { submission: TaskSubmission }
-      setTask((prev) => (prev ? { ...prev, submission: result.submission } : prev))
-      const reviewerComment = result.submission.reviewerComment ?? null
+      const submissionResult = (await response.json()) as { submission: TaskSubmission }
+      latestSubmission = submissionResult.submission
+
+      const taskResponse = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status,
+        }),
+      })
+      if (!taskResponse.ok) {
+        const payload = await taskResponse.json().catch(() => null)
+        const message =
+          typeof payload?.error === "string"
+            ? payload.error
+            : "Unable to update task status"
+        throw new Error(message)
+      }
+      const updatedTask = (await taskResponse.json()) as TaskRecord
+      setTask(updatedTask)
+      setStatus(updatedTask.status)
+      const reviewerComment = updatedTask.submission?.reviewerComment ?? null
       setReviewComment(reviewerComment ?? "")
       setLastReviewerComment(reviewerComment)
       if (typeof window !== "undefined") {
@@ -1556,11 +1700,34 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       }
       notify({
         title: "Review saved",
-        description: "Submission feedback has been stored.",
+        description: "Submission feedback has been delivered to the assignee.",
         variant: "success",
       })
+      const statusTitle =
+        status === "BLOCKED"
+          ? "Submission blocked"
+          : status === "SUBMITTED"
+            ? "Submission approved"
+            : null
+      const statusDescription =
+        status === "BLOCKED"
+          ? "The owner has blocked your submission. You can view it but not edit."
+          : status === "SUBMITTED"
+            ? "The owner marked your submission as submitted. The task is read-only."
+            : null
+      if (statusTitle && statusDescription) {
+        notify({
+          title: statusTitle,
+          description: statusDescription,
+          variant: status === "BLOCKED" ? "destructive" : "success",
+          href: detailUrl,
+        })
+      }
     } catch (reviewErr) {
       console.error(reviewErr)
+      if (latestSubmission) {
+        setTask((prev) => (prev ? { ...prev, submission: latestSubmission } : prev))
+      }
       setReviewError(
         reviewErr instanceof Error ? reviewErr.message : "Failed to update submission"
       )
@@ -1648,6 +1815,26 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     date.setHours(0, 0, 0, 0)
     return date
   }, [])
+
+  React.useEffect(() => {
+    if (!viewerIsAssigner) {
+      pendingSubmissionNotifyRef.current = null
+      return
+    }
+    if (hasPendingSubmissionAcknowledgement && submissionMarker) {
+      if (pendingSubmissionNotifyRef.current !== submissionMarker) {
+        notify({
+          title: "Submission awaiting review",
+          description: `Assignee submitted "${task?.title ?? "this task"}" and awaits your acknowledgement.`,
+          variant: "info",
+          href: detailUrl,
+        })
+        pendingSubmissionNotifyRef.current = submissionMarker
+      }
+    } else {
+      pendingSubmissionNotifyRef.current = null
+    }
+  }, [detailUrl, hasPendingSubmissionAcknowledgement, notify, submissionMarker, task?.title, viewerIsAssigner])
   const dateItems = useMemo(
     () => [
       {
@@ -1772,7 +1959,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                 departmentLabel={assignerDepartmentLabel}
                 roleLabel={assignerRoleLabel}
                 statusNotice={assigneeStatusNotice}
-                showStatusNotice={!canSubmitTask && Boolean(assigneeStatusNotice)}
+                showStatusNotice={isAssignee && !canSubmitTask && Boolean(assigneeStatusNotice)}
                 dialogOpen={assignerDialogOpen}
                 onTriggerClick={handleAssignerClick}
                 onDialogOpenChange={handleAssignerDialogChange}
@@ -1901,33 +2088,35 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             <div className="space-y-6 w-full max-w-2xl">
 
               {!viewerIsAssigner && isAssignee && (
-                <TaskSubmissionPanel
-                  shouldShowWaitingHint={shouldShowWaitingHint}
-                  hasSubmission={hasSubmission}
-                  effectiveHasSubmission={effectiveHasSubmission}
-                  canSubmitTask={canSubmitTask}
-                  submissionDialogOpen={submissionDialogOpen}
-                  setSubmissionDialogOpen={setSubmissionDialogOpen}
-                  submissionDialogProps={{
-                    submissionDescription,
-                    onSubmissionDescriptionChange: setSubmissionDescription,
-                    submissionFileEntries,
-                    onSubmissionFilesChange: handleSubmissionFilesChange,
-                    onRemoveSubmissionFile: handleRemoveSubmissionFile,
-                    clearSubmissionFiles: () => setSubmissionFileEntries([]),
-                    submissionError,
-                    submittingSubmission,
-                    effectiveHasSubmission,
-                    hasSubmission,
-                    hasPendingSubmissionAcknowledgement,
-                    onSubmit: handleSubmissionSubmit,
-                    onClose: () => setSubmissionDialogOpen(false),
-                  }}
-                  feedbackMarker={feedbackMarker}
-                  feedbackAcknowledgedMarker={feedbackAcknowledgedMarker}
-                  acknowledgingSubmission={acknowledgingSubmission}
-                  handleFeedbackAcknowledgement={handleFeedbackAcknowledgement}
-                />
+              <TaskSubmissionPanel
+                shouldShowWaitingHint={shouldShowWaitingHint}
+                hasSubmission={hasSubmission}
+                effectiveHasSubmission={effectiveHasSubmission}
+                canSubmitTask={canSubmitTask}
+                submissionDialogOpen={submissionDialogOpen}
+                setSubmissionDialogOpen={setSubmissionDialogOpen}
+                submissionDialogProps={{
+                  submissionDescription,
+                  onSubmissionDescriptionChange: setSubmissionDescription,
+                  submissionFileEntries,
+                  onSubmissionFilesChange: handleSubmissionFilesChange,
+                  onRemoveSubmissionFile: handleRemoveSubmissionFile,
+                  clearSubmissionFiles: () => setSubmissionFileEntries([]),
+                  submissionError,
+                  submittingSubmission,
+                  effectiveHasSubmission,
+                  hasSubmission,
+                  hasPendingSubmissionAcknowledgement,
+                  onSubmit: handleSubmissionSubmit,
+                  onClose: () => setSubmissionDialogOpen(false),
+                  readOnly: !canSubmitTask,
+                }}
+                feedbackMarker={feedbackMarker}
+                feedbackAcknowledgedMarker={feedbackAcknowledgedMarker}
+                acknowledgingSubmission={acknowledgingSubmission}
+                handleFeedbackAcknowledgement={handleFeedbackAcknowledgement}
+                taskStatus={status}
+              />
               )}
 
               {viewerIsAssigner && !canSubmitTask && !ownerViewingSubmission &&(

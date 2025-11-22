@@ -23,6 +23,7 @@ export type NotificationOptions = {
   description?: string
   variant?: NotificationVariant
   durationMs?: number
+  href?: string
 }
 
 const EXIT_DURATION_MS = 250
@@ -42,6 +43,7 @@ export type NotificationHistoryEntry = {
   description?: string
   variant: NotificationVariant
   timestamp: string
+  href?: string
 }
 
 type NotificationContextValue = {
@@ -97,7 +99,9 @@ function NotificationViewport({ notifications, onDismiss }: NotificationViewport
           <div className="flex flex-1 flex-col gap-1">
             <span className="text-base font-semibold leading-tight">{notification.title}</span>
             {notification.description ? (
-              <span className="text-sm leading-snug opacity-90">{notification.description}</span>
+              <span className="text-sm leading-snug opacity-90 max-w-[20rem] overflow-hidden text-ellipsis whitespace-nowrap">
+                {notification.description}
+              </span>
             ) : null}
           </div>
           <button
@@ -130,11 +134,18 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     if (typeof window === "undefined") {
       return undefined
     }
+    const normalizeEntry = (entry: NotificationHistoryEntry, index: number) => ({
+      ...entry,
+      id: `${entry.id}-${index}-${Date.now().toString(36)}-${Math.random()
+        .toString(36)
+        .slice(2)}`,
+      href: entry.href,
+    })
     try {
       const stored = window.localStorage.getItem(HISTORY_STORAGE_KEY)
       if (stored) {
         const parsed: NotificationHistoryEntry[] = JSON.parse(stored)
-        setHistory(parsed)
+        setHistory(parsed.map(normalizeEntry))
       }
     } catch (error) {
       if (process.env.NODE_ENV !== "production") {
@@ -202,11 +213,12 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
       setHistory((prev) => [
         ...prev,
         {
-          id,
+          id: `${id}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
           title: options.title,
           description: options.description,
           variant: options.variant ?? "info",
           timestamp: new Date().toISOString(),
+          href: options.href,
         },
       ])
 

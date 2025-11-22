@@ -15,6 +15,10 @@ import type {
 	TCalendarView,
 	TEventColor,
 } from "@/modules/components/calendar/types";
+import {
+	TASK_STATUS_LABEL,
+	type TaskStatus,
+} from "@/app/projects/[projectId]/task/data";
 
 interface ICalendarContext {
 	selectedDate: Date;
@@ -31,6 +35,8 @@ interface ICalendarContext {
 	setBadgeVariant: (variant: "dot" | "colored") => void;
 	selectedColors: TEventColor[];
 	filterEventsBySelectedColors: (colors: TEventColor) => void;
+	selectedStatuses: TaskStatus[];
+	filterEventsBySelectedStatuses: (status: TaskStatus) => void;
 	filterEventsBySelectedUser: (userId: IUser["id"] | "all") => void;
 	selectedDepartmentNames: string[];
 	selectedDepartmentIds: string[];
@@ -110,6 +116,7 @@ export function CalendarProvider({
 	);
 	const [selectedDepartmentNames, setSelectedDepartmentNames] = useState<string[]>([]);
 	const [selectedDepartmentIds, setSelectedDepartmentIds] = useState<string[]>([]);
+	const [selectedStatuses, setSelectedStatuses] = useState<TaskStatus[]>([]);
 	const [selectedColors, setSelectedColors] = useState<TEventColor[]>([]);
 
 	const [allEvents, setAllEvents] = useState<IEvent[]>(events || []);
@@ -202,6 +209,15 @@ export function CalendarProvider({
 			});
 		}
 
+		if (selectedStatuses.length > 0) {
+			const statusSet = new Set<string>(selectedStatuses.map((status) => status.toUpperCase()));
+			nextEvents = nextEvents.filter((event) => {
+				const normalized = event.status?.trim().toUpperCase();
+				if (!normalized) return false;
+				return statusSet.has(normalized);
+			});
+		}
+
 		if (selectedDepartmentNames.length > 0 || selectedDepartmentIds.length > 0) {
 			nextEvents = nextEvents.filter((event) => {
 				const departmentNameSet = new Set<string>();
@@ -246,7 +262,7 @@ export function CalendarProvider({
 		}
 
 		setFilteredEvents(nextEvents);
-	}, [allEvents, selectedColors, selectedDepartmentIds, selectedDepartmentNames, selectedUserId]);
+	}, [allEvents, selectedColors, selectedDepartmentIds, selectedDepartmentNames, selectedStatuses, selectedUserId]);
 
 	useEffect(() => {
 		applyFilters();
@@ -288,6 +304,15 @@ export function CalendarProvider({
 				return prev.filter((c) => c !== normalized);
 			}
 			return [...prev, normalized];
+		});
+	};
+
+	const filterEventsBySelectedStatuses = (status: TaskStatus) => {
+		setSelectedStatuses((prev) => {
+			if (prev.includes(status)) {
+				return prev.filter((value) => value !== status);
+			}
+			return [...prev, status];
 		});
 	};
 
@@ -361,6 +386,7 @@ export function CalendarProvider({
 			setSelectedUserId("all");
 			setSelectedDepartmentNames([]);
 			setSelectedDepartmentIds([]);
+			setSelectedStatuses([]);
 		};
 
 		const value = {
@@ -392,6 +418,8 @@ export function CalendarProvider({
 			updateEvent,
 			removeEvent,
 			clearFilter,
+			selectedStatuses,
+			filterEventsBySelectedStatuses,
 			projectId,
 			canCreateTasks,
 		};

@@ -12,11 +12,12 @@ import {
   TASK_STATUS_LABEL,
   TASK_STATUS_STYLE,
   type TaskRecord,
+  type TaskStatus,
 } from "./data"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { TaskCard } from "@/components/tasks/TaskCard"
-import { getContrastingTextColor, sanitizeHexColor } from "@/utils/colors"
+import { getContrastingTextColor, normalizeHexColorValue } from "@/utils/colors"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import type { ProjectDepartmentRecord } from "@/utils/projects/departments"
 import { fetchProjectDepartments } from "@/utils/projects/departments"
@@ -33,6 +34,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { dispatchNavigationAbortEvent, useNavigationAbort } from "@/hooks/useNavigationAbort"
 import { BASE_PAGE_SIZE_OPTIONS } from "@/constants/pagination"
 import { getCachedProjectMembership } from "@/utils/projects/prefetch"
+import { QUICK_COLOR_OPTIONS } from "@/constants/task-colors"
+import { QUICK_DEPARTMENT_COLORS } from "@/components/projects/DepartmentColorMenu"
 
 import TaskDeleteDialog from "./components/TaskDeleteDialog"
 import TaskFilterMenu from "./components/TaskFilterMenu"
@@ -88,12 +91,16 @@ type StoredTaskFilters = {
   exactMatch: boolean
   taskScope: TaskScope
   search: string
+  colors: string[]
+  statuses: TaskStatus[]
 }
 
 const TASK_FILTERS_KEY_PREFIX = "asap:tasks-filters"
 
 const buildTaskFilterStorageKey = (projectId?: string | null) =>
   `${TASK_FILTERS_KEY_PREFIX}:${projectId ?? "global"}`
+
+const TASK_STATUS_VALUES = Object.keys(TASK_STATUS_LABEL) as TaskStatus[]
 
 const readStoredTaskFilters = (key: string): StoredTaskFilters | null => {
   if (typeof window === "undefined") {
@@ -112,7 +119,21 @@ const readStoredTaskFilters = (key: string): StoredTaskFilters | null => {
     const taskScope: TaskScope =
       parsed?.taskScope === "assignee" || parsed?.taskScope === "assigner" ? parsed.taskScope : "all"
     const search = typeof parsed?.search === "string" ? parsed.search : ""
-    return { departments, exactMatch, taskScope, search }
+    const colors = Array.isArray(parsed?.colors)
+      ? parsed.colors
+          .map((value: unknown) =>
+            typeof value === "string" ? normalizeHexColorValue(value) : null
+          )
+          .filter((value): value is string => Boolean(value))
+      : []
+    const statuses = Array.isArray(parsed?.statuses)
+      ? (parsed.statuses
+          .map((value: unknown) =>
+            typeof value === "string" ? value.trim().toUpperCase() : ""
+          )
+          .filter((value): value is TaskStatus => TASK_STATUS_VALUES.includes(value as TaskStatus)))
+      : []
+    return { departments, exactMatch, taskScope, search, colors, statuses }
   } catch (error) {
     if (process.env.NODE_ENV !== "production") {
       console.warn("Failed to read stored task filters", error)
@@ -189,6 +210,12 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const [exactDepartmentMatch, setExactDepartmentMatch] = useState(
     storedTaskFilters?.exactMatch ?? true
   )
+  const [activeColorFilters, setActiveColorFilters] = useState<string[]>(
+    () => storedTaskFilters?.colors ?? []
+  )
+  const [activeStatusFilters, setActiveStatusFilters] = useState<TaskStatus[]>(
+    () => storedTaskFilters?.statuses ?? []
+  )
   const [taskScope, setTaskScope] = useState<TaskScope>(
     storedTaskFilters?.taskScope ?? "all"
   )
@@ -241,6 +268,8 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     setExactDepartmentMatch(storedTaskFilters?.exactMatch ?? true)
     setTaskScope(storedTaskFilters?.taskScope ?? "all")
     setSearch(storedTaskFilters?.search ?? "")
+    setActiveColorFilters(storedTaskFilters?.colors ?? [])
+    setActiveStatusFilters(storedTaskFilters?.statuses ?? [])
   }, [storedTaskFilters])
 
   const applyPendingCardColorOverrides = useCallback((taskList: TaskRecord[]) => {
@@ -330,6 +359,16 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       return acc
     }, {})
   }, [remoteDepartments])
+  const normalizedActiveColorFilters = useMemo(() => {
+    const set = new Set<string>()
+    activeColorFilters.forEach((color) => {
+      const normalized = normalizeHexColorValue(color)
+      if (normalized) {
+        set.add(normalized)
+      }
+    })
+    return set
+  }, [activeColorFilters])
 
   const filteredTasks = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
@@ -379,8 +418,17 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
 
               if (!matchesSelectedId && !matchesSelectedName) {
                 return false
-              }
             }
+          }
+        }
+        if (normalizedActiveColorFilters.size > 0) {
+          const taskColor = normalizeHexColorValue(task.cardColor)
+          if (!taskColor || !normalizedActiveColorFilters.has(taskColor)) {
+            return false
+          }
+        }
+        if (activeStatusFilters.length > 0 && !activeStatusFilters.includes(task.status)) {
+          return false
         }
         if (taskScope === "assignee") {
           if (!membershipId) return false
@@ -405,11 +453,13 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       })
     )
   }, [
+    activeStatusFilters,
     allTasks,
     departmentById,
     departmentFilterSet,
     exactDepartmentMatch,
     membershipId,
+    normalizedActiveColorFilters,
     search,
     sortTasksForDisplay,
     taskScope,
@@ -429,6 +479,28 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       return acc
     }, {})
   }, [remoteDepartments])
+  const availableColors = useMemo(() => {
+    const colors = new Set<string>()
+    allTasks.forEach((task) => {
+      const normalized = normalizeHexColorValue(task.cardColor)
+      if (normalized) {
+        colors.add(normalized)
+      }
+    })
+    return Array.from(colors)
+  }, [allTasks])
+  const colorLabelMap = useMemo(() => {
+    const map: Record<string, string> = {}
+    const addLabel = (color: string, label: string) => {
+      const normalized = normalizeHexColorValue(color)
+      if (normalized) {
+        map[normalized] = label
+      }
+    }
+    QUICK_COLOR_OPTIONS.forEach((option) => addLabel(option.value, option.label))
+    QUICK_DEPARTMENT_COLORS.forEach((option) => addLabel(option.value, option.label))
+    return map
+  }, [])
 
   type TaskDepartmentDetail = {
     id: string
@@ -523,8 +595,18 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       exactMatch: exactDepartmentMatch,
       taskScope,
       search,
+      colors: activeColorFilters,
+      statuses: activeStatusFilters,
     })
-  }, [activeDepartmentFilters, exactDepartmentMatch, search, taskFilterStorageKey, taskScope])
+  }, [
+    activeColorFilters,
+    activeDepartmentFilters,
+    activeStatusFilters,
+    exactDepartmentMatch,
+    search,
+    taskFilterStorageKey,
+    taskScope,
+  ])
 
   useEffect(() => {
     const totalTasks = filteredTasks.length
@@ -829,7 +911,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
 
   React.useEffect(() => {
     setPage(1)
-  }, [activeDepartmentFilters, taskScope, search])
+  }, [activeColorFilters, activeDepartmentFilters, activeStatusFilters, search, taskScope])
 
   const handleToggleDepartmentFilter = useCallback((departmentName: string, enabled: boolean) => {
     setActiveDepartmentFilters((prev) => {
@@ -844,9 +926,33 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     })
   }, [])
 
+  const handleToggleColorFilter = useCallback((color: string) => {
+    const normalized = normalizeHexColorValue(color)
+    if (!normalized) {
+      return
+    }
+    setActiveColorFilters((prev) =>
+      prev.includes(normalized) ? prev.filter((item) => item !== normalized) : [...prev, normalized]
+    )
+  }, [])
+
+  const handleToggleStatusFilter = useCallback((status: TaskStatus, enabled: boolean) => {
+    setActiveStatusFilters((prev) => {
+      if (enabled) {
+        if (prev.includes(status)) {
+          return prev
+        }
+        return [...prev, status]
+      }
+      return prev.filter((value) => value !== status)
+    })
+  }, [])
+
   const handleResetFilters = useCallback(() => {
     setActiveDepartmentFilters([])
     setExactDepartmentMatch(true)
+    setActiveColorFilters([])
+    setActiveStatusFilters([])
     setTaskScope("all")
   }, [])
 
@@ -957,13 +1063,42 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       : activeDepartmentFilters.length <= 2
         ? activeDepartmentFilters.join(", ")
         : `${activeDepartmentFilters.length} selected`
-  const filterActive = scopeLabel !== null || activeDepartmentFilters.length > 0
-  const filterSummaryText = scopeLabel ?? departmentSummary
-  const filterSummaryTitle = scopeLabel
-    ? `${scopeLabel}${activeDepartmentFilters.length > 0 ? ` • ${departmentSummary}` : ""}`
-    : departmentSummary
+  const colorSummaryValues = activeColorFilters
+    .map((color) => normalizeHexColorValue(color))
+    .filter((color): color is string => Boolean(color))
+  const colorSummary =
+    colorSummaryValues.length === 0
+      ? null
+      : colorSummaryValues.length <= 2
+        ? colorSummaryValues
+            .map((color) => colorLabelMap[color] ?? color.toUpperCase())
+            .join(", ")
+        : `${colorSummaryValues.length} colors`
+  const baseSummary =
+    scopeLabel && activeDepartmentFilters.length > 0
+      ? `${scopeLabel} • ${departmentSummary}`
+      : scopeLabel ?? departmentSummary
+  const statusSummaryValues = activeStatusFilters
+    .map((status) => TASK_STATUS_LABEL[status] ?? status)
+  const statusSummary =
+    statusSummaryValues.length === 0
+      ? null
+      : statusSummaryValues.length <= 2
+        ? statusSummaryValues.join(", ")
+        : `${statusSummaryValues.length} statuses`
+  const summaryParts = [baseSummary, statusSummary, colorSummary].filter(Boolean)
+  const statusCount = statusSummaryValues.length
+  const filterActive =
+    scopeLabel !== null ||
+    activeDepartmentFilters.length > 0 ||
+    colorSummaryValues.length > 0 ||
+    statusCount > 0
+  const filterSummaryText = summaryParts.join(" • ")
+  const filterSummaryTitle = summaryParts.join(" • ")
   const filterBadgeCount =
-    activeDepartmentFilters.length > 0 ? activeDepartmentFilters.length : null
+    activeDepartmentFilters.length + colorSummaryValues.length + statusCount > 0
+      ? activeDepartmentFilters.length + colorSummaryValues.length + statusCount
+      : null
 
   const TaskCardSkeleton = () => (
     <div className="task-card relative flex flex-col gap-4 rounded-[3rem] border-2 border-primary/30 bg-white px-8 py-6 shadow-[0_4px_0_rgba(144,122,214,0.15)] sm:flex-row sm:items-center sm:gap-6">
@@ -1009,7 +1144,13 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
                   departmentColorMap={departmentColorMap}
                   activeDepartmentFilters={activeDepartmentFilters}
                   onToggleDepartmentFilter={handleToggleDepartmentFilter}
-                  exactDepartmentMatch={exactDepartmentMatch}
+                  availableColors={availableColors}
+               selectedColors={activeColorFilters}
+               colorLabelMap={colorLabelMap}
+               onToggleColorFilter={handleToggleColorFilter}
+                selectedStatuses={activeStatusFilters}
+                onToggleStatusFilter={handleToggleStatusFilter}
+                exactDepartmentMatch={exactDepartmentMatch}
                   onExactDepartmentMatchChange={setExactDepartmentMatch}
                   taskScope={taskScope}
                   onTaskScopeChange={handleTaskScopeChange}

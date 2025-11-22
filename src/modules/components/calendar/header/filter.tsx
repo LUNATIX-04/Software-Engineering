@@ -6,6 +6,7 @@ import {
 	DropdownMenuCheckboxItem,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -16,9 +17,17 @@ import { QUICK_COLOR_OPTIONS } from "@/constants/task-colors";
 import { QUICK_DEPARTMENT_COLORS } from "@/components/projects/DepartmentColorMenu";
 import type { ProjectDepartmentRecord } from "@/utils/projects/departments";
 import { fetchProjectDepartments } from "@/utils/projects/departments";
+import { TASK_STATUS_LABEL, type TaskStatus } from "@/app/projects/[projectId]/task/data";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 type FilterMode = "department" | "color";
+
+const TASK_STATUS_OPTIONS = Object.keys(TASK_STATUS_LABEL) as TaskStatus[];
+const STATUS_BACKGROUND_MAP: Record<TaskStatus, string> = {
+	SUBMITTED: "var(--task-status-submitted-bg)",
+	IN_PROGRESS: "var(--task-status-in-progress-bg)",
+	BLOCKED: "var(--task-status-blocked-bg)",
+};
 
 export default function FilterEvents() {
 	const {
@@ -34,6 +43,8 @@ export default function FilterEvents() {
 		selectedUserId,
 		toggleDepartmentFilter,
 		projectId,
+		selectedStatuses,
+		filterEventsBySelectedStatuses,
 	} = useCalendar();
 
 	const [menuOpen, setMenuOpen] = useState(false);
@@ -106,7 +117,8 @@ export default function FilterEvents() {
 	}, [selectedDepartmentIds, selectedDepartmentNames]);
 	const userFilterCount = selectedUserId !== "all" ? 1 : 0;
 	const colorFilterCount = selectedColors.length;
-	const filterCount = departmentFilterCount + userFilterCount + colorFilterCount;
+	const statusFilterCount = selectedStatuses.length;
+	const filterCount = departmentFilterCount + userFilterCount + colorFilterCount + statusFilterCount;
 	const filterActive = filterCount > 0;
 	const departmentFilterActive = departmentFilterCount > 0;
 	const colorFilterActive = colorFilterCount > 0;
@@ -303,6 +315,37 @@ export default function FilterEvents() {
 						) : null}
 					</div>
 				)}
+
+				<DropdownMenuSeparator className="my-2 bg-primary/20" />
+
+				<DropdownMenuLabel
+					className="px-3 pt-1 text-[0.65rem] font-semibold uppercase tracking-wide text-primary/60"
+				>
+					Task status
+				</DropdownMenuLabel>
+				<div className="space-y-1 px-2 py-1">
+					{TASK_STATUS_OPTIONS.map((status) => (
+						<DropdownMenuCheckboxItem
+							key={status}
+							checked={selectedStatuses.includes(status)}
+							onCheckedChange={() => filterEventsBySelectedStatuses(status)}
+							onSelect={(event) => event.preventDefault()}
+							className="rounded-2xl px-3 py-2 pr-10 text-foreground focus:bg-primary/10 focus:text-primary [&>span:first-child]:left-auto [&>span:first-child]:right-3"
+						>
+							<span className="inline-flex items-center gap-2">
+								<span
+									className="size-3 rounded-full border border-black/10"
+									style={{
+										backgroundColor: STATUS_BACKGROUND_MAP[status] ?? "#D9D6FF",
+									}}
+								/>
+								<span className="block max-w-[10rem] truncate">
+									{TASK_STATUS_LABEL[status]}
+								</span>
+							</span>
+						</DropdownMenuCheckboxItem>
+					))}
+				</div>
 
 				<DropdownMenuSeparator className="my-2 bg-primary/20" />
 

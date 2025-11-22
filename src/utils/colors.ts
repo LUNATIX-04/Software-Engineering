@@ -6,6 +6,19 @@ export function sanitizeHexColor(input: string): string {
   return value.startsWith("#") ? value : `#${value}`
 }
 
+export function normalizeHexColorValue(value: string | null | undefined): string | null {
+  if (!value) {
+    return null
+  }
+  const trimmed = value.trim()
+  if (!trimmed) {
+    return null
+  }
+  const normalized = trimmed.startsWith("#") ? trimmed : `#${trimmed}`
+  const lower = normalized.toLowerCase()
+  return /^#[0-9a-f]{6}$/.test(lower) ? lower : null
+}
+
 const RELATIVE_LUMINANCE_FACTORS = { r: 0.2126, g: 0.7152, b: 0.0722 }
 
 function hexToRgb(hex: string) {

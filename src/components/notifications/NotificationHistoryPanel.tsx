@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef } from "react"
 import { X } from "lucide-react"
 
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { useNotifications, type NotificationVariant } from "./Notification"
 
@@ -40,6 +41,7 @@ export function NotificationHistoryPanel({
 }: NotificationHistoryPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null)
   const { history, removeHistoryEntry, clearHistory } = useNotifications()
+  const router = useRouter()
   const reversed = useMemo(() => [...history].reverse(), [history])
 
   useEffect(() => {
@@ -77,7 +79,7 @@ export function NotificationHistoryPanel({
     <div
       ref={panelRef}
       className={cn(
-        "fixed top-[clamp(3.75rem,5.5vw,4.75rem)] right-[clamp(0.5rem,1vw,1.5rem)] z-[80] w-[min(26rem,90vw)] max-h-[70vh] rounded-[2rem] border border-border bg-card shadow-2xl transition-transform duration-300 ease-out overflow-hidden",
+        "fixed top-[clamp(3.75rem,5.5vw,4.75rem)] right-[clamp(0.5rem,1vw,1.5rem)] z-[80] w-[min(26rem,90vw)] max-h-[100vh] rounded-[2rem] border border-border bg-card shadow-2xl transition-transform duration-300 ease-out overflow-hidden",
         open ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none"
       )}
       role="region"
@@ -108,7 +110,7 @@ export function NotificationHistoryPanel({
           </button>
         </div>
       </div>
-      <div className="dialog-scroll max-h-[calc(70vh-6rem)] overflow-y-auto overflow-x-hidden space-y-0">
+      <div className=" max-h-[calc(80vh-4rem)] overflow-y-auto dialog-scroll overflow-x-hidden space-y-0">
         {reversed.length === 0 ? (
           <div className="px-6 py-8 text-sm text-muted-foreground">No notifications yet.</div>
         ) : (
@@ -130,18 +132,30 @@ export function NotificationHistoryPanel({
                   <div className="flex flex-1 flex-col gap-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground break-words">{entry.title}</p>
                     {entry.description ? (
-                      <p className="text-xs text-muted-foreground break-words max-w-[min(16rem,calc(100%-0.5rem))]">
+                      <p className="text-xs text-muted-foreground max-w-[min(16rem,calc(100%-2rem))] overflow-hidden text-ellipsis whitespace-nowrap">
                         {entry.description}
                       </p>
                     ) : null}
                   </div>
-                  <div className="flex flex-shrink-0 flex-col items-end gap-2">
-                    <span className="text-xs text-muted-foreground whitespace-nowrap">
-                      {formatTimestamp(entry.timestamp)}
-                    </span>
+                <div className="flex flex-shrink-0 flex-col items-end gap-2">
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">
+                    {formatTimestamp(entry.timestamp)}
+                  </span>
+                  {entry.href ? (
                     <button
                       type="button"
-                      onClick={() => removeHistoryEntry(entry.id)}
+                      onClick={() => {
+                        onClose()
+                        router.push(entry.href!)
+                      }}
+                      className="text-xs font-semibold text-muted-foreground transition hover:text-foreground"
+                    >
+                      View task
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => removeHistoryEntry(entry.id)}
                       className="text-xs font-semibold text-muted-foreground transition hover:text-foreground"
                     >
                       Dismiss
