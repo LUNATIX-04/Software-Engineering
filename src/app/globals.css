@@ -325,7 +325,7 @@ body[data-theme-init="pending"] {
   --notify-destructive-text: var(--destructive-foreground);
 }
 
-:root[data-theme="dark"] {
+/* :root[data-theme="dark"] {
   --background: #111827;
   --foreground: #f9fafb;
 
@@ -474,6 +474,7 @@ body[data-theme-init="pending"] {
   --photo-preview-border: color-mix(in srgb, var(--primary) 45%, var(--border));
   --photo-preview-inner-border: color-mix(in srgb, var(--border) 75%, rgba(255,255,255,0));
 }
+*/
 
 :root[data-theme="red"] {
   --background: #fff5f5;
@@ -821,7 +822,7 @@ body[data-theme-init="pending"] {
 }
 
 
-.dark {
+/* .dark {
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.145 0 0);
@@ -868,7 +869,7 @@ body[data-theme-init="pending"] {
   --photo-preview-button-border: oklch(0.269 0 0);
   --photo-preview-button-hover-bg: oklch(0.205 0 0);
   --photo-preview-button-hover-foreground: oklch(0.985 0 0);
-}
+} */
 
 @theme inline {
   --color-background: var(--background);

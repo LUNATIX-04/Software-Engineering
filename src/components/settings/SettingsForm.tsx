@@ -45,7 +45,7 @@ const themeSwatches: Record<ThemeOption, string[]> = {
   yellow: ["#c89407", "#fcd34d", "#fef3c7"],
 }
 
-const themeOptions: ThemeOption[] = ["standard", "blue", "dark", "red", "green", "yellow"]
+const themeOptions: ThemeOption[] = ["standard", "blue", "red", "green", "yellow"]
 
 export type SettingsFormProps = {
   layout?: "page" | "dialog"
