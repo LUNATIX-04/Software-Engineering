@@ -9,6 +9,7 @@ export type PreferencesContextValue = {
   loading: boolean
   refreshProfile: () => Promise<void>
   updateProfileLocally: (update: Partial<ProfileSummary>) => void
+  timezone: string | null
 }
 
 export const PreferencesContext = createContext<PreferencesContextValue>({
@@ -16,6 +17,7 @@ export const PreferencesContext = createContext<PreferencesContextValue>({
   loading: false,
   refreshProfile: async () => {},
   updateProfileLocally: () => {},
+  timezone: null,
 })
 
 export function usePreferences() {

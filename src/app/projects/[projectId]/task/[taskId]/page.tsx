@@ -48,6 +48,7 @@ import { PROJECT_ROLE } from "@/types/projects"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import { useNotifications } from "@/components/notifications/Notification"
 import { Textarea } from "@/components/ui/textarea"
+import { usePreferences } from "@/contexts/preferences"
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar"
 import { ProgressBar } from "@/components/ui/progress-bar"
 import { parseUtcDateAsLocal } from "@/lib/utc-date"
@@ -108,6 +109,15 @@ const FILE_TYPE_ICON_MAP: Record<string, LucideIcon> = {
 const getFileTypeIcon = (fileName: string): LucideIcon => {
   const extension = fileName.split(".").pop()?.toLowerCase() ?? ""
   return FILE_TYPE_ICON_MAP[extension] ?? FileIcon
+}
+
+const DATE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
 }
 
 type TaskDateInfoItem = {
@@ -1160,13 +1170,53 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
   const selectedStatusLabel = React.useMemo(() => TASK_STATUS_LABEL[status] ?? status, [status])
 
-  const formatDateTime = useCallback((value: string | null) => {
-    const date = parseUtcDateAsLocal(value)
-    if (!date) {
-      return "—"
-    }
-    return format(date, "dd/MM/yyyy HH:mm")
-  }, [])
+  const { timezone: userTimezone } = usePreferences()
+
+  const formatDateTime = useCallback(
+    (
+      value: string | Date | null,
+      options?: {
+        treatAsLocal?: boolean
+      }
+    ) => {
+      if (!value) {
+        return "—"
+      }
+      if (options?.treatAsLocal) {
+        let date: Date | null = null
+        if (value instanceof Date) {
+          date = value
+        } else {
+          date = parseUtcDateAsLocal(value)
+        }
+        if (!date) {
+          return "—"
+        }
+        return format(date, "dd/MM/yyyy HH:mm")
+      }
+      const date = value instanceof Date ? value : new Date(value)
+      if (Number.isNaN(date.getTime())) {
+        return "—"
+      }
+      const safeFormat = (zone?: string) => {
+        if (typeof Intl === "undefined") {
+          return null
+        }
+        try {
+          return new Intl.DateTimeFormat("en-GB", {
+            ...DATE_TIME_FORMAT_OPTIONS,
+            timeZone: zone,
+          }).format(date)
+        } catch {
+          return null
+        }
+      }
+      const formatted =
+        safeFormat(userTimezone ?? undefined) ?? safeFormat(undefined) ?? date.toISOString()
+      return formatted.replace(/\s*,\s*/, " ")
+    },
+    [userTimezone],
+  )
 
   const assignerLabel = useMemo(() => {
     if (!task) {
@@ -1533,29 +1583,6 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     router.push("/projects")
   }, [router])
 
-  const assignDateLabel = formatDateTime(task?.createdAt ?? null)
-  const startlineDateLabel = formatDateTime(task?.startDate ?? null)
-  const deadlineDateLabel = formatDateTime(task?.dueDate ?? null)
-  const heroBackground = task?.cardColor ?? "var(--task-hero-background)"
-  const heroTextColor = task?.cardTextColor ?? "var(--task-hero-text)"
-  const statusColors = TASK_STATUS_COLORS[status]
-  const submissionRecord = task?.submission
-  const hasSubmission = Boolean(submissionRecord)
-  const waitingForOwnerResponse =
-    Boolean(submissionRecord && submissionRecord.status === "SUBMITTED" && !submissionRecord.acknowledgedAt)
-  const effectiveHasSubmission = hasSubmission && !waitingForOwnerResponse
-  const shouldShowWaitingHint = hasSubmission && !effectiveHasSubmission
-  const hasPendingSubmissionAcknowledgement = waitingForOwnerResponse
-  const assignerAvatarUrl = task?.createdBy?.avatarUrl ?? assignerProfile?.avatarUrl
-  const assignerDepartmentLabel = assignerProfile?.department?.name ?? "Unassigned"
-  const roleValue = assignerProfile?.role ?? task?.createdBy?.role ?? "MEMBER"
-  const assignerRoleLabel = getRoleLabel(roleValue)
-  const todayDateLabel = formatDateTime(new Date().toISOString())
-  const todayStart = React.useMemo(() => {
-    const date = new Date()
-    date.setHours(0, 0, 0, 0)
-    return date
-  }, [])
   const assignDateValue = useMemo(() => parseUtcDateAsLocal(task?.createdAt ?? null), [task?.createdAt])
   const startlineDateValue = useMemo(() => {
     if (!task?.startDate) return assignDateValue
@@ -1598,6 +1625,29 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     }
     return parts.length > 0 ? parts.join(" ") : "<1m"
   }, [deadlineDateValue])
+  const assignDateLabel = formatDateTime(assignDateValue ?? null, { treatAsLocal: true })
+  const startlineDateLabel = formatDateTime(startlineDateValue ?? null, { treatAsLocal: true })
+  const deadlineDateLabel = formatDateTime(deadlineDateValue ?? null, { treatAsLocal: true })
+  const heroBackground = task?.cardColor ?? "var(--task-hero-background)"
+  const heroTextColor = task?.cardTextColor ?? "var(--task-hero-text)"
+  const statusColors = TASK_STATUS_COLORS[status]
+  const submissionRecord = task?.submission
+  const hasSubmission = Boolean(submissionRecord)
+  const waitingForOwnerResponse =
+    Boolean(submissionRecord && submissionRecord.status === "SUBMITTED" && !submissionRecord.acknowledgedAt)
+  const effectiveHasSubmission = hasSubmission && !waitingForOwnerResponse
+  const shouldShowWaitingHint = hasSubmission && !effectiveHasSubmission
+  const hasPendingSubmissionAcknowledgement = waitingForOwnerResponse
+  const assignerAvatarUrl = task?.createdBy?.avatarUrl ?? assignerProfile?.avatarUrl
+  const assignerDepartmentLabel = assignerProfile?.department?.name ?? "Unassigned"
+  const roleValue = assignerProfile?.role ?? task?.createdBy?.role ?? "MEMBER"
+  const assignerRoleLabel = getRoleLabel(roleValue)
+  const todayDateLabel = formatDateTime(new Date())
+  const todayStart = React.useMemo(() => {
+    const date = new Date()
+    date.setHours(0, 0, 0, 0)
+    return date
+  }, [])
   const dateItems = useMemo(
     () => [
       {

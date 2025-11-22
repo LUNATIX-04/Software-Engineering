@@ -253,6 +253,7 @@ function AppShellInner({ children }: AppShellProps) {
   const [projectMembership, setProjectMembership] = useState<ProjectMembershipSummary | null>(null)
   const [membershipLoading, setMembershipLoading] = useState(false)
   const [usernameSaving, setUsernameSaving] = useState(false)
+  const [clientTimezone, setClientTimezone] = useState<string | null>(null)
   const viewerRole = projectMembership?.role ?? null
   const viewerDepartmentId = projectMembership?.departmentId ?? null
   const isHeaderViewer = viewerRole === PROJECT_ROLE.HEADER
@@ -659,6 +660,13 @@ function AppShellInner({ children }: AppShellProps) {
     rememberSignInToast,
     supabase,
   ])
+
+  useEffect(() => {
+    if (typeof Intl === "undefined") {
+      return
+    }
+    setClientTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone ?? null)
+  }, [])
 
   useEffect(() => {
     if (authLoading) {
@@ -1263,6 +1271,37 @@ function AppShellInner({ children }: AppShellProps) {
     ]
   )
 
+  const resolvedTimezone = useMemo(() => {
+    const metadata = (authenticatedUser?.user_metadata ?? {}) as Record<string, unknown>
+    const candidates = [
+      metadata.timezone,
+      metadata.time_zone,
+      metadata.timeZone,
+      metadata.tz,
+      metadata.preferred_timezone,
+      metadata.preferredTimeZone,
+    ]
+    for (const candidate of candidates) {
+      if (typeof candidate !== "string") {
+        continue
+      }
+      const trimmed = candidate.trim()
+      if (!trimmed) {
+        continue
+      }
+      if (typeof Intl === "undefined") {
+        return trimmed
+      }
+      try {
+        new Intl.DateTimeFormat("en-GB", { timeZone: trimmed })
+        return trimmed
+      } catch {
+        continue
+      }
+    }
+    return clientTimezone
+  }, [authenticatedUser?.user_metadata, clientTimezone])
+
   const layoutContextValue = useMemo(
     () => ({
       setHeaderVariant,
@@ -1281,6 +1320,7 @@ function AppShellInner({ children }: AppShellProps) {
           loading: preferencesLoading,
           refreshProfile,
           updateProfileLocally,
+          timezone: resolvedTimezone,
         }}
       >
           <Dialog open={settingsDialogOpen} onOpenChange={setSettingsDialogOpen}>
