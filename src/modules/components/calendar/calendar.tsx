@@ -14,6 +14,7 @@ import type { TaskRecord, TaskStatus } from "@/app/projects/[projectId]/task/dat
 import type { IEvent, IUser } from "@/modules/components/calendar/interfaces"
 import type { TEventColor } from "@/modules/components/calendar/types"
 import { PROJECT_ROLE, type ProjectRole } from "@/types/projects"
+import { parseUtcDateAsLocal, toLocalIsoString } from "@/lib/utc-date"
 
 const STATUS_COLOR_MAP: Record<TaskStatus, TEventColor> = {
   SUBMITTED: "purple",
@@ -31,26 +32,14 @@ function toEventId(taskId: string) {
   return Math.abs(hash)
 }
 
-function resolveDate(value: string | null, fallback?: string) {
-  if (value) {
-    const parsed = new Date(value)
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed
-    }
-  }
-  if (fallback) {
-    const parsed = new Date(fallback)
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed
-    }
-  }
-  return new Date()
+function resolveDate(value?: string | null, fallback?: string | null) {
+  return parseUtcDateAsLocal(value) ?? parseUtcDateAsLocal(fallback) ?? new Date()
 }
 
 function mapTasksToEvents(tasks: TaskRecord[], projectId: string): IEvent[] {
   return tasks.map((task) => {
-    const startDate = resolveDate(task.startDate, task.createdAt)
-    const endDate = resolveDate(task.dueDate, task.startDate ?? task.createdAt)
+    const startDate = resolveDate(task.startDate ?? null, task.createdAt)
+    const endDate = resolveDate(task.dueDate ?? null, task.startDate ?? task.createdAt)
     const userSource = task.assignees[0] ?? task.createdBy
     const avatarUrl = userSource.avatarUrl ?? null
     const color = STATUS_COLOR_MAP[task.status] ?? DEFAULT_EVENT_COLOR
@@ -75,8 +64,8 @@ function mapTasksToEvents(tasks: TaskRecord[], projectId: string): IEvent[] {
     const departmentNameList = Array.from(departmentNames)
     return {
       id: toEventId(task.id),
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
+      startDate: toLocalIsoString(startDate),
+      endDate: toLocalIsoString(endDate),
       title: task.title,
       description: task.detail ?? "No description provided.",
       color,

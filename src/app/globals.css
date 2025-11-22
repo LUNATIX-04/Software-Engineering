@@ -1191,3 +1191,13 @@ body[data-theme-init="pending"] {
     transform: translateX(100%);
   }
 }
+
+.asap-read-link {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+
+.asap-read-link:hover {
+  color: var(--secondary);
+}

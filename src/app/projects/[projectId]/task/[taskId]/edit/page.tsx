@@ -3,7 +3,6 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
-import { format } from "date-fns"
 
 import { Button } from "@/components/ui/button"
 import { ProgressBar } from "@/components/ui/progress-bar"
@@ -11,6 +10,47 @@ import { TaskForm, type TaskAssigneeOption, type TaskFormValues } from "@/compon
 import { DEFAULT_TASK_CARD_COLOR } from "@/constants/task-colors"
 import { useNotifications } from "@/components/notifications/Notification"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
+
+const padTwoDigits = (value: number) => String(value).padStart(2, "0")
+
+const parseIsoDate = (value?: string | null) => {
+  if (!value) {
+    return null
+  }
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) {
+    return null
+  }
+  return parsed
+}
+
+const formatUtcDate = (value?: string | null) => {
+  const parsed = parseIsoDate(value)
+  if (!parsed) {
+    return ""
+  }
+  const day = padTwoDigits(parsed.getUTCDate())
+  const month = padTwoDigits(parsed.getUTCMonth() + 1)
+  const year = parsed.getUTCFullYear()
+  return `${day}/${month}/${year}`
+}
+
+const formatUtcDateTime = (value?: string | null) => {
+  const parsed = parseIsoDate(value)
+  if (!parsed) {
+    return ""
+  }
+  const hasTime = parsed.getUTCHours() !== 0 || parsed.getUTCMinutes() !== 0
+  const datePart = `${padTwoDigits(parsed.getUTCDate())}/${padTwoDigits(
+    parsed.getUTCMonth() + 1
+  )}/${parsed.getUTCFullYear()}`
+  if (!hasTime) {
+    return datePart
+  }
+  const hour = padTwoDigits(parsed.getUTCHours())
+  const minute = padTwoDigits(parsed.getUTCMinutes())
+  return `${datePart} ${hour}:${minute}`
+}
 
 type EditTaskPageProps = {
   params: Promise<{
@@ -57,18 +97,8 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
         cardColor: string
       }
 
-      const deadlineText = (() => {
-        if (!task.dueDate) {
-          return ""
-        }
-        const date = new Date(task.dueDate)
-        const base = format(date, "dd/MM/yyyy")
-        const hasTime = date.getUTCHours() !== 0 || date.getUTCMinutes() !== 0
-        return hasTime ? `${base} ${format(date, "HH:mm")}` : base
-      })()
-      const startDateText = task.startDate
-        ? format(new Date(task.startDate), "dd/MM/yyyy")
-        : ""
+      const deadlineText = formatUtcDateTime(task.dueDate)
+      const startDateText = task.startDate ? formatUtcDate(task.startDate) : ""
 
       setInitialValues({
         title: task.title,

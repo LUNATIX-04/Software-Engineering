@@ -719,6 +719,36 @@ function getDeadlineParts(value: string | null | undefined) {
   }
 }
 
+type BuildDateTimeInputOptions = {
+  date?: Date | null
+  fallbackDate?: Date | null
+  dateText: string
+  timeText: string
+  defaultTime?: string
+}
+
+function buildDateTimeInput({
+  date,
+  fallbackDate,
+  dateText,
+  timeText,
+  defaultTime = "00:00",
+}: BuildDateTimeInputOptions) {
+  const selectedDate = date ?? fallbackDate
+  if (selectedDate) {
+    const formattedDate = dateText.trim() || format(selectedDate, "dd/MM/yyyy")
+    const formattedTime =
+      timeText.trim() || format(selectedDate, "HH:mm") || defaultTime
+    return `${formattedDate} ${formattedTime}`
+  }
+  const trimmedDateText = dateText.trim()
+  if (!trimmedDateText) {
+    return ""
+  }
+  const formattedTime = timeText.trim() || defaultTime
+  return `${trimmedDateText} ${formattedTime}`
+}
+
 const TASK_STATUS_COLORS: Record<TaskStatus, { background: string; text: string }> = {
   SUBMITTED: {
     background: "var(--task-status-submitted-bg)",
@@ -1562,18 +1592,20 @@ export function TaskForm({
     const normalizedAssignees = assigneeIds.filter(
       (item, index, array) => item && array.indexOf(item) === index
     )
-    const startDateValue =
-      calendarRange?.from && startDateText
-        ? `${startDateText.trim()} ${(startTimeText.trim() || "00:00")}`
-        : ""
-    const effectiveDeadlineDateText =
-      deadlineDateText || (deadline ? format(deadline, "dd/MM/yyyy") : "")
-    const effectiveDeadlineTimeText =
-      deadlineTimeText || (deadline ? format(deadline, "HH:mm") : "")
-    const deadlineValue =
-      (calendarRange?.to || deadline) && effectiveDeadlineDateText
-        ? `${effectiveDeadlineDateText.trim()} ${(effectiveDeadlineTimeText.trim() || "00:00")}`
-        : ""
+    const startDateValue = buildDateTimeInput({
+      date: startDateTime,
+      fallbackDate: calendarRange?.from ?? null,
+      dateText: startDateText,
+      timeText: startTimeText,
+      defaultTime: "00:00",
+    })
+    const deadlineValue = buildDateTimeInput({
+      date: deadline,
+      fallbackDate: calendarRange?.to ?? null,
+      dateText: deadlineDateText,
+      timeText: deadlineTimeText,
+      defaultTime: "00:00",
+    })
     onSubmit({
       title: title.trim(),
       detail: detail.trim(),

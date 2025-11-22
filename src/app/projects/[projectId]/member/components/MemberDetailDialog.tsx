@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
+import { LinkifiedText } from "@/components/linkified-text"
 
 import type { MemberRecord } from "../types"
 import type { ProjectMembershipSummary } from "@/utils/projects/api"
@@ -123,11 +124,13 @@ export function MemberDetailDialog({
                     rows={4}
                   />
                 </div>
-              ) : (
-                <div className="rounded-2xl  -mt-2 border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-[#2F2766]">
-                  {memberTarget.bio?.length ? memberTarget.bio : "No bio provided."}
-                </div>
-              )}
+                ) : (
+                  <div className="rounded-2xl -mt-2 border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-[#2F2766] whitespace-pre-line">
+                    <div className="asap-scroll max-h-[10rem] overflow-y-auto">
+                      <LinkifiedText value={memberTarget.bio?.length ? memberTarget.bio : "No bio provided."} />
+                    </div>
+                  </div>
+                )}
             </div>
             {isSelf ? (
               <div className="space-y-3">

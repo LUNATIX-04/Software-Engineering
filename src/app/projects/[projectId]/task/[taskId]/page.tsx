@@ -50,6 +50,8 @@ import { useNotifications } from "@/components/notifications/Notification"
 import { Textarea } from "@/components/ui/textarea"
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar"
 import { ProgressBar } from "@/components/ui/progress-bar"
+import { parseUtcDateAsLocal } from "@/lib/utc-date"
+import { LinkifiedText } from "@/components/linkified-text"
 
 const TASK_STATUS_COLORS: Record<TaskStatus, { background: string; text: string }> = {
   SUBMITTED: {
@@ -125,6 +127,8 @@ type TaskDateInfoDialogProps = {
   remainingTimeLabel: string
 }
 
+const DATE_TIMELINE_HEIGHT_CLASS = "h-[36rem]"
+
 function TaskDateInfoDialog({
   open,
   onOpenChange,
@@ -137,38 +141,44 @@ function TaskDateInfoDialog({
 }: TaskDateInfoDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl rounded-[2.5rem] border-2 border-primary/30 bg-white px-8 py-6 text-left shadow-[0_20px_40px_rgba(72,68,110,0.2)]">
+      <DialogContent
+        className={cn(
+          "max-w-3xl rounded-[2.5rem] border-2 border-primary/30 bg-white px-8 py-6 text-left shadow-[0_20px_40px_rgba(72,68,110,0.2)]",
+          "flex flex-col gap-6",
+          DATE_TIMELINE_HEIGHT_CLASS,
+          "overflow-hidden"
+        )}
+      >
         <DialogHeader>
           <DialogTitle className="text-xl font-bold text-[var(--task-hero-text)]">Date Timeline</DialogTitle>
-          <DialogDescription className="text-xs text-[var(--task-subtle-text)]">
-            Overview of today, assign, startline and deadline dates.
-          </DialogDescription>
         </DialogHeader>
-        <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8">
-          <div className="space-y-3">
-            {dateItems.map((item) => (
-              <div key={item.label} className="flex items-center gap-3">
-                <span
-                  className="inline-flex h-3 w-3 rounded-full border border-primary/40"
-                  style={{ backgroundColor: item.color }}
-                />
-                <div>
-                  <p className="text-[0.65rem] uppercase tracking-[0.3em] text-primary/60">{item.label}</p>
-                  <p className="text-sm font-semibold text-[var(--task-hero-text)]">{item.value || "—"}</p>
+        <div className="flex-1 min-h-0 overflow-hidden ">
+          <div className="mt-4 overflow-hidden  flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-8 min-h-0">
+            <div className="space-y-3 flex-1 overflow-y-auto pr-1">
+              {dateItems.map((item) => (
+                <div key={item.label} className="flex items-center gap-3">
+                  <span
+                    className="inline-flex h-3 w-3 rounded-full border border-primary/40"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  <div>
+                    <p className="text-[0.65rem] uppercase tracking-[0.3em] text-primary/60">{item.label}</p>
+                    <p className="text-sm font-semibold text-[var(--task-hero-text)]">{item.value || "—"}</p>
+                  </div>
                 </div>
+              ))}
+            </div>
+            <div className="space-y-3 flex-1">
+              <div className="rounded-2xlborder border-primary/20 bg-primary/5 px-4 py-3 w-full max-w-[32rem] h-full">
+                <Calendar
+                  mode="range"
+                  selected={dateRange}
+                  defaultMonth={startlineDateValue ?? new Date()}
+                  className="h-full w-full rounded-[1.5rem] border-0 bg-transparent shadow-none"
+                  disabled={{ before: startlineDateValue ?? new Date() }}
+                  components={calendarComponents}
+                />
               </div>
-            ))}
-          </div>
-          <div className="space-y-3">
-            <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 w-full max-w-[32rem]">
-              <Calendar
-                mode="range"
-                selected={dateRange}
-                defaultMonth={startlineDateValue ?? new Date()}
-                className="w-full rounded-[1.5rem] border-0 bg-transparent shadow-none"
-                disabled={{ before: startlineDateValue ?? new Date() }}
-                components={calendarComponents}
-              />
             </div>
           </div>
         </div>
@@ -308,7 +318,7 @@ function AssignerDialog({
                 ) : null}
                 <p className="text-sm font-semibold uppercase tracking-wide text-primary/70">About me</p>
                 <div className="asap-scroll max-h-[10rem] -mt-2 rounded-2xl border border-primary/15 bg-primary/5 px-4 py-2 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
-                  {profile?.bio?.length ? profile.bio : "No bio provided."}
+                  <LinkifiedText value={profile?.bio?.length ? profile.bio : "No bio provided."} />
                 </div>
               </div>
             </div>
@@ -692,7 +702,7 @@ function TaskFeedbackPanel({
         </div>
       </div>
       <div className="asap-scroll rounded-[1.5rem] min-h-[6rem] max-h-[12rem] overflow-auto border-2 border-primary/30 bg-[var(--task-description-bg)] px-4 py-3 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
-        {lastReviewerComment ?? "No reviewer comment yet."}
+        <LinkifiedText value={lastReviewerComment ?? "No reviewer comment yet."} />
       </div>
     </div>
   )
@@ -740,7 +750,7 @@ function TaskSubmissionDetailsPanel({
         )}
       </div>
       <div className="asap-scroll rounded-[1.5rem] min-h-[6rem] max-h-[12rem] overflow-auto border-2 border-primary/30 bg-[var(--task-description-bg)] px-4 py-3 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
-        {taskSubmission?.description ?? "No description provided."}
+        <LinkifiedText value={taskSubmission?.description ?? "No description provided."} />
       </div>
       {taskSubmission?.attachments && taskSubmission.attachments.length > 0 && (
         <div className="space-y-2 text-sm text-primary">
@@ -1151,11 +1161,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const selectedStatusLabel = React.useMemo(() => TASK_STATUS_LABEL[status] ?? status, [status])
 
   const formatDateTime = useCallback((value: string | null) => {
-    if (!value) {
-      return "—"
-    }
-    const date = new Date(value)
-    if (Number.isNaN(date.getTime())) {
+    const date = parseUtcDateAsLocal(value)
+    if (!date) {
       return "—"
     }
     return format(date, "dd/MM/yyyy HH:mm")
@@ -1549,20 +1556,16 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     date.setHours(0, 0, 0, 0)
     return date
   }, [])
-  const assignDateValue = useMemo(() => {
-    if (!task?.createdAt) return null
-    const parsed = new Date(task.createdAt)
-    return Number.isNaN(parsed.getTime()) ? null : parsed
-  }, [task?.createdAt])
+  const assignDateValue = useMemo(() => parseUtcDateAsLocal(task?.createdAt ?? null), [task?.createdAt])
   const startlineDateValue = useMemo(() => {
     if (!task?.startDate) return assignDateValue
-    const parsed = new Date(task.startDate)
-    return Number.isNaN(parsed.getTime()) ? assignDateValue : parsed
+    const parsed = parseUtcDateAsLocal(task.startDate)
+    return parsed ?? assignDateValue
   }, [assignDateValue, task?.startDate])
   const deadlineDateValue = useMemo(() => {
     if (!task?.dueDate) return startlineDateValue
-    const parsed = new Date(task.dueDate)
-    return Number.isNaN(parsed.getTime()) ? startlineDateValue : parsed
+    const parsed = parseUtcDateAsLocal(task.dueDate)
+    return parsed ?? startlineDateValue
   }, [startlineDateValue, task?.dueDate])
   const dateRange = useMemo(() => {
     if (!startlineDateValue || !deadlineDateValue) {
@@ -1729,7 +1732,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               />
               <h2 className="text-lg font-semibold text-[var(--task-hero-text)] pl-8">Task Description</h2>
               <div className="rounded-[1.5rem] -mt-3 min-h-[10rem] max-h-[10rem] asap-scroll border-2 border-primary/30 bg-[var(--task-description-bg)] px-4 py-2 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
-                {description || "No details provided."}
+                <LinkifiedText value={description || "No details provided."} />
               </div>
             </div>
 
