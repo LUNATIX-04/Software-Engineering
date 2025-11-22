@@ -39,6 +39,7 @@ import TaskFilterMenu from "./components/TaskFilterMenu"
 import { TaskScope } from "./types"
 import TaskPageSizeSelector from "./components/TaskPageSizeSelector"
 import TaskPaginationControls from "./components/TaskPaginationControls"
+import { useNotifications } from "@/components/notifications/Notification"
 
 type ProjectTaskPageProps = {
   params: Promise<{
@@ -156,6 +157,7 @@ const ALL_DEPARTMENTS_LABEL = "All Departments"
 
 export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
   const { projectId } = React.use(params)
+  const { notify } = useNotifications()
   const router = useRouter()
   const cachedMembership = useMemo(
     () => (projectId ? getCachedProjectMembership(projectId) : undefined),
@@ -913,11 +915,11 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
           })
         )
       }
-      try {
-        await fetchTasks()
-      } catch (refreshError) {
-        console.error("Unable to refresh tasks after delete", refreshError)
-      }
+      notify({
+        title: "Task removed",
+        description: `Removed “${pendingDeleteTask.title}”.`,
+        variant: "success",
+      })
       closeDeleteDialog()
     } catch (error) {
       console.error("Failed to delete task", error)

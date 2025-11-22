@@ -14,6 +14,7 @@ import {
 import { usePathname, useRouter } from "next/navigation"
 import Image from "next/image"
 import {
+  Bell,
   ChevronDown,
   Check,
   Loader2,
@@ -45,6 +46,7 @@ import {
   NotificationProvider,
   useNotifications,
 } from "@/components/notifications/Notification"
+import { NotificationHistoryPanel } from "@/components/notifications/NotificationHistoryPanel"
 import { PreferencesContext } from "@/contexts/preferences"
 import type { DepartmentLayoutOption, ProfileSummary, ThemeOption } from "@/types/preferences"
 
@@ -224,6 +226,8 @@ function AppShellInner({ children }: AppShellProps) {
   const currentProjectSection = isProjectDetailPage ? (segments[2]?.toLowerCase() ?? "info") : null
   const hasProjectTabs = Boolean(activeProjectId)
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false)
+  const historyToggleRef = useRef<HTMLButtonElement | null>(null)
   const supabase = useMemo(() => getSupabaseBrowserClient(), [])
   const [session, setSession] = useState<Session | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
@@ -236,7 +240,7 @@ function AppShellInner({ children }: AppShellProps) {
   const [headerSpacingOverride, setHeaderSpacingOverride] = useState<HeaderSpacingControl | null>(null)
   const lastAuthUserIdRef = useRef<string | null>(null)
   const signInToastTokensRef = useRef<Record<string, string>>({})
-  const { notify } = useNotifications()
+  const { notify, history } = useNotifications()
   const redirectToProjects = useCallback(() => {
     notify({
       title: "Removed",
@@ -330,6 +334,12 @@ function AppShellInner({ children }: AppShellProps) {
   useEffect(() => {
     refreshMembership()
   }, [refreshMembership])
+
+  useEffect(() => {
+    if (historyDrawerOpen) {
+      setHistoryDrawerOpen(false)
+    }
+  }, [pathname])
 
   const refreshOwnerCandidates = useCallback(async () => {
     if (!activeProjectId) {
@@ -1035,6 +1045,12 @@ function AppShellInner({ children }: AppShellProps) {
       : "none"
   const headerVariant = headerOverride ?? defaultHeaderVariant
 
+  useEffect(() => {
+    if (historyDrawerOpen && headerVariant !== "projects") {
+      setHistoryDrawerOpen(false)
+    }
+  }, [headerVariant, historyDrawerOpen])
+
   const logoDestination = headerVariant === "minimal" ? "/homepage" : "/projects"
 
   const handleLogoClick = useCallback(() => {
@@ -1183,6 +1199,20 @@ function AppShellInner({ children }: AppShellProps) {
                   <div className="flex-1" />
                 )}
                   <div className="flex items-center gap-3">
+                    <button
+                      ref={historyToggleRef}
+                      type="button"
+                      onClick={() => setHistoryDrawerOpen((prev) => !prev)}
+                      aria-label="Toggle notification history"
+                      className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border)] bg-[color:var(--card)] text-[color:var(--foreground)] transition hover:border-[color:var(--foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+                    >
+                      <Bell className="size-5" />
+                      {history.length > 0 ? (
+                        <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[10px] font-semibold text-white">
+                          {history.length > 9 ? "9+" : history.length}
+                        </span>
+                      ) : null}
+                    </button>
                     <ProjectActionsMenu
                       activeProjectId={activeProjectId}
                       projectActionsOpen={projectActionsOpen}
@@ -1459,6 +1489,11 @@ function AppShellInner({ children }: AppShellProps) {
             loading={leaveLoading}
             error={leaveError}
             onConfirm={handleLeaveProject}
+          />
+          <NotificationHistoryPanel
+            open={historyDrawerOpen}
+            onClose={() => setHistoryDrawerOpen(false)}
+            triggerRef={historyToggleRef}
           />
           <div className="flex h-dvh flex-col overflow-x-hidden">
             {header}

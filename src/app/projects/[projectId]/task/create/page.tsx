@@ -61,6 +61,12 @@ export default function CreateTaskPage({ params }: CreateTaskPageProps) {
           new CustomEvent(PROJECT_REFRESH_EVENT, { detail: { projectId } })
         )
       }
+      const taskTitle = values.title.trim() || "Untitled task"
+      notify({
+        title: "Task created",
+        description: `“${taskTitle}” is now available.`,
+        variant: "success",
+      })
       if (typeof window !== "undefined" && window.history.length > 1) {
         router.back()
       } else {

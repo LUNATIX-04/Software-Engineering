@@ -163,9 +163,10 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
             typeof payload?.error === "string" ? payload.error : "Failed to save task"
           throw new Error(message)
         }
+        const taskTitle = values.title.trim() || "Task"
         notify({
           title: "Task updated",
-          description: "Your changes have been saved.",
+          description: `Updates to “${taskTitle}” are saved.`,
         })
         if (typeof window !== "undefined") {
           window.dispatchEvent(

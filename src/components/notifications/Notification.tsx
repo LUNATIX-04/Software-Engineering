@@ -36,9 +36,20 @@ type NotificationRecord = {
   status: "enter" | "visible" | "exit"
 }
 
+export type NotificationHistoryEntry = {
+  id: string
+  title: string
+  description?: string
+  variant: NotificationVariant
+  timestamp: string
+}
+
 type NotificationContextValue = {
   notify: (options: NotificationOptions) => string
   dismiss: (id: string) => void
+  history: NotificationHistoryEntry[]
+  removeHistoryEntry: (id: string) => void
+  clearHistory: () => void
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null)
@@ -107,11 +118,44 @@ type NotificationProviderProps = {
   children: ReactNode
 }
 
+const HISTORY_STORAGE_KEY = "asap:notification-history"
+
 export function NotificationProvider({ children }: NotificationProviderProps) {
   const [notifications, setNotifications] = useState<NotificationRecord[]>([])
+  const [history, setHistory] = useState<NotificationHistoryEntry[]>([])
   const idRef = useRef(0)
   const autoDismissTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
   const exitTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined
+    }
+    try {
+      const stored = window.localStorage.getItem(HISTORY_STORAGE_KEY)
+      if (stored) {
+        const parsed: NotificationHistoryEntry[] = JSON.parse(stored)
+        setHistory(parsed)
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to read notification history", error)
+      }
+    }
+    return undefined
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    try {
+      window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history))
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to persist notification history", error)
+      }
+    }
+  }, [history])
 
   const dismiss = useCallback((id: string) => {
     const autoTimer = autoDismissTimers.current[id]
@@ -155,6 +199,17 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         status: "enter",
       }
 
+      setHistory((prev) => [
+        ...prev,
+        {
+          id,
+          title: options.title,
+          description: options.description,
+          variant: options.variant ?? "info",
+          timestamp: new Date().toISOString(),
+        },
+      ])
+
       setNotifications((prev) => {
         const stablePrev = prev.filter((item) => item.status !== "exit")
         const next = [record, ...stablePrev]
@@ -196,6 +251,14 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     [dismiss]
   )
 
+  const removeHistoryEntry = useCallback((id: string) => {
+    setHistory((prev) => prev.filter((entry) => entry.id !== id))
+  }, [])
+
+  const clearHistory = useCallback(() => {
+    setHistory([])
+  }, [])
+
   useEffect(() => {
     return () => {
       Object.values(autoDismissTimers.current).forEach((timer) => {
@@ -213,8 +276,11 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     () => ({
       notify,
       dismiss,
+      history,
+      removeHistoryEntry,
+      clearHistory,
     }),
-    [dismiss, notify]
+    [clearHistory, dismiss, history, notify, removeHistoryEntry]
   )
 
   return (

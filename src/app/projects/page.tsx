@@ -403,11 +403,16 @@ export default function ProjectsPage() {
   }, [filteredProjects, page, pageSize])
 
   const handleDelete = useCallback(
-    async (projectId: string) => {
+    async (projectId: string, title: string) => {
       setDeleteError(null)
       try {
         await deleteProject(projectId)
         setProjects((prev) => prev.filter((project) => project.id !== projectId))
+        notify({
+          title: "Project deleted",
+          description: `Removed “${title}”.`,
+          variant: "success",
+        })
       } catch (error) {
         console.error("Failed to delete project", error)
         const raw =
@@ -693,7 +698,7 @@ export default function ProjectsPage() {
                         ? () => navigateToProject(project.id, `/projects/${project.id}/edit`)
                         : undefined
                     }
-                    onDelete={isOwner ? () => handleDelete(project.id) : undefined}
+                    onDelete={isOwner ? () => handleDelete(project.id, project.title) : undefined}
                     onChangeOwner={canChangeOwner ? () => openOwnerDialog(project.id) : undefined}
                     onLeaveProject={async () => {
                       try {

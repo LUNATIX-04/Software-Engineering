@@ -94,6 +94,11 @@ export default function CreateProjectPage() {
           console.error("Failed to sync department colors", error)
         }
 
+        notify({
+          title: "Project created",
+          description: `Project “${title}” is now available.`,
+          variant: "success",
+        })
         router.push("/projects")
       } catch (error) {
         console.error("Failed to create project", error)

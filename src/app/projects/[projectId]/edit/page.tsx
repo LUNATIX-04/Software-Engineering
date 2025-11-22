@@ -19,6 +19,7 @@ import {
   updateProjectDepartment,
 } from "@/utils/projects/departments"
 import { getContrastingTextColor, generatePastelColor, sanitizeHexColor } from "@/utils/colors"
+import { useNotifications } from "@/components/notifications/Notification"
 
 type EditProjectPageProps = {
   params: Promise<{
@@ -29,6 +30,7 @@ type EditProjectPageProps = {
 export default function EditProjectPage({ params }: EditProjectPageProps) {
   const { projectId } = React.use(params)
   const router = useRouter()
+  const { notify } = useNotifications()
   const { profile } = usePreferences()
   const preferredDepartmentLayout = profile?.departmentLayout ?? "fullWidth"
   const [project, setProject] = useState<ProjectRecord | null>(null)
@@ -196,6 +198,12 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
             new CustomEvent(PROJECT_REFRESH_EVENT, { detail: { projectId } })
           )
         }
+        const projectTitle = values.title.trim() || "Project"
+        notify({
+          title: "Project updated",
+          description: `Changes to “${projectTitle}” are now live.`,
+          variant: "success",
+        })
         router.back()
       } catch (error) {
         console.error("Failed to update project", error)

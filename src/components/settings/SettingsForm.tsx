@@ -259,7 +259,7 @@ export function SettingsForm({ layout = "page", onSaved }: SettingsFormProps) {
         </header>
       </section>
 
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex w-full flex-nowrap items-center gap-4">
         <Button
           type="submit"
           disabled={saving || !hasChanges}
@@ -272,7 +272,7 @@ export function SettingsForm({ layout = "page", onSaved }: SettingsFormProps) {
           {saving ? "Saving..." : "Save changes"}
         </Button>
         {hasChanges ? (
-          <span className="text-sm text-muted-foreground">You have unsaved changes.</span>
+          <span className="ml-auto text-sm text-muted-foreground whitespace-nowrap">You have unsaved changes.</span>
         ) : null}
       </div>
 
