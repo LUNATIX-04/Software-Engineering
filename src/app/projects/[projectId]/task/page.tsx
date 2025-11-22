@@ -769,7 +769,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       if (detail?.projectId && detail.projectId !== projectId) {
         return
       }
-      if (detail?.origin === "tasks-page") {
+      if (detail?.origin === "tasks-page" || detail?.origin === "supabase") {
         return
       }
       fetchDepartments()

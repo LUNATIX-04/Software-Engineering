@@ -142,6 +142,8 @@ body[data-theme-init="pending"] {
   --task-placeholder: #AFA9D0;
   --task-cta-bg: #4C43F2;
   --task-cta-hover: #3933d1;
+  --task-detail-card-bg: color-mix(in srgb, var(--card) 92%, #ffffff 8%);
+  --task-detail-card-border: color-mix(in srgb, var(--primary) 40%, var(--border) 60%);
   --pagination-surface-bg: #f1effe;
   --pagination-surface-border: #cbc7f0;
   --pagination-surface-foreground: var(--primary);

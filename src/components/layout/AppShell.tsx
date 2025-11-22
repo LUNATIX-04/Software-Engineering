@@ -52,6 +52,7 @@ import type { DepartmentLayoutOption, ProfileSummary, ThemeOption } from "@/type
 
 import { cn } from "@/lib/utils"
 import { getSupabaseBrowserClient } from "@/utils/supabase/client"
+import type { TaskRecord } from "@/app/projects/[projectId]/task/data"
 import {
   changeProjectUsername,
   deleteProject,
@@ -169,6 +170,12 @@ export function useAppShellLayout() {
   return useContext(AppShellLayoutContext)
 }
 
+type TaskNotificationContext = {
+  projectId: string
+  membershipId: string
+  task: TaskRecord
+}
+
 function ensureDepartmentLayout(value: unknown): DepartmentLayoutOption {
   return DEPARTMENT_LAYOUTS.includes(value as DepartmentLayoutOption)
     ? (value as DepartmentLayoutOption)
@@ -241,6 +248,17 @@ function AppShellInner({ children }: AppShellProps) {
   const lastAuthUserIdRef = useRef<string | null>(null)
   const signInToastTokensRef = useRef<Record<string, string>>({})
   const { notify, history } = useNotifications()
+  const notificationStateRef = useRef<{
+    busyTaskIds: Set<string>
+    submissionMarkers: Map<string, string>
+    feedbackMarkers: Map<string, string>
+    statusMarkers: Map<string, string>
+  }>({
+    busyTaskIds: new Set(),
+    submissionMarkers: new Map(),
+    feedbackMarkers: new Map(),
+    statusMarkers: new Map(),
+  })
   const redirectToProjects = useCallback(() => {
     notify({
       title: "Removed",
@@ -274,6 +292,136 @@ function AppShellInner({ children }: AppShellProps) {
     isHeaderViewer,
     notify,
   })
+
+  const notifyTaskBackInProgress = useCallback(
+    async (projectId: string, taskId: string) => {
+      const membershipId = projectMembership?.id
+      if (!membershipId) {
+        return
+      }
+      try {
+        const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+          cache: "no-store",
+        })
+        if (!response.ok) {
+          return
+        }
+        const task = (await response.json().catch(() => null)) as TaskRecord
+        if (!task || !task.assignees.some((assignee) => assignee.id === membershipId)) {
+          return
+        }
+        const projectName = task.project?.title ?? "this project"
+        const taskLabelWithProject = `"${formatLabel(task.title ?? "this task")}" in "${formatLabel(projectName)}"`
+        notify({
+          title: "Task is in progress",
+          description: `on ${taskLabelWithProject}\nThe owner moved this task back to In Progress.`,
+          variant: "info",
+          href: `/projects/${projectId}/task/${taskId}`,
+        })
+      } catch (error) {
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Failed to load task for notification", error)
+        }
+      }
+    },
+    [notify, projectMembership?.id]
+  )
+
+  const formatLabel = useCallback((value: string | null | undefined, limit = 40) => {
+    if (!value) {
+      return ""
+    }
+    const trimmed = value.trim()
+    if (trimmed.length <= limit) {
+      return trimmed
+    }
+    return `${trimmed.slice(0, limit - 3)}...`
+  }, [])
+
+  const handleTaskNotification = useCallback(
+    ({ membershipId, projectId, task }: TaskNotificationContext) => {
+      const submission = task.submission
+      if (!submission) {
+        return
+      }
+      const state = notificationStateRef.current
+      const submissionMarker = submission.updatedAt ?? submission.createdAt ?? ""
+      const isOwner = membershipId === task.createdBy.id
+      const isAssignee = membershipId === submission.submittedBy.id
+      const projectName = task.project?.title ?? "this project"
+      const taskLabel = task.title ?? "this task"
+      const taskLabelWithProject = `"${formatLabel(taskLabel)}" in "${formatLabel(projectName)}"`
+
+      if (isOwner && submission.status === "SUBMITTED" && !submission.acknowledgedAt) {
+        const previous = state.submissionMarkers.get(submission.id)
+        if (previous !== submissionMarker) {
+          state.submissionMarkers.set(submission.id, submissionMarker)
+          notify({
+            title: "Submission awaiting review",
+            description: `on ${taskLabelWithProject}\nAssignee submitted and awaits your acknowledgement.`,
+            variant: "info",
+            href: `/projects/${projectId}/task/${task.id}`,
+          })
+        }
+      } else {
+        state.submissionMarkers.delete(submission.id)
+      }
+
+      const feedbackComment = submission.reviewerComment?.trim()
+      const hasFeedback = Boolean(feedbackComment) && !submission.ownerAcknowledgedAt
+      if (isAssignee && hasFeedback) {
+        const previousFeedback = state.feedbackMarkers.get(submission.id)
+        if (previousFeedback !== submissionMarker) {
+          state.feedbackMarkers.set(submission.id, submissionMarker)
+          notify({
+            title: "New feedback",
+            description: feedbackComment
+              ? `on ${taskLabelWithProject}\n${formatLabel(feedbackComment, 80)}`
+              : `on ${taskLabelWithProject}\nNew feedback is ready.`,
+            variant: "info",
+            href: `/projects/${projectId}/task/${task.id}`,
+          })
+        }
+      } else {
+        state.feedbackMarkers.delete(submission.id)
+      }
+
+      const notifyableStatuses = new Set(["BLOCKED", "SUBMITTED", "IN_PROGRESS"])
+      if (isAssignee && notifyableStatuses.has(task.status)) {
+        const previousStatus = state.statusMarkers.get(task.id)
+        if (previousStatus !== task.status) {
+          state.statusMarkers.set(task.id, task.status)
+          const statusTitle =
+            task.status === "BLOCKED"
+              ? "Submission blocked"
+              : task.status === "SUBMITTED"
+                ? "Submission submitted"
+                : task.status === "IN_PROGRESS"
+                  ? "Task is in progress"
+                  : null
+          const statusDescription =
+            task.status === "BLOCKED"
+              ? `on ${taskLabelWithProject}\nThe owner has blocked your submission. You can view it but not edit.`
+              : task.status === "SUBMITTED"
+                ? `on ${taskLabelWithProject}\nThe owner marked your submission as submitted. The task is read-only.`
+                : task.status === "IN_PROGRESS"
+                  ? `on ${taskLabelWithProject}\nThe owner moved this back to In Progress.`
+                  : null
+          if (statusTitle && statusDescription) {
+            notify({
+              title: statusTitle,
+              description: statusDescription,
+              variant: task.status === "BLOCKED" ? "destructive" : "success",
+              href: `/projects/${projectId}/task/${task.id}`,
+            })
+          }
+        }
+      } else if (!isAssignee) {
+        state.statusMarkers.delete(task.id)
+      }
+    },
+    [notify]
+  )
 
   useEffect(() => {
     if (!activeProjectId) {
@@ -691,6 +839,111 @@ function AppShellInner({ children }: AppShellProps) {
     }
     refreshProfile()
   }, [authLoading, refreshProfile])
+
+  useEffect(() => {
+    if (!authenticatedUser?.id) {
+      return
+    }
+    const loadPendingNotifications = async () => {
+      try {
+        const response = await fetch("/api/tasks/notification-contexts", {
+          cache: "no-store",
+        })
+        if (!response.ok) {
+          throw new Error(`Failed to load task notifications (${response.status})`)
+        }
+        const contexts = (await response.json()) as TaskNotificationContext[]
+        contexts.forEach(handleTaskNotification)
+      } catch (error) {
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Failed to load pending task notifications", error)
+        }
+      }
+    }
+    void loadPendingNotifications()
+
+    const channel = supabase
+      .channel("project-task-submission-notifications")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "project_task_submissions",
+        },
+        (payload: { new?: Record<string, unknown> | null; old?: Record<string, unknown> | null }) => {
+          const taskId = (payload.new?.task_id ?? payload.old?.task_id) as string | undefined
+          if (!taskId) {
+            return
+          }
+          if (notificationStateRef.current.busyTaskIds.has(taskId)) {
+            return
+          }
+          notificationStateRef.current.busyTaskIds.add(taskId)
+          const loadContext = async () => {
+            try {
+              const response = await fetch(`/api/tasks/${taskId}/notification-context`, {
+                cache: "no-store",
+              })
+              if (!response.ok) {
+                throw new Error(`Failed to load task ${taskId} (${response.status})`)
+              }
+              const context = (await response.json()) as TaskNotificationContext
+              handleTaskNotification(context)
+            } catch (error) {
+              if (process.env.NODE_ENV !== "production") {
+                console.error("Failed to load task notification context", error)
+              }
+            } finally {
+              notificationStateRef.current.busyTaskIds.delete(taskId)
+            }
+          }
+          void loadContext()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      channel.unsubscribe()
+    }
+  }, [authenticatedUser?.id, supabase, handleTaskNotification])
+
+  useEffect(() => {
+    if (!authenticatedUser?.id) {
+      return
+    }
+    const statusChannel = supabase
+      .channel("project-task-status-notifications")
+      .on(
+        "postgres_changes",
+        {
+          event: "update",
+          schema: "public",
+          table: "project_tasks",
+        },
+        (payload: { new?: Record<string, unknown> | null; old?: Record<string, unknown> | null }) => {
+          const newStatus = payload.new?.status as string | undefined
+          const oldStatus = payload.old?.status as string | undefined
+          if (newStatus !== "IN_PROGRESS") {
+            return
+          }
+          if (!["BLOCKED", "SUBMITTED"].includes(oldStatus ?? "")) {
+            return
+          }
+          const projectId = (payload.new?.project_id ?? payload.old?.project_id) as string | undefined
+          const taskId = (payload.new?.id ?? payload.old?.id) as string | undefined
+          if (!projectId || !taskId) {
+            return
+          }
+          void notifyTaskBackInProgress(projectId, taskId)
+        }
+      )
+      .subscribe()
+
+    return () => {
+      statusChannel.unsubscribe()
+    }
+  }, [authenticatedUser?.id, supabase, notifyTaskBackInProgress])
 
   useLayoutEffect(() => {
     const storedTheme = loadStoredTheme()

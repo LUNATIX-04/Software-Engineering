@@ -31,6 +31,10 @@ export type TaskRecord = {
     avatarUrl: string | null
     role: string
   }
+  project: {
+    id: string
+    title: string
+  } | null
   createdAt: string
   updatedAt: string
   cardColor: string

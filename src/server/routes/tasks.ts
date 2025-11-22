@@ -10,7 +10,7 @@ import {
   projectTasks,
 } from "../projects/db"
 import { requireProjectMembership } from "../projects/permissions"
-import { PROJECT_ROLE, type ProjectRole } from "../../types/projects"
+import { PROJECT_MEMBER_STATUS, PROJECT_ROLE, type ProjectRole } from "../../types/projects"
 import { DEFAULT_TASK_CARD_COLOR } from "../../constants/task-colors"
 import { getContrastingTextColor, sanitizeHexColor } from "../../utils/colors"
 
@@ -46,6 +46,7 @@ type ParsedTaskQuery = TaskQueryFilters & {
 type TaskWithRelations = {
   id: string
   projectId: string
+  project: { id: string; title: string } | null
   departmentId: string | null
   createdByMemberId: string
   title: string
@@ -354,6 +355,12 @@ function serializeTask(task: TaskWithRelations) {
         avatarUrl: assignment.member.profile?.avatarUrl ?? null,
       }))
     })(),
+    project: task.project
+      ? {
+          id: task.project.id,
+          title: task.project.title,
+        }
+      : null,
     createdBy: {
       id: task.createdBy.id,
       username: task.createdBy.username,
@@ -427,6 +434,12 @@ function fetchTasks(
   const query: Parameters<typeof projectTasks.findMany>[0] = {
     where,
     include: {
+      project: {
+        select: {
+          id: true,
+          title: true,
+        },
+      },
       department: {
         select: {
           id: true,
@@ -509,7 +522,13 @@ function fetchTasks(
 async function loadTask(projectId: string, taskId: string): Promise<TaskWithRelations | null> {
   const result = await projectTasks.findFirst({
     where: { id: taskId, projectId },
-    include: {
+  include: {
+      project: {
+        select: {
+          id: true,
+          title: true,
+        },
+      },
       department: {
         select: {
           id: true,
@@ -985,6 +1004,195 @@ export function registerTaskRoutes(app: Elysia) {
     })
 
     return new Response(JSON.stringify({ submission: serializeSubmission(updatedSubmission) }))
+  })
+
+  app.get("/tasks/notification-contexts", async () => {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return new Response(JSON.stringify([]))
+    }
+
+    const memberships = await projectMembers.findMany({
+      where: {
+        userId: user.id,
+        status: PROJECT_MEMBER_STATUS.ACTIVE,
+      },
+      select: {
+        id: true,
+      },
+    })
+
+    if (memberships.length === 0) {
+      return new Response(JSON.stringify([]))
+    }
+
+    const membershipIds = memberships.map((membership) => membership.id)
+
+    const submissions = await projectTaskSubmissions.findMany({
+      where: {
+        OR: [
+          {
+            status: "SUBMITTED",
+            acknowledgedAt: null,
+            task: {
+              createdByMemberId: { in: membershipIds },
+            },
+          },
+          {
+            reviewerComment: { not: null },
+            ownerAcknowledgedAt: null,
+            submittedById: { in: membershipIds },
+          },
+        ],
+      },
+      orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        taskId: true,
+        status: true,
+        description: true,
+        reviewerComment: true,
+        acknowledgedAt: true,
+        ownerAcknowledgedAt: true,
+        createdAt: true,
+        updatedAt: true,
+        submittedBy: {
+          select: {
+            id: true,
+            username: true,
+            role: true,
+          },
+        },
+        reviewer: {
+          select: {
+            id: true,
+            username: true,
+            role: true,
+          },
+        },
+        task: {
+          select: {
+            id: true,
+            projectId: true,
+            createdByMemberId: true,
+          },
+        },
+      },
+    })
+
+    const taskIdToProject = new Map<string, string>()
+    submissions.forEach((submission) => {
+      if (submission.task?.projectId) {
+        taskIdToProject.set(submission.taskId, submission.task.projectId)
+      }
+    })
+
+    const taskToRecord = new Map<string, ReturnType<typeof serializeTask>>()
+    const loads = Array.from(taskIdToProject.entries()).map(async ([taskId, projectId]) => {
+      const task = await loadTask(projectId, taskId)
+      if (task) {
+        taskToRecord.set(taskId, serializeTask(task))
+      }
+    })
+    await Promise.all(loads)
+
+    const membershipSet = new Set(membershipIds)
+    const contexts: Array<{
+      membershipId: string
+      projectId: string
+      task: ReturnType<typeof serializeTask>
+    }> = []
+    const seen = new Set<string>()
+
+    submissions.forEach((submission) => {
+      if (!submission.task) {
+        return
+      }
+      const serializedTask = taskToRecord.get(submission.taskId)
+      if (!serializedTask) {
+        return
+      }
+      const projectId = submission.task.projectId
+      if (!projectId) {
+        return
+      }
+
+      const addContext = (membershipId: string | null) => {
+        if (!membershipId || !membershipSet.has(membershipId)) {
+          return
+        }
+        const key = `${submission.taskId}:${membershipId}`
+        if (seen.has(key)) {
+          return
+        }
+        seen.add(key)
+        contexts.push({
+          membershipId,
+          projectId,
+          task: serializedTask,
+        })
+      }
+
+      if (
+        submission.status === "SUBMITTED" &&
+        submission.acknowledgedAt === null &&
+        submission.task.createdByMemberId
+      ) {
+        addContext(submission.task.createdByMemberId)
+      }
+
+      const reviewerComment = submission.reviewerComment?.trim()
+      const hasFeedback = Boolean(reviewerComment)
+      if (hasFeedback && submission.ownerAcknowledgedAt === null) {
+        addContext(submission.submittedBy.id)
+      }
+    })
+
+    return new Response(JSON.stringify(contexts))
+  })
+
+  app.get("/tasks/:taskId/notification-context", async ({ params }) => {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+    }
+
+    const taskMeta = await projectTasks.findUnique({
+      where: { id: params.taskId },
+      select: { projectId: true },
+    })
+    if (!taskMeta) {
+      return new Response(JSON.stringify({ error: "Not found" }), { status: 404 })
+    }
+
+    let membership
+    try {
+      membership = await requireProjectMembership(taskMeta.projectId, user.id)
+    } catch (error) {
+      const message = (error as Error).message === "not_found" ? "Not found" : "Forbidden"
+      return new Response(JSON.stringify({ error: message }), { status: 404 })
+    }
+
+    const task = await loadTask(taskMeta.projectId, params.taskId)
+    if (!task) {
+      return new Response(JSON.stringify({ error: "Not found" }), { status: 404 })
+    }
+
+    return new Response(
+      JSON.stringify({
+        projectId: taskMeta.projectId,
+        membershipId: membership.id,
+        task: serializeTask(task),
+      })
+    )
   })
 
   app.get("/projects/:projectId/tasks/:taskId", async ({ params }) => {

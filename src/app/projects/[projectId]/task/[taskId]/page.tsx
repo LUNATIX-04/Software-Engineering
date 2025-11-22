@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft,
@@ -53,6 +53,7 @@ import { Calendar, CalendarDayButton } from "@/components/ui/calendar"
 import { ProgressBar } from "@/components/ui/progress-bar"
 import { parseUtcDateAsLocal } from "@/lib/utc-date"
 import { LinkifiedText } from "@/components/linkified-text"
+import { getSupabaseBrowserClient } from "@/utils/supabase/client"
 
 const TASK_STATUS_COLORS: Record<TaskStatus, { background: string; text: string }> = {
   SUBMITTED: {
@@ -206,7 +207,7 @@ function TaskDateInfoDialog({
 type AssignerDialogProps = {
   label: string
   avatarUrl?: string | null
-  departmentLabel: string
+  departmentLabel?: string | null
   roleLabel: string
   statusNotice?: string | null
   showStatusNotice: boolean
@@ -232,11 +233,19 @@ function AssignerDialog({
   loading,
   error,
 }: AssignerDialogProps) {
+  const isBlockedNotice =
+    statusNotice ===
+    "This task is blocked by the owner; you cannot edit or resubmit the submission."
+  const noticeBaseClass =
+    "rounded-[2rem] border px-4 py-3 text-xs font-semibold uppercase tracking-[0.3em]"
+  const noticeVariantClass = isBlockedNotice
+    ? "border-destructive bg-destructive/10 text-destructive"
+    : "border-primary/30 bg-primary/5 text-primary"
   return (
     <>
       <div className="space-y-2">
         {showStatusNotice && statusNotice ? (
-          <div className="rounded-[2rem] border border-primary/30 bg-primary/5 px-4 py-3 text-xs font-semibold uppercase tracking-[0.3em] text-primary">
+          <div className={`${noticeBaseClass} ${noticeVariantClass}`}>
             {statusNotice}
           </div>
         ) : null}
@@ -269,7 +278,7 @@ function AssignerDialog({
           <div className="flex flex-1 flex-col gap-0.5">
             <p className="text-sm font-semibold text-[var(--task-hero-text)]">{label}</p>
             <p className="text-xs text-[var(--task-subtle-text)]">
-              {departmentLabel} • {roleLabel}
+              {departmentLabel ? `${departmentLabel} • ${roleLabel}` : roleLabel}
             </p>
           </div>
         </button>
@@ -660,6 +669,8 @@ type TaskSubmissionPanelProps = {
   acknowledgingSubmission: boolean
   handleFeedbackAcknowledgement: (message: string) => void
   taskStatus: TaskStatus
+  isAssignee: boolean
+  interactionLocked: boolean
 }
 
 function TaskSubmissionPanel({
@@ -675,12 +686,15 @@ function TaskSubmissionPanel({
   acknowledgingSubmission,
   handleFeedbackAcknowledgement,
   taskStatus,
+  isAssignee,
+  interactionLocked,
 }: TaskSubmissionPanelProps) {
   const isSeeYourTaskMode =
     hasSubmission &&
     !canSubmitTask &&
     (taskStatus === "BLOCKED" || taskStatus === "SUBMITTED")
-  const showSubmissionButton = canSubmitTask || hasSubmission
+  const showSubmissionButton =
+    isAssignee && hasSubmission && (canSubmitTask || isSeeYourTaskMode)
   const descriptionText = isSeeYourTaskMode
     ? "Submission recorded. Please wait for the owner or assignee to review and approve it."
     : shouldShowWaitingHint
@@ -708,6 +722,7 @@ function TaskSubmissionPanel({
               <Button
                 type="button"
                 data-cy="project-task-detail-submission-button"
+                disabled={interactionLocked}
                 className={`h-11 rounded-full px-6 text-xs font-semibold uppercase tracking-[0.3em] shadow-[0_6px_0_rgba(63,52,120,0.2)] transition ${
                   effectiveHasSubmission
                     ? "bg-primary text-white hover:bg-primary/90"
@@ -886,6 +901,7 @@ type TaskReviewSectionProps = {
   reviewError: string | null
   handleReviewSubmit: () => Promise<void>
   reviewing: boolean
+  interactionLocked: boolean
 }
 
 function TaskReviewSection({
@@ -898,6 +914,7 @@ function TaskReviewSection({
   reviewError,
   handleReviewSubmit,
   reviewing,
+  interactionLocked,
 }: TaskReviewSectionProps) {
   return (
     <div className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-5 shadow-inner space-y-4">
@@ -912,7 +929,8 @@ function TaskReviewSection({
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                className="flex w-full items-center justify-between rounded-full border-2 border-primary/40 px-6 py-3 text-sm font-semibold shadow-[0_6px_0_rgba(144,122,214,0.2)] transition hover:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                disabled={reviewing || interactionLocked}
+                className="flex w-full items-center justify-between rounded-full border-2 border-primary/40 px-6 py-3 text-sm font-semibold shadow-[0_6px_0_rgba(144,122,214,0.2)] transition hover:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:border-primary/20 disabled:bg-muted"
                 style={{
                   backgroundColor: statusColors.background,
                   color: statusColors.text,
@@ -936,7 +954,12 @@ function TaskReviewSection({
                 return (
                   <DropdownMenuItem
                     key={value}
-                    onSelect={() => setStatus(value as TaskStatus)}
+                    onSelect={() => {
+                      if (reviewing || interactionLocked) {
+                        return
+                      }
+                      setStatus(value as TaskStatus)
+                    }}
                     className={`rounded-2xl px-3 py-2 focus:bg-primary/10 focus:text-primary ${isActive ? "bg-primary/10 text-primary" : ""}`}
                   >
                     <span className="flex items-center gap-3">
@@ -957,6 +980,7 @@ function TaskReviewSection({
           data-cy="project-task-detail-review-comment"
           className="project-detail-scroll min-h-[8rem] w-full border-none bg-transparent px-4 py-3 text-sm shadow-none focus-visible:outline-none focus-visible:ring-0"
           placeholder="Share feedback…"
+          disabled={reviewing || interactionLocked}
         />
       </div>
       {reviewError && <p className="mt-2 text-xs font-semibold text-destructive">{reviewError}</p>}
@@ -964,10 +988,10 @@ function TaskReviewSection({
         type="button"
         data-cy="project-task-detail-review-submit"
         onClick={handleReviewSubmit}
-        disabled={reviewing}
+        disabled={reviewing || interactionLocked}
         className="inline-flex h-12 w-full items-center justify-center rounded-full border border-primary/30 bg-[var(--task-description-bg)] px-8 text-sm font-semibold text-[var(--task-hero-text)] shadow-[0_6px_0_rgba(63,52,120,0.2)] transition hover:bg-[var(--task-description-bg-hover)]"
       >
-        {reviewing ? "Saving…" : "Save review"}
+        {reviewing ? "Sending…" : "Send review"}
       </Button>
     </div>
   )
@@ -984,6 +1008,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const { projectId, taskId } = React.use(params)
   const router = useRouter()
   const { notify } = useNotifications()
+  const supabase = React.useMemo(
+    () => (typeof window === "undefined" ? null : getSupabaseBrowserClient()),
+    []
+  )
   const [task, setTask] = useState<TaskRecord | null>(null)
   const [status, setStatus] = useState<TaskStatus>("IN_PROGRESS")
   const [description, setDescription] = useState("")
@@ -1391,7 +1419,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const detailUrl = React.useMemo(() => `/projects/${projectId}/task/${taskId}`, [projectId, taskId])
   const pendingSubmissionNotifyRef = React.useRef<string | null>(null)
   const pendingFeedback = Boolean(feedbackMarker) && !feedbackAcknowledgedMarker
-  React.useEffect(() => {
+  /*React.useEffect(() => {
     if (!isAssignee) {
       feedbackNotifiedRef.current = null
       return
@@ -1409,7 +1437,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     } else {
       feedbackNotifiedRef.current = null
     }
-  }, [detailUrl, feedbackMarker, isAssignee, notify, pendingFeedback, task?.submission?.reviewerComment])
+  }, [detailUrl, feedbackMarker, isAssignee, notify, pendingFeedback, task?.submission?.reviewerComment])*/
 
   const readFileAsDataUrl = (file: File) =>
     new Promise<{ name: string; url: string }>((resolve, reject) => {
@@ -1687,7 +1715,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       }
       const updatedTask = (await taskResponse.json()) as TaskRecord
       setTask(updatedTask)
-      setStatus(updatedTask.status)
+      setStatus(status)
       const reviewerComment = updatedTask.submission?.reviewerComment ?? null
       setReviewComment(reviewerComment ?? "")
       setLastReviewerComment(reviewerComment)
@@ -1703,26 +1731,6 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         description: "Submission feedback has been delivered to the assignee.",
         variant: "success",
       })
-      const statusTitle =
-        status === "BLOCKED"
-          ? "Submission blocked"
-          : status === "SUBMITTED"
-            ? "Submission approved"
-            : null
-      const statusDescription =
-        status === "BLOCKED"
-          ? "The owner has blocked your submission. You can view it but not edit."
-          : status === "SUBMITTED"
-            ? "The owner marked your submission as submitted. The task is read-only."
-            : null
-      if (statusTitle && statusDescription) {
-        notify({
-          title: statusTitle,
-          description: statusDescription,
-          variant: status === "BLOCKED" ? "destructive" : "success",
-          href: detailUrl,
-        })
-      }
     } catch (reviewErr) {
       console.error(reviewErr)
       if (latestSubmission) {
@@ -1806,7 +1814,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const shouldShowWaitingHint = hasSubmission && !effectiveHasSubmission
   const hasPendingSubmissionAcknowledgement = waitingForOwnerResponse
   const assignerAvatarUrl = task?.createdBy?.avatarUrl ?? assignerProfile?.avatarUrl
-  const assignerDepartmentLabel = assignerProfile?.department?.name ?? "Unassigned"
+  const assignerDepartmentLabel =
+    task?.department?.name ?? assignerProfile?.department?.name ?? null
   const roleValue = assignerProfile?.role ?? task?.createdBy?.role ?? "MEMBER"
   const assignerRoleLabel = getRoleLabel(roleValue)
   const todayDateLabel = formatDateTime(new Date())
@@ -1823,12 +1832,12 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     }
     if (hasPendingSubmissionAcknowledgement && submissionMarker) {
       if (pendingSubmissionNotifyRef.current !== submissionMarker) {
-        notify({
+        /*notify({
           title: "Submission awaiting review",
           description: `Assignee submitted "${task?.title ?? "this task"}" and awaits your acknowledgement.`,
           variant: "info",
           href: detailUrl,
-        })
+        })*/
         pendingSubmissionNotifyRef.current = submissionMarker
       }
     } else {
@@ -1941,16 +1950,20 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             style={{
               backgroundColor: heroBackground,
               color: heroTextColor,
-              borderColor: heroBackground,
+              borderColor: heroTextColor,
             }}
           >
             <span className="-translate-y-10 transform">{task.title}</span>
           </div>
           <section
             className="relative z-10 flex w-full flex-col gap-8
-                      rounded-[3.5rem] border-2 border-primary/40 bg-white/95
+                      rounded-[3.5rem] border-2
                       px-[clamp(1.5rem,3.2vw,3rem)] pb-10 pt-8
                       shadow-[0_6px_0_rgba(144,122,214,0.15)]"
+            style={{
+              backgroundColor: "var(--task-detail-card-bg)",
+              borderColor: "var(--task-detail-card-border)",
+            }}
           >
             <div className="space-y-4 w-full max-w-2xl self-center">
               <AssignerDialog
@@ -2088,35 +2101,37 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             <div className="space-y-6 w-full max-w-2xl">
 
               {!viewerIsAssigner && isAssignee && (
-              <TaskSubmissionPanel
-                shouldShowWaitingHint={shouldShowWaitingHint}
-                hasSubmission={hasSubmission}
-                effectiveHasSubmission={effectiveHasSubmission}
-                canSubmitTask={canSubmitTask}
-                submissionDialogOpen={submissionDialogOpen}
-                setSubmissionDialogOpen={setSubmissionDialogOpen}
-                submissionDialogProps={{
-                  submissionDescription,
-                  onSubmissionDescriptionChange: setSubmissionDescription,
-                  submissionFileEntries,
-                  onSubmissionFilesChange: handleSubmissionFilesChange,
-                  onRemoveSubmissionFile: handleRemoveSubmissionFile,
-                  clearSubmissionFiles: () => setSubmissionFileEntries([]),
-                  submissionError,
-                  submittingSubmission,
-                  effectiveHasSubmission,
-                  hasSubmission,
-                  hasPendingSubmissionAcknowledgement,
-                  onSubmit: handleSubmissionSubmit,
-                  onClose: () => setSubmissionDialogOpen(false),
-                  readOnly: !canSubmitTask,
-                }}
-                feedbackMarker={feedbackMarker}
-                feedbackAcknowledgedMarker={feedbackAcknowledgedMarker}
-                acknowledgingSubmission={acknowledgingSubmission}
-                handleFeedbackAcknowledgement={handleFeedbackAcknowledgement}
-                taskStatus={status}
-              />
+                <TaskSubmissionPanel
+                  shouldShowWaitingHint={shouldShowWaitingHint}
+                  hasSubmission={hasSubmission}
+                  effectiveHasSubmission={effectiveHasSubmission}
+                  canSubmitTask={canSubmitTask}
+                  submissionDialogOpen={submissionDialogOpen}
+                  setSubmissionDialogOpen={setSubmissionDialogOpen}
+                  submissionDialogProps={{
+                    submissionDescription,
+                    onSubmissionDescriptionChange: setSubmissionDescription,
+                    submissionFileEntries,
+                    onSubmissionFilesChange: handleSubmissionFilesChange,
+                    onRemoveSubmissionFile: handleRemoveSubmissionFile,
+                    clearSubmissionFiles: () => setSubmissionFileEntries([]),
+                    submissionError,
+                    submittingSubmission,
+                    effectiveHasSubmission,
+                    hasSubmission,
+                    hasPendingSubmissionAcknowledgement,
+                    onSubmit: handleSubmissionSubmit,
+                    onClose: () => setSubmissionDialogOpen(false),
+                    readOnly: !canSubmitTask,
+                  }}
+                  feedbackMarker={feedbackMarker}
+                  feedbackAcknowledgedMarker={feedbackAcknowledgedMarker}
+                  acknowledgingSubmission={acknowledgingSubmission}
+                  handleFeedbackAcknowledgement={handleFeedbackAcknowledgement}
+                  taskStatus={status}
+                  isAssignee={isAssignee}
+                  interactionLocked={acknowledgingSubmission}
+                />
               )}
 
               {viewerIsAssigner && !canSubmitTask && !ownerViewingSubmission &&(
@@ -2161,6 +2176,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                   reviewError={reviewError}
                   handleReviewSubmit={handleReviewSubmit}
                   reviewing={reviewing}
+                  interactionLocked={acknowledgingSubmission}
                 />
               )}
 

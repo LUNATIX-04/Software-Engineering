@@ -132,7 +132,7 @@ export function NotificationHistoryPanel({
                   <div className="flex flex-1 flex-col gap-1 min-w-0">
                     <p className="text-sm font-semibold text-foreground break-words">{entry.title}</p>
                     {entry.description ? (
-                      <p className="text-xs text-muted-foreground max-w-[min(16rem,calc(100%-2rem))] overflow-hidden text-ellipsis whitespace-nowrap">
+                      <p className="text-xs text-muted-foreground max-w-[min(16rem,calc(100%-2rem))] break-words whitespace-pre-line">
                         {entry.description}
                       </p>
                     ) : null}

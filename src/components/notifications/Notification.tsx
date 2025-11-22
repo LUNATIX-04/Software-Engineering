@@ -99,7 +99,7 @@ function NotificationViewport({ notifications, onDismiss }: NotificationViewport
           <div className="flex flex-1 flex-col gap-1">
             <span className="text-base font-semibold leading-tight">{notification.title}</span>
             {notification.description ? (
-              <span className="text-sm leading-snug opacity-90 max-w-[20rem] overflow-hidden text-ellipsis whitespace-nowrap">
+              <span className="text-sm leading-snug opacity-90 max-w-[20rem] break-words whitespace-pre-line">
                 {notification.description}
               </span>
             ) : null}
@@ -210,17 +210,20 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
         status: "enter",
       }
 
-      setHistory((prev) => [
-        ...prev,
-        {
-          id: `${id}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
-          title: options.title,
-          description: options.description,
-          variant: options.variant ?? "info",
-          timestamp: new Date().toISOString(),
-          href: options.href,
-        },
-      ])
+      setHistory((prev) => {
+        const nextHistory = prev.filter((entry) => entry.title !== options.title)
+        return [
+          ...nextHistory,
+          {
+            id: `${id}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
+            title: options.title,
+            description: options.description,
+            variant: options.variant ?? "info",
+            timestamp: new Date().toISOString(),
+            href: options.href,
+          },
+        ]
+      })
 
       setNotifications((prev) => {
         const stablePrev = prev.filter((item) => item.status !== "exit")
