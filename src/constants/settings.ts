@@ -4,10 +4,11 @@ import type { DepartmentLayoutOption, ThemeOption } from "@/types/preferences"
 
 export const SETTINGS_THEME_LABELS: Record<ThemeOption, string> = {
   standard: "Standard",
-  light: "Light",
+  blue: "Blue",
   dark: "Dark",
   red: "Red",
-  blue: "Blue",
+  green: "Green",
+  yellow: "Yellow",
 }
 
 export const SETTINGS_DEPARTMENT_LABELS: Record<DepartmentLayoutOption, string> = {
@@ -17,10 +18,11 @@ export const SETTINGS_DEPARTMENT_LABELS: Record<DepartmentLayoutOption, string> 
 
 export const SETTINGS_THEME_SWATCHES: Record<ThemeOption, string[]> = {
   standard: ["#907ad6", "#4f518c", "#f4effa"],
-  light: ["#2563eb", "#a5b4fc", "#fdfbff"],
+  blue: ["#2563eb", "#a5b4fc", "#fdfbff"],
   dark: ["#111827", "#6366f1", "#0ea5e9"],
   red: ["#e11d48", "#fecdd3", "#fff5f5"],
-  blue: ["#1d4ed8", "#38bdf8", "#e6f4ff"],
+  green: ["#059669", "#34d399", "#ecfdf5"],
+  yellow: ["#c89407", "#fcd34d", "#fef3c7"],
 }
 
 export const SETTINGS_MESSAGES = {

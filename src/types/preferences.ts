@@ -1,7 +1,7 @@
 "use client"
 
 export type DepartmentLayoutOption = "compact" | "fullWidth"
-export type ThemeOption = "standard" | "light" | "dark" | "red" | "blue"
+export type ThemeOption = "standard" | "blue" | "dark" | "red" | "green" | "yellow"
 
 export type ProfileSummary = {
   id: string

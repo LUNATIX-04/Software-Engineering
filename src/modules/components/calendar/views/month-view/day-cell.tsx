@@ -159,15 +159,12 @@ export function DayCell({ cell, events, eventPositions }: IProps) {
                 {addTaskHref ? (
                   <Link
                     href={addTaskHref}
-                    className="opacity-0 group-hover:opacity-100 inline-flex items-center gap-2 rounded-full border border-dashed border-primary/60 px-4 py-2 text-xs font-semibold text-primary transition"
+                    className="opacity-0 group-hover:opacity-100 inline-flex items-center justify-center rounded-full border border-dashed border-primary/60 px-4 py-2 text-primary transition"
                   >
-                    <Plus className="size-3" /> Add Task
+                    <Plus className="size-3" />
+                    <span className="sr-only">Add Task</span>
                   </Link>
-                ) : (
-                  <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100">
-                    + Task
-                  </span>
-                )}
+                ) : null}
               </div>
             ) : (
               [0, 1, 2].map(renderEventAtPosition)

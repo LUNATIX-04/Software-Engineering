@@ -241,7 +241,7 @@ function AssignerDialog({
         <button
           type="button"
           onClick={onTriggerClick}
-          className="group -mt-3 flex w-full items-center gap-4 rounded-[1.75rem] border border-primary/30 bg-white/90 px-4 py-3 text-left shadow-[0_6px_15px_rgba(63,52,120,0.08)] transition hover:border-primary/50 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          className="group -mt-3 flex w-full items-center gap-4 rounded-[1.75rem] border border-primary/30 bg-[var(--card)]/90 px-4 py-3 text-left shadow-[0_6px_15px_rgba(63,52,120,0.08)] transition hover:border-primary/50 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
           aria-label={`View details for ${label}`}
         >
           <Avatar className="h-11 w-11 shrink-0">
@@ -711,7 +711,7 @@ function TaskFeedbackPanel({
           )}
         </div>
       </div>
-      <div className="asap-scroll rounded-[1.5rem] min-h-[6rem] max-h-[12rem] overflow-auto border-2 border-primary/30 bg-[var(--task-description-bg)] px-4 py-3 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
+      <div className="asap-scroll rounded-[1.5rem] min-h-[6rem] max-h-[12rem] overflow-auto border-2 border-primary/30 bg-primary/5 px-4 py-3 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
         <LinkifiedText value={lastReviewerComment ?? "No reviewer comment yet."} />
       </div>
     </div>
@@ -1625,7 +1625,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     }
     return parts.length > 0 ? parts.join(" ") : "<1m"
   }, [deadlineDateValue])
-  const assignDateLabel = formatDateTime(assignDateValue ?? null, { treatAsLocal: true })
+  const assignDateLabel = formatDateTime(task?.createdAt ?? null)
   const startlineDateLabel = formatDateTime(startlineDateValue ?? null, { treatAsLocal: true })
   const deadlineDateLabel = formatDateTime(deadlineDateValue ?? null, { treatAsLocal: true })
   const heroBackground = task?.cardColor ?? "var(--task-hero-background)"
@@ -1781,7 +1781,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                 error={assignerProfileError}
               />
               <h2 className="text-lg font-semibold text-[var(--task-hero-text)] pl-8">Task Description</h2>
-              <div className="rounded-[1.5rem] -mt-3 min-h-[10rem] max-h-[10rem] asap-scroll border-2 border-primary/30 bg-[var(--task-description-bg)] px-4 py-2 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
+              <div className="rounded-[1.5rem] -mt-3 min-h-[10rem] max-h-[10rem] asap-scroll border-2 border-primary/30 bg-primary/5 px-4 py-2 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
                 <LinkifiedText value={description || "No details provided."} />
               </div>
             </div>

@@ -73,6 +73,16 @@ body[data-theme-init="pending"] {
   --button-background: #4f518c;
   --button-foreground: #ffffff;
   --button-hover-background: #4A4270;
+  --photo-input-bg: var(--card);
+  --photo-input-foreground: var(--foreground);
+  --photo-zoom-label: var(--muted-foreground);
+  --photo-dialog-bg: color-mix(in srgb, var(--card) 95%, #e8f1ff 5%);
+  --photo-action-ghost: #1f2937;
+  --photo-preview-button-bg: color-mix(in srgb, var(--card) 90%, #ffffff 10%);
+  --photo-preview-button-foreground: var(--foreground);
+  --photo-preview-button-border: color-mix(in srgb, var(--border) 70%, transparent);
+  --photo-preview-button-hover-bg: color-mix(in srgb, var(--card) 80%, var(--primary) 20%);
+  --photo-preview-button-hover-foreground: var(--foreground);
 
   --back-button-bg: #ffffff;
   --back-button-text: var(--primary);
@@ -98,6 +108,7 @@ body[data-theme-init="pending"] {
 
   --secondary: #dabfff;          
   --secondary-foreground: #2c2a4a;
+  --link-hover: #9a63ff;
 
   --muted: #f4effa;
   --muted-foreground: #4f518c;
@@ -121,11 +132,13 @@ body[data-theme-init="pending"] {
   --border: #e5e7eb;
   --input: #e5e7eb;
   --ring: #4f518c;
+  --photo-dialog-bg: color-mix(in srgb, var(--card) 95%, var(--primary) 5%);
   --task-hero-background: #E9E0FF;
   --task-hero-text: #2F2766;
   --task-subtle-text: #3F3478;
   --task-description-bg: #F6F0FF;
   --task-description-bg-hover: #E9E0FF;
+  --task-description-border: color-mix(in srgb, var(--primary) 35%, #ffffff 65%);
   --task-placeholder: #AFA9D0;
   --task-cta-bg: #4C43F2;
   --task-cta-hover: #3933d1;
@@ -140,6 +153,10 @@ body[data-theme-init="pending"] {
   --project-owner-card-hover: color-mix(in srgb, var(--primary-soft) 82%, #ffffff 18%);
   --card-menu-bg: #f1f1f1;
   --card-menu-shadow: 0 1px 6px rgba(79, 61, 152, 0.45);
+
+  --photo-preview-bg: color-mix(in srgb, var(--card) 90%, #f3f3ff 10%);
+  --photo-preview-border: color-mix(in srgb, var(--primary) 25%, var(--border));
+  --photo-preview-inner-border: color-mix(in srgb, var(--border) 65%, transparent);
 
   /* Sidebar */
   --sidebar: #ffffff;
@@ -182,7 +199,7 @@ body[data-theme-init="pending"] {
   --notify-destructive-text: var(--destructive-foreground);
 }
 
-:root[data-theme="light"] {
+:root[data-theme="blue"] {
   --background: #fdfbff;
   --foreground: #1f2937;
 
@@ -195,7 +212,7 @@ body[data-theme-init="pending"] {
   --button-foreground-on-nav: #ffffff;
   --button-hover-background-on-nav: #e5e7eb;
 
-  --button-background: #2563eb;
+  --button-background: #2550ac;
   --button-foreground: #ffffff;
   --button-hover-background: #1d4ed8;
 
@@ -230,6 +247,7 @@ body[data-theme-init="pending"] {
 
   --secondary: #a5b4fc;
   --secondary-foreground: #1f2937;
+  --link-hover: #5f6ee5;
 
   --muted: #e0e7ff;
   --muted-foreground: #1f2937;
@@ -269,6 +287,7 @@ body[data-theme-init="pending"] {
   --task-subtle-text: #3F3478;
   --task-description-bg: #F6F0FF;
   --task-description-bg-hover: #E9E0FF;
+  --task-description-border: color-mix(in srgb, var(--primary) 35%, #ffffff 65%);
   --task-placeholder: #AFA9D0;
   --task-cta-bg: #4C43F2;
   --task-cta-hover: #3933d1;
@@ -281,6 +300,14 @@ body[data-theme-init="pending"] {
   --app-shell-bg: var(--primary);
   --card-menu-bg: #f5f7fb;
   --card-menu-shadow: 0 1px 6px rgba(37, 99, 235, 0.35);
+  --photo-preview-bg: color-mix(in srgb, var(--card) 90%, #e3efff 10%);
+  --photo-preview-border: color-mix(in srgb, var(--primary) 25%, var(--border));
+  --photo-preview-inner-border: color-mix(in srgb, var(--border) 65%, transparent);
+  --photo-preview-button-bg: color-mix(in srgb, var(--card) 85%, #eff6ff 15%);
+  --photo-preview-button-foreground: var(--foreground);
+  --photo-preview-button-border: color-mix(in srgb, var(--primary) 55%, var(--border));
+  --photo-preview-button-hover-bg: color-mix(in srgb, var(--primary) 20%, var(--card) 80%);
+  --photo-preview-button-hover-foreground: var(--primary-foreground);
 
   --scrollbar-track: #bfd5ff;
   --scrollbar-thumb: #60a5fa;
@@ -311,9 +338,9 @@ body[data-theme-init="pending"] {
   --button-hover-background-on-nav: #3d4a5c;
   --hover-foreground-for-nav-header:rgb(250, 191, 255);
 
-  --button-background: #292929;
+  --button-background: #1f2937;
   --button-foreground: #f9fafb;
-  --button-hover-background: #818b98;
+  --button-hover-background: #374151;
 
   --back-button-bg: #0f172a;
   --back-button-text: #f8fafc;
@@ -331,7 +358,7 @@ body[data-theme-init="pending"] {
   --footer-bar: #1f2937;
   --app-shell-bg: #1f2937;
 
-  --card: #1f2937;
+  --card: #111827;
   --card-foreground: #f9fafb;
 
   --card-project: #121a26;
@@ -346,6 +373,7 @@ body[data-theme-init="pending"] {
 
   --secondary: #334155;
   --secondary-foreground: #f9fafb;
+  --link-hover: #0f172a;
 
   --muted: #1f2937;
   --muted-foreground: #f1f5f9;
@@ -392,11 +420,31 @@ body[data-theme-init="pending"] {
   --notify-destructive-bg: #7f1d1d;
   --notify-destructive-text: #fee2e2;
   --project-info-bg: color-mix(in srgb, #0f172a 78%, #111827 22%);
+  --photo-dialog-bg: #0b1220;
+  --photo-preview-bg: #1f2937;
+  --photo-preview-border: #4b5563;
+  --photo-preview-inner-border: rgba(255, 255, 255, 0.08);
+  --photo-preview-button-bg: #1f2937;
+  --photo-preview-button-foreground: #f9fafb;
+  --photo-preview-button-border: #374151;
+  --photo-preview-button-hover-bg: #111827;
+  --photo-preview-button-hover-foreground: #f9fafb;
+  --photo-zoom-panel-bg: #111827;
+  --photo-button-bg: #1f2937;
+  --photo-button-foreground: #f9fafb;
+  --photo-button-border: transparent;
+  --photo-button-hover-bg: #374151;
+  --photo-button-hover-foreground: #f9fafb;
+  --photo-input-bg: #0f172a;
+  --photo-input-foreground: #f3f4f6;
+  --photo-zoom-label: #e5e7eb;
+  --photo-action-ghost: #d1d5db;
   --task-hero-background: #1b2433;
   --task-hero-text: #e5e7eb;
   --task-subtle-text: #cbd5e1;
   --task-description-bg: #0f172a;
   --task-description-bg-hover: #1b2433;
+  --task-description-border: color-mix(in srgb, var(--primary) 35%, #0f172a 65%);
   --task-placeholder: #9ca3af;
   --task-cta-bg: #9ba8b7;
   --task-cta-hover: #818b98;
@@ -412,6 +460,19 @@ body[data-theme-init="pending"] {
   --pagination-surface-foreground-hover: color-mix(in srgb, var(--pagination-surface-foreground) 90%, #000000 10%);
   --card-menu-bg: #2f3a4a;
   --card-menu-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  --photo-preview-bg: #1f2937;
+  --photo-preview-border: #374151;
+  --photo-preview-inner-border: rgba(255, 255, 255, 0.08);
+  --photo-zoom-panel-bg: #1a2130;
+  --photo-button-foreground: #e5e7eb;
+  --photo-input-bg: #0f172a;
+  --photo-input-foreground: #f3f4f6;
+  --photo-zoom-label: #cbd5f5;
+  --photo-dialog-bg: #0b1220;
+  --photo-action-ghost: #d1d5db;
+  --photo-preview-bg: color-mix(in srgb, var(--card) 85%, #1a2430 15%);
+  --photo-preview-border: color-mix(in srgb, var(--primary) 45%, var(--border));
+  --photo-preview-inner-border: color-mix(in srgb, var(--border) 75%, rgba(255,255,255,0));
 }
 
 :root[data-theme="red"] {
@@ -427,7 +488,7 @@ body[data-theme-init="pending"] {
   --button-foreground-on-nav: #ffffff;
   --button-hover-background-on-nav: #ffc9c9;
 
-  --button-background: #e11d48;
+  --button-background: #e45d7b;
   --button-foreground: #fff5f5;
   --button-hover-background: #be123c;
 
@@ -462,6 +523,7 @@ body[data-theme-init="pending"] {
 
   --secondary: #fecdd3;
   --secondary-foreground: #3f0f0f;
+  --link-hover: #ff859f;
 
   --muted: #ffe3e3;
   --muted-foreground: #7f1d1d;
@@ -508,6 +570,14 @@ body[data-theme-init="pending"] {
   --pagination-surface-foreground-hover: color-mix(in srgb, var(--pagination-surface-foreground) 70%, #ffffff 30%);
   --card-menu-bg: #f6e4e7;
   --card-menu-shadow: 0 1px 6px rgba(225, 29, 72, 0.35);
+  --photo-preview-bg: color-mix(in srgb, var(--card) 85%, #ffeff1 15%);
+  --photo-preview-border: color-mix(in srgb, var(--primary) 40%, var(--border));
+  --photo-preview-inner-border: color-mix(in srgb, var(--border) 75%, transparent);
+  --photo-preview-button-bg: #fff5f5;
+  --photo-preview-button-foreground: #3f0f0f;
+  --photo-preview-button-border: color-mix(in srgb, var(--border) 70%, transparent);
+  --photo-preview-button-hover-bg: color-mix(in srgb, var(--primary) 15%, #fff5f5 85%);
+  --photo-preview-button-hover-foreground: #3f0f0f;
   --notify-success-bg: var(--primary);
   --notify-success-text: var(--primary-foreground);
   --notify-info-bg: var(--primary-soft);
@@ -517,24 +587,25 @@ body[data-theme-init="pending"] {
   --notify-destructive-bg: #b91c1c;
   --notify-destructive-text: #fff5f5;
   --project-info-bg: color-mix(in srgb, #f7f1f3 82%, #ffffff 18%);
+  --photo-dialog-bg: #fff5f5;
 }
 
-:root[data-theme="blue"] {
-  --background: #e6f4ff;
-  --foreground: #0f172a;
+:root[data-theme="green"] {
+  --background: #ecfdf5;
+  --foreground: #156f57;
 
   --foreground-for-nav: #ffffff;
-  --hover-foreground-for-nav: #b8fffd;
+  --hover-foreground-for-nav: #b4f8dc;
   --underline-foreground-for-nav: #ffffff;
-  --hover-foreground-for-nav-header:rgb(250, 191, 255);
+  --hover-foreground-for-nav-header:rgb(145, 254, 188);
 
-  --button-background-on-nav: #ffffff;
-  --button-foreground-on-nav: #0f172a;
-  --button-hover-background-on-nav: #dbeafe;
+  --button-background-on-nav: #f0fdf4;
+  --button-foreground-on-nav: #fdfffe;
+  --button-hover-background-on-nav: #d1fae5;
 
-  --button-background: #1d4ed8;
-  --button-foreground: #f8fafc;
-  --button-hover-background: #1e40af;
+  --button-background: #166b50;
+  --button-foreground: #f0fdf4;
+  --button-hover-background: #047857;
 
   --back-button-bg: #ffffff;
   --back-button-text: var(--primary);
@@ -542,81 +613,201 @@ body[data-theme-init="pending"] {
   --back-button-hover-bg: color-mix(in srgb, var(--primary) 12%, #ffffff 88%);
   --back-button-hover-border: color-mix(in srgb, var(--primary) 35%, transparent);
 
-  --footer-bar: #1d4ed8;
+  --footer-bar: #059669;
   --app-shell-bg: var(--primary);
 
   --card: #ffffff;
-  --card-foreground: #0f172a;
+  --card-foreground: #064e3b;
 
-  --card-project: #dbeafe;
-  --card-project-foreground: #0f172a;
+  --card-project: #d1fae5;
+  --card-project-foreground: #064e3b;
 
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
+  --popover: #f0fdf4;
+  --popover-foreground: #064e3b;
 
-  --primary: #1d4ed8;
-  --primary-foreground: #f8fafc;
-  --primary-soft: #60a5fa;
+  --primary: #059669;
+  --primary-foreground: #f0fdf4;
+  --primary-soft: #34d399;
 
-  --secondary: #38bdf8;
-  --secondary-foreground: #0f172a;
+  --secondary: #4ade80;
+  --secondary-foreground: #064e3b;
+  --link-hover: #15803d;
 
-  --muted: #bfdbfe;
-  --muted-foreground: #0f172a;
+  --muted: #dcfce7;
+  --muted-foreground: #064e3b;
 
-  --accent: #c7d2fe;
-  --accent-foreground: #0f172a;
+  --accent: #a7f3d0;
+  --accent-foreground: #064e3b;
   --calendar-today-bg: var(--primary-soft);
   --calendar-today-text: var(--primary-foreground);
   --task-status-submitted-bg: var(--primary);
   --task-status-submitted-text: var(--primary-foreground);
   --task-status-in-progress-bg: #ffffff;
-  --task-status-in-progress-text: #0f172a;
+  --task-status-in-progress-text: #064e3b;
   --task-status-blocked-bg: var(--destructive);
   --task-status-blocked-text: var(--destructive-foreground);
-  --calendar-range-start-bg: #EBDFFF;
-  --calendar-range-middle-bg: #BEDCFF;
-  --calendar-range-text: #3F3478;
+  --calendar-range-start-bg: #d1fae5;
+  --calendar-range-middle-bg: #86efac;
+  --calendar-range-text: #064e3b;
 
-  --destructive: #ef4444;
-  --destructive-foreground: #f8fafc;
+  --destructive: #dc2626;
+  --destructive-foreground: #f0fdf4;
 
-  --border: #bfdbfe;
-  --input: #bfdbfe;
-  --ring: #3b82f6;
+  --border: #bbf7d0;
+  --input: #bbf7d0;
+  --ring: #22c55e;
 
-  --sidebar: #ffffff;
-  --sidebar-foreground: #0f172a;
-  --sidebar-primary: #1d4ed8;
-  --sidebar-primary-foreground: #f8fafc;
-  --sidebar-accent: #60a5fa;
-  --sidebar-accent-foreground: #0f172a;
-  --sidebar-border: #bfdbfe;
-  --sidebar-ring: #60a5fa;
+  --sidebar: #0f2f1d;
+  --sidebar-foreground: #f0fdf4;
+  --sidebar-primary: #34d399;
+  --sidebar-primary-foreground: #064e3b;
+  --sidebar-accent: #4ade80;
+  --sidebar-accent-foreground: #064e3b;
+  --sidebar-border: #0f2f1d;
+  --sidebar-ring: #4ade80;
 
-  --scrollbar-track: #cddffa;
-  --scrollbar-thumb: #60a5fa;
-  --scrollbar-thumb-hover: #2563eb;
-  --project-card-border: #cbdfff;
+  --scrollbar-track: #c0f0da;
+  --scrollbar-thumb: #22c55e;
+  --scrollbar-thumb-hover: #16a34a;
+  --project-card-border: #bbf7d0;
   --app-shell-bg: var(--primary);
-  --pagination-surface-bg: #e6eefc;
-  --pagination-surface-border: #c5d7ff;
+  --pagination-surface-bg: #dcfde7;
+  --pagination-surface-border: #bbf7d0;
   --pagination-surface-foreground: var(--primary);
-  --pagination-surface-hover: #e0ebff;
+  --pagination-surface-hover: #c0f7dc;
   --pagination-surface-foreground-hover: color-mix(in srgb, var(--pagination-surface-foreground) 70%, #ffffff 30%);
-  --card-menu-bg: #dfe9ff;
-  --card-menu-shadow: 0 1px 6px rgba(29, 78, 216, 0.35);
+  --card-menu-bg: #d1fae5;
+  --card-menu-shadow: 0 1px 6px rgba(5, 150, 105, 0.35);
+  --photo-preview-bg: color-mix(in srgb, var(--card) 85%, #defbe9 15%);
+  --photo-preview-border: color-mix(in srgb, var(--primary) 40%, var(--border));
+  --photo-preview-inner-border: color-mix(in srgb, var(--border) 70%, transparent);
+  --photo-preview-button-bg: #f0fdf4;
+  --photo-preview-button-foreground: #064e3b;
+  --photo-preview-button-border: #bbf7d0;
+  --photo-preview-button-hover-bg: color-mix(in srgb, #059669 10%, #f0fdf4 90%);
+  --photo-preview-button-hover-foreground: #064e3b;
 
   --notify-success-bg: var(--primary);
   --notify-success-text: var(--primary-foreground);
   --notify-info-bg: var(--primary-soft);
   --notify-info-text: var(--secondary-foreground);
   --notify-warning-bg: #f59e0b;
-  --notify-warning-text: #0f172a;
+  --notify-warning-text: #064e3b;
   --notify-destructive-bg: #dc2626;
-  --notify-destructive-text: #f8fafc;
+  --notify-destructive-text: #f0fdf4;
 
-  --project-info-bg: color-mix(in srgb, #e2e8f6 88%, #ffffff 12%);
+  --project-info-bg: color-mix(in srgb, #d6f5e5 82%, #ffffff 18%);
+  --photo-dialog-bg: color-mix(in srgb, var(--card) 92%, #ddf7e5 8%);
+}
+
+:root[data-theme="yellow"] {
+  --background: #fef9c3;
+  --foreground: #78350f;
+
+  --foreground-for-nav: #ffffff;
+  --hover-foreground-for-nav: #92400e;
+  --underline-foreground-for-nav: #ffffff;
+  --hover-foreground-for-nav-header: rgb(251, 191, 36);
+
+  --button-background-on-nav: #fefac8;
+  --button-foreground-on-nav: #78350f;
+  --button-hover-background-on-nav: #fef3c7;
+
+  --button-background: #b68349;
+  --button-foreground: #fefce8;
+  --button-hover-background: #b45309;
+
+  --back-button-bg: #ffffff;
+  --back-button-text: var(--primary);
+  --back-button-border: color-mix(in srgb, var(--primary) 20%, transparent);
+  --back-button-hover-bg: color-mix(in srgb, var(--primary) 12%, #ffffff 88%);
+  --back-button-hover-border: color-mix(in srgb, var(--primary) 35%, transparent);
+
+  --footer-bar: #d97706;
+  --app-shell-bg: var(--primary);
+
+  --card: #ffffff;
+  --card-foreground: #78350f;
+
+  --card-project: #fef3c7;
+  --card-project-foreground: #78350f;
+
+  --popover: #fff9ed;
+  --popover-foreground: #78350f;
+
+  --primary: #d97706;
+  --primary-foreground: #fefce8;
+  --primary-soft: #fbbf24;
+
+  --secondary: #fcd34d;
+  --secondary-foreground: #78350f;
+  --link-hover: #b45309;
+
+  --muted: #fff7e5;
+  --muted-foreground: #78350f;
+
+  --accent: #fde68a;
+  --accent-foreground: #78350f;
+  --calendar-today-bg: var(--primary-soft);
+  --calendar-today-text: var(--primary-foreground);
+  --task-status-submitted-bg: var(--primary);
+  --task-status-submitted-text: var(--primary-foreground);
+  --task-status-in-progress-bg: #ffffff;
+  --task-status-in-progress-text: #78350f;
+  --task-status-blocked-bg: var(--destructive);
+  --task-status-blocked-text: var(--destructive-foreground);
+  --calendar-range-start-bg: #fde68a;
+  --calendar-range-middle-bg: #fcd34d;
+  --calendar-range-text: #78350f;
+
+  --destructive: #b91c1c;
+  --destructive-foreground: #fefce8;
+
+  --border: #fde68a;
+  --input: #fde68a;
+  --ring: #f59e0b;
+
+  --sidebar: #4f2a0d;
+  --sidebar-foreground: #fefce8;
+  --sidebar-primary: #fcd34d;
+  --sidebar-primary-foreground: #78350f;
+  --sidebar-accent: #fbbf24;
+  --sidebar-accent-foreground: #78350f;
+  --sidebar-border: #4f2a0d;
+  --sidebar-ring: #fbbf24;
+
+  --scrollbar-track: #fde9b0;
+  --scrollbar-thumb: #d97706;
+  --scrollbar-thumb-hover: #b45309;
+  --project-card-border: #fcd34d;
+  --app-shell-bg: var(--primary);
+  --pagination-surface-bg: #fff4d6;
+  --pagination-surface-border: #fde68a;
+  --pagination-surface-foreground: var(--primary);
+  --pagination-surface-hover: #fff1cb;
+  --pagination-surface-foreground-hover: color-mix(in srgb, var(--pagination-surface-foreground) 70%, #ffffff 30%);
+  --card-menu-bg: #fff5d0;
+  --card-menu-shadow: 0 1px 6px rgba(217, 119, 6, 0.35);
+  --photo-preview-bg: color-mix(in srgb, var(--card) 85%, #fff4d6 15%);
+  --photo-preview-border: color-mix(in srgb, var(--primary) 40%, var(--border));
+  --photo-preview-inner-border: color-mix(in srgb, var(--border) 70%, transparent);
+  --photo-preview-button-bg: #fff9ed;
+  --photo-preview-button-foreground: #78350f;
+  --photo-preview-button-border: #fde68a;
+  --photo-preview-button-hover-bg: color-mix(in srgb, #d97706 15%, #fff9ed 85%);
+  --photo-preview-button-hover-foreground: #78350f;
+
+  --notify-success-bg: var(--primary);
+  --notify-success-text: var(--primary-foreground);
+  --notify-info-bg: var(--primary-soft);
+  --notify-info-text: var(--secondary-foreground);
+  --notify-warning-bg: #f59e0b;
+  --notify-warning-text: #78350f;
+  --notify-destructive-bg: #b91c1c;
+  --notify-destructive-text: #fefce8;
+
+  --project-info-bg: color-mix(in srgb, #fff6db 82%, #ffffff 18%);
+  --photo-dialog-bg: color-mix(in srgb, var(--card) 92%, #fff4d6 8%);
 }
 
 .calendar-no-past [data-past="true"] {
@@ -641,6 +832,7 @@ body[data-theme-init="pending"] {
   --primary-foreground: oklch(0.205 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
+  --link-hover: #0f172a;
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
@@ -671,6 +863,11 @@ body[data-theme-init="pending"] {
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
+  --photo-preview-button-bg: oklch(0.145 0 0);
+  --photo-preview-button-foreground: oklch(0.985 0 0);
+  --photo-preview-button-border: oklch(0.269 0 0);
+  --photo-preview-button-hover-bg: oklch(0.205 0 0);
+  --photo-preview-button-hover-foreground: oklch(0.985 0 0);
 }
 
 @theme inline {
@@ -876,10 +1073,59 @@ body[data-theme-init="pending"] {
     background-color: var(--project-info-bg);
   }
 
-  .dropdown-surface {
-    box-shadow: 0 10px 30px color-mix(in srgb, var(--primary) 25%, transparent);
-  }
+.dropdown-surface {
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--primary) 25%, transparent);
+}
 
+[data-slot="dropdown-menu-content"] {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+}
+
+.text-button-foreground-on-nav {
+  color: var(--button-foreground-on-nav);
+}
+
+.text-foreground-for-nav {
+  color: var(--foreground-for-nav);
+}
+
+.hover\:text-hover-foreground-for-nav:hover {
+  color: var(--hover-foreground-for-nav);
+}
+
+.settings-select-trigger {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  border-color: var(--border);
+}
+
+.settings-select-item {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+}
+
+.settings-select-item:hover,
+.settings-select-item[data-state="checked"] {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.settings-palette-preview {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  padding: 0.4rem 0.5rem;
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--border) 40%, transparent);
+}
+
+.settings-palette-swatch {
+  border-color: var(--border);
+}
+
+.settings-palette-label {
+  color: var(--muted-foreground);
+}
   .filter-flag {
     display: inline-block;
     margin-left: 0.35rem;
@@ -1117,15 +1363,132 @@ body[data-theme-init="pending"] {
     background-color: var(--scrollbar-thumb-hover);
   }
 
-  .project-detail-scroll::-webkit-scrollbar-thumb {
-    background-color: var(--scrollbar-thumb);
-    border-radius: 9999px;
-    border: 0.125rem solid transparent;
-    background-clip: padding-box;
+.project-detail-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  border: 0.125rem solid transparent;
+  background-clip: padding-box;
+}
+
+.project-detail-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+.photo-section-label {
+  color: var(--muted-foreground);
+}
+
+.photo-preview-card {
+  border: 2px solid color-mix(in srgb, var(--border) 80%, var(--primary) 20%);
+  background-color: var(--card);
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--card) 35%, rgba(0, 0, 0, 0));
+}
+
+.photo-preview-frame {
+  border-color: color-mix(in srgb, var(--border) 70%, var(--primary) 30%);
+}
+
+.photo-preview-canvas {
+  background-color: var(--card);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.photo-preview-placeholder {
+  color: var(--muted-foreground);
+}
+
+.photo-placeholder-initial {
+  background-color: color-mix(in srgb, var(--primary) 10%, var(--card) 90%);
+  color: var(--primary);
+}
+
+.photo-preview-placeholder-title {
+  color: var(--task-hero-text);
+}
+
+.photo-preview-placeholder-subtitle {
+  color: var(--muted-foreground);
+}
+
+.photo-zoom-panel {
+  border: 1px solid var(--border);
+  background-color: var(--photo-zoom-panel-bg, color-mix(in srgb, var(--card) 92%, var(--primary) 8%));
+  box-shadow: 0 12px 25px color-mix(in srgb, var(--card) 35%, transparent);
+}
+
+.photo-zoom-button {
+  border-color: var(--photo-preview-button-border, var(--border));
+  background-color: var(--photo-preview-button-bg, var(--photo-button-bg, var(--card)));
+  color: var(--photo-preview-button-foreground, var(--photo-button-foreground, var(--foreground)));
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.photo-zoom-button:hover:not(:disabled) {
+  background-color: var(--photo-preview-button-hover-bg, var(--photo-preview-button-bg));
+  color: var(--photo-preview-button-hover-foreground, var(--photo-preview-button-foreground));
+  border-color: var(--photo-preview-button-border, var(--border));
+}
+
+.photo-preview-close {
+  border-color: var(--photo-preview-button-border, var(--border));
+  background-color: var(--photo-preview-button-bg, var(--photo-button-bg, var(--card)));
+  color: var(--photo-preview-button-foreground, var(--photo-button-foreground, var(--foreground)));
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.photo-preview-close:hover:not(:disabled) {
+  background-color: var(--photo-preview-button-hover-bg, var(--photo-preview-button-bg));
+  color: var(--photo-preview-button-hover-foreground, var(--photo-preview-button-foreground));
+  border-color: var(--photo-preview-button-border, var(--border));
+}
+
+.photo-zoom-label {
+  color: var(--photo-zoom-label, var(--muted-foreground));
+}
+
+.photo-zoom-range {
+  accent-color: var(--primary);
+}
+
+.photo-zoom-input {
+  background-color: var(--photo-input-bg, var(--card));
+  color: var(--photo-input-foreground, var(--foreground));
+}
+
+.photo-preview-card {
+  background-color: var(--photo-preview-bg, var(--card));
+  border: 2px solid var(--photo-preview-border, var(--border));
+}
+
+.photo-preview-frame {
+  border-color: var(--photo-preview-inner-border, color-mix(in srgb, var(--border) 65%, transparent));
+}
+
+.photo-dialog-surface {
+  background-color: var(--photo-dialog-bg, var(--card));
+}
+
+  .photo-action-button {
+    transition: background-color 150ms ease, color 150ms ease;
   }
 
-  .project-detail-scroll::-webkit-scrollbar-thumb:hover {
-    background-color: var(--scrollbar-thumb-hover);
+  .photo-action-button--ghost {
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--photo-action-ghost, var(--photo-button-foreground));
+  }
+
+  :root[data-theme="dark"] .photo-action-button,
+  .dark .photo-action-button {
+    background-color: var(--photo-button-bg, var(--button-background));
+    color: var(--photo-button-foreground, var(--button-foreground));
+    border-color: var(--photo-button-border, transparent);
+  }
+
+  :root[data-theme="dark"] .photo-action-button:hover:not(:disabled),
+  .dark .photo-action-button:hover:not(:disabled) {
+    background-color: var(--photo-button-hover-bg, var(--button-hover-background));
+    color: var(--photo-button-hover-foreground, var(--button-hover-foreground));
   }
 
   *::-webkit-scrollbar {
@@ -1168,6 +1531,9 @@ body[data-theme-init="pending"] {
   max-height: 12rem;
   overflow-y: auto;
 }
+
+.text-task-hero {
+  color: var(--task-hero-text);
 }
 
 .prefetch-progress-track {
@@ -1199,5 +1565,6 @@ body[data-theme-init="pending"] {
 }
 
 .asap-read-link:hover {
-  color: var(--secondary);
+  color: var(--link-hover, var(--secondary));
+}
 }

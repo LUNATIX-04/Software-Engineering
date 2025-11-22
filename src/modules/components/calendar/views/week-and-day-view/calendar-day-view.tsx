@@ -222,7 +222,6 @@ export function CalendarDayView({ singleDayEvents, multiDayEvents }: IProps) {
 											)}
 
 											<div className="flex items-center gap-1.5">
-												<Calendar className="size-4 text-t-quinary" />
 												<span className="text-sm text-t-tertiary">
 													{format(new Date(event.startDate), "MMM d, yyyy")}
 												</span>

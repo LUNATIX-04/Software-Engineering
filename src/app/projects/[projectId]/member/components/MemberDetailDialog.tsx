@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { LinkifiedText } from "@/components/linkified-text"
+import { PROJECT_ROLE } from "@/types/projects"
 
 import type { MemberRecord } from "../types"
 import type { ProjectMembershipSummary } from "@/utils/projects/api"
@@ -51,7 +52,7 @@ export function MemberDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl rounded-[2.5rem] border-2 border-primary/30 bg-white px-8 py-10 text-left shadow-[0_20px_40px_rgba(72,68,110,0.2)]">
         <DialogHeader className="">
-          <DialogTitle className="text-2xl -mt-5 font-bold text-[#2F2766]">
+          <DialogTitle className="text-2xl -mt-5 font-bold text-task-hero">
             {isSelf ? "My Info" : "Member Info"}
           </DialogTitle>
         </DialogHeader>
@@ -76,7 +77,7 @@ export function MemberDetailDialog({
               </div>
               <div className="flex flex-1 flex-col gap-3">
                 <div className="flex flex-col gap-1">
-                  <div className="text-lg mt-2 font-semibold text-[#2F2766]">
+                  <div className="text-lg mt-2 font-semibold text-task-hero">
                     {isSelf ? (
                       <div className="space-y-2">
                         <input
@@ -84,7 +85,7 @@ export function MemberDetailDialog({
                           value={usernameValue}
                           data-cy="project-member-detail-username-input"
                           onChange={(event) => onUsernameChange(event.target.value)}
-                          className="h-12 w-full rounded-full border-2 border-primary/30 bg-white px-4 text-sm font-semibold text-[#2F2766] shadow-[0_4px_0_rgba(144,122,214,0.15)] focus:border-primary focus:outline-none"
+                          className="h-12 w-full rounded-full border-2 border-primary/30 bg-white px-4 text-sm font-semibold text-task-hero shadow-[0_4px_0_rgba(144,122,214,0.15)] focus:border-primary focus:outline-none"
                           placeholder="Project username"
                         />
                       </div>
@@ -96,10 +97,12 @@ export function MemberDetailDialog({
                     <span className="text-foreground/40">Department : </span>
                     {memberTarget.department}
                   </p>
-                  <p className="text-sm font-semibold  text-primary/70">
-                    <span className="text-foreground/40">Role : </span>
-                    {memberTarget.role}
-                  </p>
+                  {memberTarget.role !== PROJECT_ROLE.MEMBER ? (
+                    <p className="text-sm font-semibold  text-primary/70">
+                      <span className="text-foreground/40">Role : </span>
+                      {memberTarget.role}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -125,7 +128,7 @@ export function MemberDetailDialog({
                   />
                 </div>
                 ) : (
-                  <div className="rounded-2xl -mt-2 border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-[#2F2766] whitespace-pre-line">
+                  <div className="rounded-2xl -mt-2 border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-task-hero whitespace-pre-line">
                     <div className="asap-scroll max-h-[10rem] overflow-y-auto">
                       <LinkifiedText value={memberTarget.bio?.length ? memberTarget.bio : "No bio provided."} />
                     </div>

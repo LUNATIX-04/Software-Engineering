@@ -245,13 +245,7 @@ export default function ProjectsPage() {
   const [leaveError, setLeaveError] = useState<string | null>(null)
   const [page, setPage] = useState(1)
   const [pageDirection, setPageDirection] = useState<"left" | "right" | null>(null)
-  const [pageSize, setPageSize] = useState<number>(() => {
-    if (typeof window === "undefined") {
-      return BASE_PAGE_SIZE_OPTIONS[0]
-    }
-    const stored = readStoredPageSize(PROJECTS_PAGE_SIZE_KEY)
-    return stored ?? BASE_PAGE_SIZE_OPTIONS[0]
-  })
+  const [pageSize, setPageSize] = useState<number>(() => BASE_PAGE_SIZE_OPTIONS[0])
   const [pageSizeHydrated, setPageSizeHydrated] = useState(() => typeof window !== "undefined")
   const [pageInput, setPageInput] = useState("1")
   const [pageSizeMenuOpen, setPageSizeMenuOpen] = useState(false)
@@ -347,6 +341,24 @@ export default function ProjectsPage() {
   useEffect(() => {
     setPageSizeHydrated(true)
   }, [])
+
+  useEffect(() => {
+    if (!pageSizeHydrated) {
+      return
+    }
+    const stored = readStoredPageSize(PROJECTS_PAGE_SIZE_KEY)
+    if (!stored) {
+      return
+    }
+    setPageSize((currentPageSize) => {
+      if (currentPageSize === stored) {
+        return currentPageSize
+      }
+      setPage(1)
+      setPageInput("1")
+      return stored
+    })
+  }, [pageSizeHydrated, setPage, setPageInput])
 
   useEffect(() => {
     if (!pageSizeHydrated) {

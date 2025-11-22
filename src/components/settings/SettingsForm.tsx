@@ -24,10 +24,11 @@ type StatusState =
 
 const themeLabels: Record<ThemeOption, string> = {
   standard: "Standard",
-  light: "Light",
+  blue: "Blue",
   dark: "Dark",
   red: "Red",
-  blue: "Blue",
+  green: "Green",
+  yellow: "Yellow",
 }
 
 const departmentLabels: Record<DepartmentLayoutOption, string> = {
@@ -37,13 +38,14 @@ const departmentLabels: Record<DepartmentLayoutOption, string> = {
 
 const themeSwatches: Record<ThemeOption, string[]> = {
   standard: ["#907ad6", "#c6b6f2", "#f4effa"],
-  light: ["#2563eb", "#93c5fd", "#fdfbff"],
+  blue: ["#2563eb", "#93c5fd", "#fdfbff"],
   dark: ["#0b1220", "#1f2937", "#4b5563"],
   red: ["#e11d48", "#fda4af", "#fff5f5"],
-  blue: ["#1d4ed8", "#60a5fa", "#e6f4ff"],
+  green: ["#059669", "#34d399", "#ecfdf5"],
+  yellow: ["#c89407", "#fcd34d", "#fef3c7"],
 }
 
-const themeOptions: ThemeOption[] = ["standard", "light", "dark", "red", "blue"]
+const themeOptions: ThemeOption[] = ["standard", "blue", "dark", "red", "green", "yellow"]
 
 export type SettingsFormProps = {
   layout?: "page" | "dialog"
@@ -170,7 +172,7 @@ export function SettingsForm({ layout = "page", onSaved }: SettingsFormProps) {
           onValueChange={(value) => setDepartmentLayout(value as DepartmentLayoutOption)}
         >
           <SelectTrigger
-            className="w-full max-w-sm justify-between rounded-full border-2 border-primary/30 bg-white/80 px-5 py-3 text-base font-semibold"
+            className="settings-select-trigger w-full max-w-sm justify-between rounded-full border-2 px-5 py-3 text-base font-semibold"
             data-cy="settings-department-select"
           >
             <SelectValue placeholder="Select Type Display" />
@@ -198,7 +200,7 @@ export function SettingsForm({ layout = "page", onSaved }: SettingsFormProps) {
           onValueChange={(value) => setTheme(value as ThemeOption)}
         >
           <SelectTrigger
-            className="w-full max-w-sm justify-between rounded-full border-2 border-primary/30 bg-white/80 px-5 py-3 text-base font-semibold"
+            className="settings-select-trigger w-full max-w-sm justify-between rounded-full border-2 px-5 py-3 text-base font-semibold"
             data-cy="settings-theme-select"
           >
             <SelectValue placeholder="Select Theme" />
@@ -209,7 +211,7 @@ export function SettingsForm({ layout = "page", onSaved }: SettingsFormProps) {
                 key={option}
                 value={option}
                 data-cy={`settings-theme-option-${option}`}
-                className="flex items-center gap-3"
+                className="settings-select-item flex items-center gap-3"
               >
                 <span className="inline-flex items-center gap-2">
                   <span
@@ -223,16 +225,16 @@ export function SettingsForm({ layout = "page", onSaved }: SettingsFormProps) {
           </SelectContent>
         </Select>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="settings-palette-preview flex flex-wrap items-center gap-3">
           {(themeSwatches[effectiveTheme] ?? themeSwatches.standard).map((color) => (
             <span
               key={color}
-              className="h-10 w-10 rounded-full border border-border shadow-sm"
+              className="settings-palette-swatch h-10 w-10 rounded-full border shadow-sm"
               style={{ backgroundColor: color }}
               aria-hidden
             />
           ))}
-          <span className="text-sm text-muted-foreground">
+          <span className="settings-palette-label text-sm">
             {themeLabels[effectiveTheme]} palette preview
           </span>
         </div>

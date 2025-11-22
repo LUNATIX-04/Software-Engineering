@@ -78,7 +78,14 @@ import { ProjectLeaveDialog } from "./AppShell/ProjectLeaveDialog"
 import { isRemovalError } from "@/utils/projects/removal"
 
 const DEPARTMENT_LAYOUTS: DepartmentLayoutOption[] = ["compact", "fullWidth"]
-const THEME_OPTIONS: ThemeOption[] = ["standard", "light", "dark", "red", "blue"]
+const THEME_OPTIONS: ThemeOption[] = [
+  "standard",
+  "blue",
+  "dark",
+  "red",
+  "green",
+  "yellow",
+]
 const THEME_STORAGE_KEY = "asap:theme-preference"
 const DEPARTMENT_LAYOUT_STORAGE_KEY = "asap:department-layout"
 export async function handleGoogleSignIn() {

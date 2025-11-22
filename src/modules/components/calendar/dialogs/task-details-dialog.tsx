@@ -38,9 +38,9 @@ export function TaskDetailsDialog({ event, children }: TaskDetailsDialogProps) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{event.title}</DialogTitle>
-          <DialogDescription>
+          {/*<DialogDescription>
             {event.description || "No additional details provided."}
-          </DialogDescription>
+          </DialogDescription>*/}
         </DialogHeader>
 
         <ScrollArea className="max-h-[70vh]">

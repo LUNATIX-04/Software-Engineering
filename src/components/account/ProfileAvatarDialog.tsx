@@ -94,17 +94,22 @@ export function ProfileAvatarDialog({
     [buildProxyUrl]
   )
 
+  const resolvedFallbackPreview = useMemo(
+    () => initialImageUrl ?? fallbackImageUrl ?? null,
+    [fallbackImageUrl, initialImageUrl]
+  )
+
   useEffect(() => {
     if (!open) {
       cleanupObjectUrl()
       setImageFile(null)
+      setImagePreview(resolvedFallbackPreview)
       setImageZoom(DEFAULT_ZOOM)
       setZoomInputValue(DEFAULT_ZOOM.toFixed(2))
       setImageCropPosition(null)
       setIsDraggingCrop(false)
+      setCropSourceFromUrl(resolvedFallbackPreview)
       setErrorMessage(null)
-      setImagePreview(null)
-      setCropSourceFromUrl(null)
       return
     }
 
@@ -277,33 +282,32 @@ export function ProfileAvatarDialog({
       setImageCropPosition(null)
       setIsDraggingCrop(false)
       setErrorMessage(null)
-      const seedUrl = initialImageUrl ?? fallbackImageUrl ?? null
-      setImagePreview(seedUrl)
-      setCropSourceFromUrl(seedUrl)
+      setImagePreview(resolvedFallbackPreview)
+      setCropSourceFromUrl(resolvedFallbackPreview)
     }
     onOpenChange(nextOpen)
   }
 
   return (
     <Dialog open={open} onOpenChange={handleDialogChange}>
-      <DialogContent className="max-w-4xl rounded-[2.5rem] border border-primary/20 bg-white/95 px-0 py-0 shadow-2xl">
+      <DialogContent className="max-w-4xl rounded-[2.5rem] border border-primary/20 photo-dialog-surface px-0 py-0 shadow-2xl">
         <DialogHeader className="sr-only">
           <DialogTitle>Update profile photo</DialogTitle>
         </DialogHeader>
         <div className="grid gap-6 p-8 lg:grid-cols-[1.1fr_1fr]">
           <div className="space-y-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/60">Preview</p>
+            <p className="photo-section-label text-xs font-semibold uppercase tracking-[0.35em]">Preview</p>
             <div
               ref={previewCardRef}
-              className="relative aspect-square overflow-hidden rounded-full border-2 border-primary/30 bg-white shadow-[0_10px_35px_rgba(48,42,85,0.12)]"
+              className="photo-preview-card relative aspect-square overflow-hidden rounded-full"
             >
-              <div className="pointer-events-none absolute inset-4 rounded-full border border-primary/15" />
+              <div className="photo-preview-frame pointer-events-none absolute inset-4 rounded-full" />
               <div
-                className={cn(
-                  "absolute inset-4 overflow-hidden rounded-full bg-black/5 shadow-inner",
-                  imagePreview ? (isDraggingCrop ? "cursor-grabbing" : "cursor-grab") : "",
-                  imagePreview ? "touch-none select-none" : ""
-                )}
+                  className={cn(
+                    "photo-preview-canvas absolute inset-4 overflow-hidden rounded-full",
+                    imagePreview ? (isDraggingCrop ? "cursor-grabbing" : "cursor-grab") : "",
+                    imagePreview ? "touch-none select-none" : ""
+                  )}
                 onPointerDown={imagePreview ? handleCropPointerDown : undefined}
                 onPointerMove={imagePreview ? handleCropPointerMove : undefined}
                 onPointerUp={imagePreview ? endCropDragging : undefined}
@@ -337,12 +341,12 @@ export function ProfileAvatarDialog({
                     <div className="pointer-events-none absolute inset-0 ring-1 ring-white/40" />
                   </>
                 ) : (
-                  <div className="flex h-full flex-col items-center justify-center gap-3 text-primary/70">
-                    <div className="flex size-20 items-center justify-center rounded-full bg-primary/10 text-3xl font-semibold text-primary">
+                  <div className="photo-preview-placeholder flex h-full flex-col items-center justify-center gap-3">
+                    <div className="photo-placeholder-initial flex size-20 items-center justify-center rounded-full">
                       {fallbackLetter}
                     </div>
-                    <p className="text-base font-semibold">Upload a square-friendly image</p>
-                    <p className="text-sm text-primary/70">JPG, PNG, or WEBP up to 5MB.</p>
+                    <p className="photo-preview-placeholder-title text-base font-semibold">Upload a square-friendly image</p>
+                    <p className="photo-preview-placeholder-subtitle text-sm">JPG, PNG, or WEBP up to 5MB.</p>
                   </div>
                 )}
               </div>
@@ -360,7 +364,7 @@ export function ProfileAvatarDialog({
                   setImagePreview(fallback)
                   setCropSourceFromUrl(fallback)
                 }}
-                className="group absolute right-3 top-3 inline-flex size-10 items-center justify-center rounded-full border border-primary/30 bg-white/95 text-primary shadow-sm transition hover:bg-destructive/10 hover:text-destructive"
+                className="photo-preview-close group absolute right-3 top-3 inline-flex size-10 items-center justify-center rounded-full shadow-sm transition"
                 aria-label="Reset selected image"
               >
                 <X className="size-5" />
@@ -368,14 +372,14 @@ export function ProfileAvatarDialog({
             </div>
           </div>
           <div className="space-y-6">
-            <div className="space-y-3 rounded-3xl border border-primary/15 bg-primary/5 p-5">
+            <div className="photo-zoom-panel space-y-3 rounded-3xl p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.35em] text-primary/60">
                 Position & zoom
               </p>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  className="inline-flex size-9 items-center justify-center rounded-full border border-primary/30 bg-white text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+                className="photo-zoom-button inline-flex size-9 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-40"
                   onClick={() => handleZoomChange(imageZoom - ZOOM_STEP)}
                   disabled={!imagePreview || normalizedZoom <= MIN_ZOOM + 0.001}
                 >
@@ -388,12 +392,12 @@ export function ProfileAvatarDialog({
                   step={ZOOM_STEP}
                   value={normalizedZoom}
                   onChange={(event) => handleZoomChange(Number(event.target.value))}
-                  className="flex-1 accent-primary"
+                  className="photo-zoom-range flex-1"
                   disabled={!imagePreview}
                 />
                 <button
                   type="button"
-                  className="inline-flex size-9 items-center justify-center rounded-full border border-primary/30 bg-white text-primary transition hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-40"
+                className="photo-zoom-button inline-flex size-9 items-center justify-center rounded-full border transition disabled:cursor-not-allowed disabled:opacity-40"
                   onClick={() => handleZoomChange(imageZoom + ZOOM_STEP)}
                   disabled={!imagePreview || normalizedZoom >= MAX_ZOOM - 0.001}
                 >
@@ -401,14 +405,14 @@ export function ProfileAvatarDialog({
                 </button>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-muted-foreground">Zoom</span>
+                <span className="photo-zoom-label text-sm font-semibold">Zoom</span>
                 <input
                   type="number"
                   value={zoomInputValue}
                   onChange={handleZoomInputChange}
                   onBlur={handleZoomInputBlur}
                   onKeyDown={handleZoomInputKeyDown}
-                  className="w-20 rounded-full border border-primary/20 bg-white px-3 py-1 text-center text-sm font-semibold"
+                  className="photo-zoom-input w-20 rounded-full border border-primary/20 px-3 py-1 text-center text-sm font-semibold"
                   min={MIN_ZOOM}
                   max={MAX_ZOOM}
                   step={ZOOM_STEP}
@@ -419,7 +423,7 @@ export function ProfileAvatarDialog({
             <div className="space-y-3">
               <Button
                 type="button"
-                className="w-full rounded-full"
+                className="photo-action-button w-full rounded-full"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="mr-2 size-4" />
@@ -439,7 +443,7 @@ export function ProfileAvatarDialog({
                 type="button"
                 onClick={handleSave}
                 disabled={saving || !imagePreview}
-                className="flex-1 rounded-full"
+                className="photo-action-button flex-1 rounded-full"
               >
                 {saving ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
                 Save photo
@@ -447,7 +451,7 @@ export function ProfileAvatarDialog({
               <Button
                 type="button"
                 variant="ghost"
-                className="rounded-full"
+                className="photo-action-button photo-action-button--ghost rounded-full"
                 onClick={() => onOpenChange(false)}
                 disabled={saving}
               >

@@ -130,6 +130,18 @@ export function AccountSettingsContent({
     setBioInput(profile?.bio ?? "")
   }, [profile?.fullName, profile?.bio])
 
+  const hasProfileChanges = useMemo(() => {
+    if (!profile) {
+      return false
+    }
+    const currentFullName = profile.fullName ?? ""
+    const currentBio = profile.bio ?? ""
+    return (
+      fullNameInput.trim() !== currentFullName.trim() ||
+      bioInput.trim() !== currentBio.trim()
+    )
+  }, [bioInput, fullNameInput, profile])
+
   useEffect(() => {
     return () => {
       isMountedRef.current = false
@@ -685,22 +697,22 @@ export function AccountSettingsContent({
           />
         </div>
       </div>
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="submit"
-          variant="ghost"
-          disabled={profileSaving}
-          className="rounded-full bg-button-background px-6 text-button-foreground !hover:bg-button-hover-background !hover:text-button-foreground focus-visible:ring-button-foreground/40"
-        >
-          {profileSaving ? "Saving…" : "Save profile"}
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={profileSaving}
-          className="rounded-full"
-          onClick={resetProfileForm}
-        >
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="submit"
+            variant="ghost"
+            disabled={profileSaving || !hasProfileChanges}
+            className="rounded-full bg-button-background px-6 text-button-foreground !hover:bg-button-hover-background !hover:text-button-foreground focus-visible:ring-button-foreground/40"
+          >
+            {profileSaving ? "Saving…" : "Save profile"}
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={profileSaving || !hasProfileChanges}
+            className="rounded-full"
+            onClick={resetProfileForm}
+          >
           Reset
         </Button>
       </div>
