@@ -17,7 +17,7 @@ import {
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
 import { TaskCard } from "@/components/tasks/TaskCard"
-import { getContrastingTextColor, normalizeHexColorValue } from "@/utils/colors"
+import { getContrastingTextColor, normalizeHexColorValue, sanitizeHexColor } from "@/utils/colors"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import type { ProjectDepartmentRecord } from "@/utils/projects/departments"
 import { fetchProjectDepartments } from "@/utils/projects/departments"
