@@ -142,6 +142,7 @@ body[data-theme-init="pending"] {
   --task-placeholder: #AFA9D0;
   --task-cta-bg: #4C43F2;
   --task-cta-hover: #3933d1;
+  --task-shadow: rgba(63, 52, 120, 0.2);
   --task-detail-card-bg: color-mix(in srgb, var(--card) 92%, #ffffff 8%);
   --task-detail-card-border: color-mix(in srgb, var(--primary) 40%, var(--border) 60%);
   --pagination-surface-bg: #f1effe;
@@ -593,6 +594,16 @@ body[data-theme-init="pending"] {
   --notify-destructive-text: #fff5f5;
   --project-info-bg: color-mix(in srgb, #f7f1f3 82%, #ffffff 18%);
   --photo-dialog-bg: #fff5f5;
+  --task-hero-background: color-mix(in srgb, var(--card) 85%, var(--primary-soft) 15%);
+  --task-hero-text: var(--foreground);
+  --task-subtle-text: color-mix(in srgb, var(--foreground) 70%, var(--primary) 30%);
+  --task-description-bg: color-mix(in srgb, var(--card) 88%, var(--primary-soft) 12%);
+  --task-description-bg-hover: color-mix(in srgb, var(--card) 80%, var(--primary) 20%);
+  --task-description-border: color-mix(in srgb, var(--primary) 35%, var(--card) 65%);
+  --task-placeholder: color-mix(in srgb, var(--muted-foreground) 72%, var(--foreground) 28%);
+  --task-cta-bg: var(--primary);
+  --task-cta-hover: color-mix(in srgb, var(--primary) 85%, #000000 15%);
+  --task-shadow: rgba(225, 29, 72, 0.25);
   
 }
 
@@ -705,6 +716,16 @@ body[data-theme-init="pending"] {
 
   --project-info-bg: color-mix(in srgb, #d6f5e5 82%, #ffffff 18%);
   --photo-dialog-bg: color-mix(in srgb, var(--card) 92%, #ddf7e5 8%);
+  --task-hero-background: color-mix(in srgb, var(--card) 85%, var(--primary-soft) 15%);
+  --task-hero-text: var(--foreground);
+  --task-subtle-text: color-mix(in srgb, var(--foreground) 70%, var(--primary) 30%);
+  --task-description-bg: color-mix(in srgb, var(--card) 88%, var(--primary-soft) 12%);
+  --task-description-bg-hover: color-mix(in srgb, var(--card) 80%, var(--primary) 20%);
+  --task-description-border: color-mix(in srgb, var(--primary) 35%, var(--card) 65%);
+  --task-placeholder: color-mix(in srgb, var(--muted-foreground) 72%, var(--foreground) 28%);
+  --task-cta-bg: var(--primary);
+  --task-cta-hover: color-mix(in srgb, var(--primary) 85%, #0f2f1d 15%);
+  --task-shadow: rgba(5, 150, 105, 0.25);
 }
 
 :root[data-theme="yellow"] {
@@ -816,6 +837,16 @@ body[data-theme-init="pending"] {
 
   --project-info-bg: color-mix(in srgb, #fff6db 82%, #ffffff 18%);
   --photo-dialog-bg: color-mix(in srgb, var(--card) 92%, #fff4d6 8%);
+  --task-hero-background: color-mix(in srgb, var(--card) 85%, var(--primary-soft) 15%);
+  --task-hero-text: var(--foreground);
+  --task-subtle-text: color-mix(in srgb, var(--foreground) 70%, var(--primary) 30%);
+  --task-description-bg: color-mix(in srgb, var(--card) 88%, var(--primary-soft) 12%);
+  --task-description-bg-hover: color-mix(in srgb, var(--card) 80%, var(--primary) 20%);
+  --task-description-border: color-mix(in srgb, var(--primary) 35%, var(--card) 65%);
+  --task-placeholder: color-mix(in srgb, var(--muted-foreground) 72%, var(--foreground) 28%);
+  --task-cta-bg: var(--primary);
+  --task-cta-hover: color-mix(in srgb, var(--primary) 85%, #4f2a0d 15%);
+  --task-shadow: rgba(217, 119, 6, 0.25);
 }
 
 .calendar-no-past [data-past="true"] {

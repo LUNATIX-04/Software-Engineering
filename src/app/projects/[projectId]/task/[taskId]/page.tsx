@@ -13,11 +13,13 @@ import {
   FileText,
   Image as ImageIcon,
   Info,
+  PencilLine,
   X,
 } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import { format, isSameDay } from "date-fns"
 
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -487,7 +489,7 @@ function TaskSubmissionDialogContent({
       )}
       {readOnly ? (
         <div className="mt-3 space-y-4">
-          <div className="rounded-[1.5rem] border border-primary/20 bg-[var(--task-description-bg)] px-4 py-3 text-sm text-[var(--task-hero-text)]">
+          <div className="rounded-[1.5rem] border border-[var(--task-description-border)] bg-[var(--task-description-bg)] px-4 py-3 text-sm text-[var(--task-hero-text)]">
             <LinkifiedText value={submissionDescription || "No description provided."} />
           </div>
           <div className="text-xs uppercase tracking-[0.3em] text-primary/60">
@@ -515,7 +517,7 @@ function TaskSubmissionDialogContent({
                             event.preventDefault()
                           }
                         }}
-                        className="flex w-full items-center gap-3 rounded-[1rem] border border-primary/30 bg-white px-3 py-2 shadow-[0_1px_6px_rgba(63,52,120,0.15)]"
+                        className="flex w-full items-center gap-3 rounded-[1rem] border border-[var(--task-description-border)] bg-[var(--card)] px-3 py-2 shadow-[0_1px_6px_var(--task-shadow)]"
                       >
                         <span className="flex h-10 w-10 items-center justify-center rounded-[0.85rem] bg-primary/10 text-primary">
                           <IconComponent className="size-5" aria-hidden="true" />
@@ -988,7 +990,8 @@ function TaskReviewSection({
         data-cy="project-task-detail-review-submit"
         onClick={handleReviewSubmit}
         disabled={reviewing || interactionLocked}
-        className="inline-flex h-12 w-full items-center justify-center rounded-full border border-primary/30 bg-[var(--task-description-bg)] px-8 text-sm font-semibold text-[var(--task-hero-text)] shadow-[0_6px_0_rgba(63,52,120,0.2)] transition hover:bg-[var(--task-description-bg-hover)]"
+        className="inline-flex h-12 w-full items-center justify-center rounded-full border border-primary/30 bg-[var(--task-description-bg)] px-8 text-sm font-semibold text-[var(--task-hero-text)] transition hover:bg-[var(--task-description-bg-hover)]"
+        style={{ boxShadow: "0 6px 0 var(--task-shadow)" }}
       >
         {reviewing ? "Sending…" : "Send review"}
       </Button>
@@ -1035,6 +1038,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [submittingSubmission, setSubmittingSubmission] = useState(false)
   const [submissionError, setSubmissionError] = useState<string | null>(null)
   const [submissionDialogOpen, setSubmissionDialogOpen] = useState(false)
+  const [viewerSubmissionDialogOpen, setViewerSubmissionDialogOpen] = useState(false)
   const [reviewComment, setReviewComment] = useState("")
   const [lastReviewerComment, setLastReviewerComment] = useState<string | null>(null)
   const [reviewing, setReviewing] = useState(false)
@@ -1430,10 +1434,22 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         : null
   const viewerHasReviewPrivileges =
     membership?.role === PROJECT_ROLE.OWNER || membership?.role === PROJECT_ROLE.HEADER
-  const reviewerOrAssigner = viewerIsAssigner || viewerHasReviewPrivileges
-  const ownerViewingSubmission = reviewerOrAssigner && Boolean(task?.submission)
+  const ownerViewingSubmission = viewerIsAssigner && Boolean(task?.submission)
   const canReviewSubmission = ownerViewingSubmission && !isAssignee
+  const viewerIsMember = membership?.role === PROJECT_ROLE.MEMBER
+  const submissionIsSubmitted = task?.submission?.status === "SUBMITTED"
+  const canViewSubmission =
+    Boolean(task?.submission) &&
+    !viewerIsAssigner &&
+    !isAssignee &&
+    (viewerHasReviewPrivileges || (viewerIsMember && submissionIsSubmitted))
   const assignedMemberWaitingReview = isAssignee
+  const taskDepartmentId = task?.department?.id ?? null
+  const isHeaderOfTaskDepartment =
+    membership?.role === PROJECT_ROLE.HEADER &&
+    Boolean(membership.departmentId) &&
+    membership.departmentId === taskDepartmentId
+  const canEditTask = membership?.role === PROJECT_ROLE.OWNER || isHeaderOfTaskDepartment
 
   const detailUrl = React.useMemo(() => `/projects/${projectId}/task/${taskId}`, [projectId, taskId])
   const pendingSubmissionNotifyRef = React.useRef<string | null>(null)
@@ -1823,11 +1839,42 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const statusColors = TASK_STATUS_COLORS[status]
   const submissionRecord = task?.submission
   const hasSubmission = Boolean(submissionRecord)
+  const needsSubmissionNotice = viewerHasReviewPrivileges && !viewerIsAssigner && !isAssignee && !hasSubmission
+  const isMemberNoSubmission =
+    viewerIsMember && !viewerIsAssigner && !isAssignee && !submissionIsSubmitted
   const waitingForOwnerResponse =
     Boolean(submissionRecord && submissionRecord.status === "SUBMITTED" && !submissionRecord.acknowledgedAt)
   const effectiveHasSubmission = hasSubmission && !waitingForOwnerResponse
   const shouldShowWaitingHint = hasSubmission && !effectiveHasSubmission
   const hasPendingSubmissionAcknowledgement = waitingForOwnerResponse
+  const submissionViewerDialogProps = React.useMemo(() => {
+    if (!submissionRecord) {
+      return null
+    }
+    const attachments = submissionRecord.attachments ?? []
+    return {
+      submissionDescription: submissionRecord.description ?? "",
+      onSubmissionDescriptionChange: () => {},
+      submissionFileEntries: attachments.map((attachment, index) => ({
+        id: attachment.url ?? `${attachment.name}-${index}`,
+        name: attachment.name,
+        url: attachment.url,
+        file: undefined,
+        isExisting: true,
+      })),
+      hasSubmission: true,
+      hasPendingSubmissionAcknowledgement,
+      onSubmissionFilesChange: () => {},
+      onRemoveSubmissionFile: () => {},
+      clearSubmissionFiles: () => {},
+      submissionError: null,
+      submittingSubmission: false,
+      effectiveHasSubmission,
+      onSubmit: () => {},
+      onClose: () => setViewerSubmissionDialogOpen(false),
+      readOnly: true,
+    }
+  }, [submissionRecord, hasPendingSubmissionAcknowledgement, effectiveHasSubmission])
   const assignerAvatarUrl = task?.createdBy?.avatarUrl ?? assignerProfile?.avatarUrl
   const assignerDepartmentLabel =
     task?.department?.name ?? assignerProfile?.department?.name ?? null
@@ -1955,7 +2002,28 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
           </Button>
         </div>
 
-        <div className="mx-auto mt-20 flex w-full max-w-full flex-1 flex-col gap-10 px-[clamp(1.5rem,3.4vw,3.85rem)]">
+        <div
+          className={cn(
+            "mx-auto flex w-full max-w-full flex-1 flex-col gap-10 px-[clamp(1.5rem,3.4vw,3.85rem)]",
+            isAssignee ? "mt-5" : "mt-20"
+          )}
+        >
+          {canEditTask && (
+            <div className="flex w-full justify-end">
+              <Button
+                asChild
+                type="button"
+                variant="outline"
+                data-cy="task-detail-edit-button"
+                className="inline-flex h-12 min-w-[11rem] items-center gap-2 rounded-full border-primary/40 bg-white px-6 text-base font-semibold text-primary transition hover:border-primary hover:bg-primary hover:text-primary-foreground"
+              >
+                <Link href={`/projects/${projectId}/task/${taskId}/edit`}>
+                  <PencilLine className="size-5" />
+                  Edit Task
+                </Link>
+              </Button>
+            </div>
+          )}
           <div className="relative mt-3 w-full max-w-3xl self-center">
           <div
             className="absolute -top-11 left-0 z-0
@@ -1981,20 +2049,20 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
             }}
           >
             <div className="space-y-4 w-full max-w-2xl self-center">
-              <AssignerDialog
-                label={assignerLabel}
-                avatarUrl={assignerAvatarUrl}
-                departmentLabel={assignerDepartmentLabel}
-                roleLabel={assignerRoleLabel}
-                statusNotice={assigneeStatusNotice}
-                showStatusNotice={isAssignee && !canSubmitTask && Boolean(assigneeStatusNotice)}
-                dialogOpen={assignerDialogOpen}
-                onTriggerClick={handleAssignerClick}
-                onDialogOpenChange={handleAssignerDialogChange}
-                profile={assignerProfile}
-                loading={assignerProfileLoading}
-                error={assignerProfileError}
-              />
+            <AssignerDialog
+              label={assignerLabel}
+              avatarUrl={assignerAvatarUrl}
+              departmentLabel={assignerDepartmentLabel}
+              roleLabel={assignerRoleLabel}
+              statusNotice={assigneeStatusNotice}
+              showStatusNotice={Boolean(assigneeStatusNotice) && ((!viewerIsAssigner && !isAssignee) || (isAssignee && !canSubmitTask))}
+              dialogOpen={assignerDialogOpen}
+              onTriggerClick={handleAssignerClick}
+              onDialogOpenChange={handleAssignerDialogChange}
+              profile={assignerProfile}
+              loading={assignerProfileLoading}
+              error={assignerProfileError}
+            />
               <h2 className="text-lg font-semibold text-[var(--task-hero-text)] pl-8">Task Description</h2>
               <div className="rounded-[1.5rem] -mt-3 min-h-[10rem] max-h-[10rem] asap-scroll border-2 border-primary/30 bg-primary/5 px-4 py-2 text-sm text-[var(--task-hero-text)] whitespace-pre-line">
                 <LinkifiedText value={description || "No details provided."} />
@@ -2149,7 +2217,47 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                 />
               )}
 
-              {reviewerOrAssigner && !canSubmitTask && !ownerViewingSubmission && !isAssignee && (
+              {canViewSubmission && submissionViewerDialogProps && (
+                <div className="rounded-[2rem] border border-primary/30 bg-white/80 px-6 py-5 shadow-inner">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-base font-semibold text-[var(--task-hero-text)]">See Submission</p>
+                      <p className="text-xs text-[var(--task-subtle-text)]">Review the assignee&apos;s latest delivery.</p>
+                    </div>
+                    <Dialog open={viewerSubmissionDialogOpen} onOpenChange={setViewerSubmissionDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button
+                          type="button"
+                          className="h-11 rounded-full bg-[var(--task-description-bg)] px-6 text-xs font-semibold uppercase tracking-[0.3em] shadow-[0_6px_0_var(--task-shadow)] text-[var(--task-hero-text)] transition hover:bg-[var(--task-description-bg-hover)]"
+                        >
+                          See Submission
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-6 shadow-[0_20px_60px_rgba(63,52,120,0.2)]">
+                        <TaskSubmissionDialogContent {...submissionViewerDialogProps} />
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </div>
+              )}
+              {needsSubmissionNotice && (
+                <div className="rounded-[2rem] border border-primary/30 bg-white/80 px-6 py-5 shadow-inner">
+                  <p className="text-base font-semibold text-[var(--task-hero-text)]">See Submission</p>
+                  <p className="mt-1 text-xs text-[var(--task-subtle-text)]">
+                    This task does not have a submission yet.
+                  </p>
+                </div>
+              )}
+              {isMemberNoSubmission && (
+                <div className="rounded-[2rem] border border-primary/30 bg-white/80 px-6 py-5 shadow-inner">
+                  <p className="text-base font-semibold text-[var(--task-hero-text)]">See Submission</p>
+                  <p className="mt-1 text-xs text-[var(--task-subtle-text)]">
+                    This task hasn’t been submitted yet, so no submission is available for review.
+                  </p>
+                </div>
+              )}
+
+              {viewerIsAssigner && !canSubmitTask && !ownerViewingSubmission && !isAssignee && (
                 <div className="rounded-[2rem] border border-dashed border-primary/40 bg-white/70 px-6 py-5 text-sm font-medium text-[var(--task-hero-text)] shadow-inner">
                   <p className="text-base font-semibold text-primary">Awaiting Submission</p>
                   <p className="mt-1 text-sm text-[var(--task-subtle-text)]">
