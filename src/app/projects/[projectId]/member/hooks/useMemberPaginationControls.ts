@@ -78,11 +78,11 @@ export function useMemberPaginationControls({
       typeof window !== "undefined" && "PointerEvent" in window ? "pointerdown" : "mousedown"
 
     document.addEventListener(pointerEventName, handlePointerDown as EventListener)
-    document.addEventListener("focusin", handleFocusIn)
+    document.addEventListener("focusin", handleFocusIn as EventListener)
 
     return () => {
       document.removeEventListener(pointerEventName, handlePointerDown as EventListener)
-      document.removeEventListener("focusin", handleFocusIn)
+      document.removeEventListener("focusin", handleFocusIn as EventListener)
     }
   }, [hidePageHint, pageHintVisible, paginationRef, triggerPageHint])
 
