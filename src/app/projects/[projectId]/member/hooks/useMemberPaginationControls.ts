@@ -14,7 +14,7 @@ export type UseMemberPaginationControlsProps = {
   page: number
   totalPages: number
   onPageChange: (page: number) => void
-  paginationRef: RefObject<HTMLDivElement>
+  paginationRef: RefObject<HTMLDivElement | null>
 }
 
 export function useMemberPaginationControls({
