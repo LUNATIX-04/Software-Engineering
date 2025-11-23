@@ -191,9 +191,9 @@ export default function TaskCardMenu({
                         )}
                         style={{ backgroundColor: option.value }}
                         onMouseEnter={() => colorControls?.setPreviewColor(option.value)}
-                        onMouseLeave={() => colorControls?.setPreviewColor((current) => (current === option.value ? null : current))}
+                        onMouseLeave={() => colorControls?.setPreviewColor(null)}
                         onFocus={() => colorControls?.setPreviewColor(option.value)}
-                        onBlur={() => colorControls?.setPreviewColor((current) => (current === option.value ? null : current))}
+                        onBlur={() => colorControls?.setPreviewColor(null)}
                         onClick={(event) => {
                           event.preventDefault()
                           event.stopPropagation()

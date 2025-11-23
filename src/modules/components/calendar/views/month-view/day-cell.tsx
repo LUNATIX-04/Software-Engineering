@@ -30,6 +30,9 @@ interface IProps {
   eventPositions: Record<string, number>;
 }
 
+const COLOR_VARIANTS = ["blue","green","red","yellow","purple","orange","gray"] as const
+export type DayCellColorVariant = (typeof COLOR_VARIANTS)[number]
+export const DAY_CELL_COLOR_VARIANTS = COLOR_VARIANTS
 export const dayCellVariants = cva("text-white", {
   variants: {
     color: {

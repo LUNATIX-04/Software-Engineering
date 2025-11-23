@@ -6,7 +6,7 @@ import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 
-export type SearchFieldProps = React.ComponentPropsWithoutRef<typeof Input> & {
+export type SearchFieldProps = Omit<React.ComponentPropsWithoutRef<typeof Input>, "size"> & {
   wrapperClassName?: string
   iconClassName?: string
   size?: "default" | "compact"

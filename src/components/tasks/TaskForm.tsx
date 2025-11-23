@@ -169,13 +169,9 @@ function TaskColorMenu({
                   className="flex size-10 items-center justify-center rounded-2xl border-2 border-primary/20 text-[0.65rem] font-semibold transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0"
                   style={{ backgroundColor: option.value }}
                   onMouseEnter={() => setQuickColorPreview(normalizedValue)}
-                  onMouseLeave={() =>
-                    setQuickColorPreview((current) => (current === normalizedValue ? null : current))
-                  }
+                  onMouseLeave={() => setQuickColorPreview(null)}
                   onFocus={() => setQuickColorPreview(normalizedValue)}
-                  onBlur={() =>
-                    setQuickColorPreview((current) => (current === normalizedValue ? null : current))
-                  }
+                  onBlur={() => setQuickColorPreview(null)}
                   onClick={() => handleColorSelect(normalizedValue)}
                   aria-label={`Select ${option.label}`}
                 />
@@ -879,6 +875,11 @@ type TaskTimelinePanelProps = {
   deadlineTimeText: string
   onFillDateTimeValues: (startValue: string, deadlineValue: string) => void
   calendarRange: DateRange | undefined
+}
+
+type FillDateTimeForm = {
+  startDate: Date
+  endDate: Date
 }
 
 function TaskTimelinePanel({

@@ -17,7 +17,7 @@ const VARIANT_DECOR: Record<NotificationVariant, string> = {
 type NotificationHistoryPanelProps = {
   open: boolean
   onClose: () => void
-  triggerRef?: React.RefObject<HTMLElement>
+  triggerRef?: React.RefObject<HTMLElement | null>
 }
 
 const formatTimestamp = (value: string) => {

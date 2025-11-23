@@ -181,8 +181,8 @@ export function CalendarProvider({
 				const current = meta[normalized];
 				meta[normalized] = {
 					id: current?.id ?? event.departmentId ?? null,
-					color: current?.color ?? event.departmentColor ?? null,
-					textColor: current?.textColor ?? event.departmentTextColor ?? null,
+                                        color: current?.color ?? event.departmentColor ?? undefined,
+                                        textColor: current?.textColor ?? event.departmentTextColor ?? undefined,
 				};
 			});
 		});

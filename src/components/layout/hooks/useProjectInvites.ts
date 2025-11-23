@@ -15,7 +15,7 @@ import type {
   InviteRoleOption,
   InviteRoleOptionKey,
 } from "../invite/constants"
-import type { UseNotificationsReturn } from "@/components/notifications/Notification"
+import { useNotifications } from "@/components/notifications/Notification"
 
 const INVITE_DIALOG_OPEN_EVENT = "asap:open-invite-dialog"
 
@@ -61,7 +61,7 @@ type UseProjectInvitesOptions = {
   activeProjectId: string | null
   viewerDepartmentId: string | null
   isHeaderViewer: boolean
-  notify: UseNotificationsReturn["notify"]
+  notify: ReturnType<typeof useNotifications>["notify"]
 }
 
 export function useProjectInvites({
@@ -250,13 +250,18 @@ export function useProjectInvites({
     setInviteError(null)
     setInviteSaving(true)
     try {
-      const newInvite = await createProjectInvite(activeProjectId, {
-        maxUses: inviteMaxUsesCustom ? Number(inviteMaxUses) : undefined,
-        expiresInSeconds:
-          inviteExpiry === "never" ? undefined : INVITE_EXPIRY_PRESETS_MS[inviteExpiry],
-        departmentId: effectiveDepartmentId,
-        role: inviteRoleOption.role,
-      })
+        const expiresInMs =
+          inviteExpiry === "never"
+            ? undefined
+            : INVITE_EXPIRY_PRESETS_MS[inviteExpiry]
+        const expiresAt =
+          typeof expiresInMs === "number" ? new Date(Date.now() + expiresInMs).toISOString() : undefined
+        const newInvite = await createProjectInvite(activeProjectId, {
+          maxUses: inviteMaxUsesCustom ? Number(inviteMaxUses) : undefined,
+          expiresAt,
+          departmentId: effectiveDepartmentId,
+          role: inviteRoleOption.role,
+        })
       setInvites((prev) => {
         const filtered = prev.filter((invite) => invite.id !== newInvite.id)
         return [newInvite, ...filtered]

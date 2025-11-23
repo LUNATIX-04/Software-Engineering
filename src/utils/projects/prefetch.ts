@@ -43,6 +43,12 @@ const taskCacheTimes: TimeMap = new Map()
 
 type TaskListOptionsWithoutSignal = Omit<TaskListOptions, "signal">
 
+type NormalizedTaskListOptions = TaskListOptionsWithoutSignal & {
+  departmentIds: string[]
+  departmentNames: string[]
+  statuses: NonNullable<TaskListOptions["statuses"]>
+}
+
 function uniqueStrings(values: string[] | undefined) {
   return Array.from(
     new Set(
@@ -53,7 +59,7 @@ function uniqueStrings(values: string[] | undefined) {
   ).sort((a, b) => a.localeCompare(b))
 }
 
-function normalizeTaskOptions(options?: TaskListOptionsWithoutSignal): TaskListOptions {
+function normalizeTaskOptions(options?: TaskListOptionsWithoutSignal): NormalizedTaskListOptions {
   const normalizedSearch = options?.search?.trim() || undefined
   const departmentIds = uniqueStrings(options?.departmentIds)
   const departmentNames = uniqueStrings(options?.departmentNames)

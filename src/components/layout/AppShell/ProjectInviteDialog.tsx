@@ -11,14 +11,14 @@ import {
 import { cn } from "@/lib/utils"
 import { INVITE_EXPIRY_OPTIONS, INVITE_ROLE_OPTIONS } from "@/components/layout/invite/constants"
 import { ProjectInvitesState } from "../hooks/useProjectInvites"
-import { PROJECT_ROLE } from "@/types/projects"
+import { PROJECT_ROLE, type ProjectRole } from "@/types/projects"
 import { Check, ChevronDown } from "lucide-react"
 import { ProgressBar } from "@/components/ui/progress-bar"
 
 type ProjectInviteDialogProps = {
   manager: ProjectInvitesState
   viewerDepartmentId: string | null
-  viewerRole: PROJECT_ROLE | null
+  viewerRole: ProjectRole | null
   isHeaderViewer: boolean
 }
 
@@ -258,7 +258,7 @@ export function ProjectInviteDialog({
                       type="button"
                       role="switch"
                       aria-checked={inviteMaxUsesCustom}
-                      onClick={() => manager.setInviteMaxUsesCustom((prev) => !prev)}
+                      onClick={() => manager.setInviteMaxUsesCustom(!inviteMaxUsesCustom)}
                       className={cn(
                         "relative inline-flex h-8 w-16 items-center rounded-full border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
                         inviteMaxUsesCustom ? "border-primary bg-primary/20" : "border-primary bg-primary"

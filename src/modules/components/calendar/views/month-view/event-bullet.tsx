@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { transition } from "@/modules/components/calendar/animations";
 import type { TEventColor } from "@/modules/components/calendar/types";
+import { DAY_CELL_COLOR_VARIANTS, DayCellColorVariant } from "@/modules/components/calendar/views/month-view/day-cell";
 
 const eventBulletVariants = cva("size-2 rounded-full", {
 	variants: {
@@ -21,6 +22,16 @@ const eventBulletVariants = cva("size-2 rounded-full", {
 	},
 });
 
+function resolveBulletVariant(color: TEventColor | undefined): DayCellColorVariant | undefined {
+	if (!color) {
+		return undefined;
+	}
+	if (DAY_CELL_COLOR_VARIANTS.includes(color as DayCellColorVariant)) {
+		return color as DayCellColorVariant;
+	}
+	return undefined;
+}
+
 export function EventBullet({
 	color,
 	accentColor,
@@ -34,7 +45,14 @@ export function EventBullet({
 	const baseClass = accentColor ? "size-2 rounded-full" : undefined;
 	return (
 		<motion.div
-			className={cn(baseClass, !accentColor && eventBulletVariants({ color }), className)}
+			className={cn(
+				baseClass,
+				!accentColor &&
+					eventBulletVariants({
+						color: resolveBulletVariant(color) ?? "blue",
+					}),
+				className,
+			)}
 			style={style}
 			initial={{ scale: 0, opacity: 0 }}
 			animate={{ scale: 1, opacity: 1 }}

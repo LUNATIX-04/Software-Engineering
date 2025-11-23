@@ -46,7 +46,7 @@ type ParsedTaskQuery = TaskQueryFilters & {
 type TaskWithRelations = {
   id: string
   projectId: string
-  project: { id: string; title: string } | null
+  project?: { id: string; title: string } | null
   departmentId: string | null
   createdByMemberId: string
   title: string
