@@ -369,6 +369,33 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     })
     return set
   }, [activeColorFilters])
+  const availableColors = useMemo(() => {
+    const colors = new Set<string>()
+    allTasks.forEach((task) => {
+      const normalized = normalizeHexColorValue(task.cardColor)
+      if (normalized) {
+        colors.add(normalized)
+      }
+    })
+    return Array.from(colors)
+  }, [allTasks])
+  const normalizedAvailableColors = useMemo(() => {
+    const set = new Set<string>()
+    availableColors.forEach((color) => {
+      const normalized = normalizeHexColorValue(color)
+      if (normalized) {
+        set.add(normalized)
+      }
+    })
+    return set
+  }, [availableColors])
+  useEffect(() => {
+    setActiveColorFilters((prev) =>
+      prev
+        .map((color) => normalizeHexColorValue(color))
+        .filter((color): color is string => Boolean(color) && normalizedAvailableColors.has(color))
+    )
+  }, [normalizedAvailableColors])
 
   const filteredTasks = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase()
@@ -423,7 +450,11 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
         }
         if (normalizedActiveColorFilters.size > 0) {
           const taskColor = normalizeHexColorValue(task.cardColor)
-          if (!taskColor || !normalizedActiveColorFilters.has(taskColor)) {
+          if (
+            !taskColor ||
+            !normalizedActiveColorFilters.has(taskColor) ||
+            !normalizedAvailableColors.has(taskColor)
+          ) {
             return false
           }
         }
@@ -460,6 +491,7 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     exactDepartmentMatch,
     membershipId,
     normalizedActiveColorFilters,
+    normalizedAvailableColors,
     search,
     sortTasksForDisplay,
     taskScope,
@@ -479,16 +511,6 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
       return acc
     }, {})
   }, [remoteDepartments])
-  const availableColors = useMemo(() => {
-    const colors = new Set<string>()
-    allTasks.forEach((task) => {
-      const normalized = normalizeHexColorValue(task.cardColor)
-      if (normalized) {
-        colors.add(normalized)
-      }
-    })
-    return Array.from(colors)
-  }, [allTasks])
   const colorLabelMap = useMemo(() => {
     const map: Record<string, string> = {}
     const addLabel = (color: string, label: string) => {

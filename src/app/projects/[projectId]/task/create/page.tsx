@@ -53,9 +53,18 @@ export default function CreateTaskPage({ params }: CreateTaskPageProps) {
       })
       return
     }
+    const normalizedAssignees = values.assigneeIds.filter(Boolean)
+    if (normalizedAssignees.length === 0) {
+      notify({
+        title: "Create task failed",
+        description: "Assign at least one member before creating the task.",
+        variant: "destructive",
+      })
+      return
+    }
     setSubmitting(true)
     try {
-      await createProjectTask(projectId, values)
+      await createProjectTask(projectId, { ...values, assigneeIds: normalizedAssignees })
       if (typeof window !== "undefined") {
         window.dispatchEvent(
           new CustomEvent(PROJECT_REFRESH_EVENT, { detail: { projectId } })

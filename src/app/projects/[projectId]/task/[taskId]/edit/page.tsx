@@ -148,6 +148,15 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
 
   const handleSave = React.useCallback(
     async (values: TaskFormValues) => {
+      const normalizedAssignees = values.assigneeIds.filter(Boolean)
+      if (normalizedAssignees.length === 0) {
+        notify({
+          title: "Update failed",
+          description: "Assign at least one member before saving changes.",
+          variant: "destructive",
+        })
+        return
+      }
       setSaving(true)
       try {
         const response = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
@@ -155,7 +164,7 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(values),
+          body: JSON.stringify({ ...values, assigneeIds: normalizedAssignees }),
         })
         if (!response.ok) {
           const payload = await response.json().catch(() => null)

@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import type { DepartmentLayoutOption } from "@/types/preferences"
 import type { ProjectMemberDetail } from "@/utils/projects/api"
 import { SearchField } from "@/components/ui/search-field"
+import { ProgressBar } from "@/components/ui/progress-bar"
 
 type ProjectOwnerDialogProps = {
   open: boolean
@@ -80,7 +81,12 @@ export function ProjectOwnerDialog({
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs font-semibold uppercase tracking-wide text-primary/70">Owners</p>
             </div>
-            {selectedOwners.length === 0 ? (
+            {ownersLoading ? (
+              <div className="space-y-2 rounded-2xl border border-primary/30 bg-card px-4 py-5">
+                <ProgressBar />
+                <p className="text-sm text-muted-foreground">Loading project members…</p>
+              </div>
+            ) : selectedOwners.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-primary/30 bg-card px-4 py-5 text-sm text-muted-foreground">
                 Choose members from the list below to make them owners.
               </div>
@@ -130,7 +136,10 @@ export function ProjectOwnerDialog({
             </div>
             <div className="asap-scroll [scrollbar-gutter:stable] max-h-40 space-y-3 overflow-y-auto pr-1">
               {ownersLoading ? (
-                <p className="text-sm text-muted-foreground">Loading project members…</p>
+                <div className="space-y-2">
+                  <ProgressBar />
+                  <p className="text-sm text-muted-foreground">Loading project members…</p>
+                </div>
               ) : ownerCandidates.length === 0 ? (
                 <p className="text-sm text-muted-foreground">This project does not have any members yet.</p>
               ) : filteredOwnerCandidates.length === 0 ? (
