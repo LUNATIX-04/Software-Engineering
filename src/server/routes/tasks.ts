@@ -1221,24 +1221,30 @@ export function registerTaskRoutes(app: Elysia) {
   })
 
   app.patch("/projects/:projectId/tasks/:taskId", async ({ request, params }) => {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
-    }
-
     try {
-      await ensureTaskPermission(params.projectId, user.id, params.taskId)
-    } catch (error) {
-      const message = (error as Error).message === "not_found" ? "Not found" : "Forbidden"
-      return new Response(JSON.stringify({ error: message }), { status: 404 })
-    }
+      const supabase = await createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
 
-    const payload = await request.json().catch(() => null)
-    const title = typeof payload?.title === "string" ? payload.title.trim() : undefined
+      if (!user) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
+      }
+
+      try {
+        await ensureTaskPermission(params.projectId, user.id, params.taskId)
+      } catch (error) {
+        const message = (error as Error).message === "not_found" ? "Not found" : "Forbidden"
+        return new Response(JSON.stringify({ error: message }), { status: 404 })
+      }
+
+      const payload = await request.json().catch(() => null)
+      console.log("Updating task", {
+        projectId: params.projectId,
+        taskId: params.taskId,
+        payload,
+      })
+      const title = typeof payload?.title === "string" ? payload.title.trim() : undefined
     const detail =
       typeof payload?.detail === "string" && payload.detail.trim().length > 0
         ? payload.detail.trim()
@@ -1347,6 +1353,14 @@ export function registerTaskRoutes(app: Elysia) {
 
     return new Response(JSON.stringify(serializeTask(task)))
   })
+    } catch (error) {
+      console.error("Failed to update task", {
+        projectId: params.projectId,
+        taskId: params.taskId,
+        error,
+      })
+      return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500 })
+    }
 
   app.delete("/projects/:projectId/tasks/:taskId", async ({ params }) => {
     const supabase = await createClient()
