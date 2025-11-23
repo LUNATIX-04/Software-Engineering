@@ -1106,6 +1106,11 @@ function AppShellInner({ children }: AppShellProps) {
       const raw =
         error instanceof Error ? error.message : "Unable to delete this project right now."
       setDeleteProjectError(raw)
+      notify({
+        title: "Delete failed",
+        description: raw,
+        variant: "destructive",
+      })
     } finally {
       setDeleteProjectLoading(false)
     }
@@ -1135,6 +1140,11 @@ function AppShellInner({ children }: AppShellProps) {
       console.error("Failed to leave project", error)
       const raw = error instanceof Error ? error.message : "Unable to leave this project."
       setLeaveError(raw)
+      notify({
+        title: "Leave project failed",
+        description: raw,
+        variant: "destructive",
+      })
     } finally {
       setLeaveLoading(false)
     }

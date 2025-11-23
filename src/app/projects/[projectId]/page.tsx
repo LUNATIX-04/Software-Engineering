@@ -1,8 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState, useCallback } from "react"
 
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { CalendarDays, FolderKanban, PencilLine, RefreshCcw, Tags } from "lucide-react"
@@ -24,6 +25,7 @@ import {
   DEFAULT_DEPARTMENT_COLORS,
   DEFAULT_DEPARTMENT_TEXT_COLOR,
 } from "@/constants/departments"
+import { useNotifications } from "@/components/notifications/Notification"
 
 type ProjectInfoPageProps = {
   params: Promise<{
@@ -57,6 +59,8 @@ const buildDepartmentStyles = (departments?: ProjectDepartmentRecord[] | null) =
 
 export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
   const { projectId } = React.use(params)
+  const router = useRouter()
+  const { notify } = useNotifications()
   const [project, setProject] = React.useState<ProjectRecord | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
@@ -72,9 +76,26 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
     setError(null)
     setProject(null)
   })
+  const redirectedRef = useRef(false)
+
+  const redirectToProjects = useCallback(
+    (message: string) => {
+      if (redirectedRef.current) {
+        return
+      }
+      redirectedRef.current = true
+      notify({
+        title: "Project unavailable",
+        description: message,
+        variant: "destructive",
+      })
+      router.replace("/projects")
+    },
+    [notify, router]
+  )
 
   React.useEffect(() => {
-    if (!projectId || navigationAbortRef.current) {
+    if (!projectId || navigationAbortRef.current || redirectedRef.current) {
       return
     }
     let active = true
@@ -89,8 +110,8 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
       .then((data) => {
         if (!active || navigationAbortRef.current) return
         if (!data) {
-          setError("Project not found.")
           setProject(null)
+          redirectToProjects("This project may have been removed or you lost access.")
           return
         }
         setProject(data)
@@ -110,6 +131,11 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
           return
         }
         console.error("Failed to fetch project info", fetchError)
+        notify({
+          title: "Failed to load project",
+          description: "Unable to load project information right now.",
+          variant: "destructive",
+        })
         setError("Unable to load project information.")
       })
       .finally(() => {
@@ -121,7 +147,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
     return () => {
       active = false
     }
-  }, [hasLoadedOnce, navigationAbortRef, projectId, refreshToken])
+  }, [hasLoadedOnce, navigationAbortRef, notify, projectId, redirectToProjects, refreshToken])
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -144,7 +170,7 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
   }, [projectId])
 
   useEffect(() => {
-    if (!projectId || navigationAbortRef.current) {
+    if (!projectId || navigationAbortRef.current || redirectedRef.current) {
       return
     }
     let active = true

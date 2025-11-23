@@ -42,7 +42,17 @@ export default function CreateTaskPage({ params }: CreateTaskPageProps) {
   const router = useRouter()
   const [submitting, setSubmitting] = React.useState(false)
   const { notify } = useNotifications()
-  const { memberOptions, loading: formLoading, error: formError } = useTaskFormData(projectId)
+  const { memberOptions, loading: formLoading, error: formError, notFound } = useTaskFormData(
+    projectId
+  )
+
+  const handleProjectUnavailable = React.useCallback(() => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back()
+      return
+    }
+    router.push("/projects")
+  }, [router])
 
   const handleSubmit = async (values: TaskFormValues) => {
     if (!projectId) {
@@ -100,6 +110,29 @@ export default function CreateTaskPage({ params }: CreateTaskPageProps) {
     }
     router.push(`/projects/${projectId}/task`)
   }, [projectId, router])
+
+  React.useEffect(() => {
+    if (!notFound) {
+      return
+    }
+    notify({
+      title: "Project unavailable",
+      description: "This project may have been removed or you no longer have access.",
+      variant: "destructive",
+    })
+    handleProjectUnavailable()
+  }, [handleProjectUnavailable, notFound, notify])
+
+  React.useEffect(() => {
+    if (!formError || notFound) {
+      return
+    }
+    notify({
+      title: "Create task failed",
+      description: formError,
+      variant: "destructive",
+    })
+  }, [formError, notFound, notify])
 
   return (
     <div className="asap-scroll w-full min-h-[calc(100vh-6.5rem)] px-[clamp(3.25rem,4vw,3.25rem)] pt-3">

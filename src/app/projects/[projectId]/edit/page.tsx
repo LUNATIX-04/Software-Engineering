@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 
 import { ProgressBar } from "@/components/ui/progress-bar"
@@ -42,9 +42,38 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
     Record<string, { color: string; textColor: string }>
   >({})
   const [departmentColorsLoading, setDepartmentColorsLoading] = useState(true)
+  const redirectedRef = useRef(false)
+
+  const handleProjectUnavailable = useCallback(
+    (message: string) => {
+      if (redirectedRef.current) {
+        return
+      }
+      redirectedRef.current = true
+      notify({
+        title: "Project unavailable",
+        description: message,
+        variant: "destructive",
+      })
+      router.replace("/projects")
+    },
+    [notify, router]
+  )
+
+  const surfaceSubmitError = useCallback(
+    (message: string) => {
+      setSubmitError(message)
+      notify({
+        title: "Update failed",
+        description: message,
+        variant: "destructive",
+      })
+    },
+    [notify]
+  )
 
   useEffect(() => {
-    if (!projectId) {
+    if (!projectId || redirectedRef.current) {
       return
     }
     let active = true
@@ -56,8 +85,8 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
       .then((data) => {
         if (!active) return
         if (!data) {
-          setLoadError("Project not found.")
           setProject(null)
+          handleProjectUnavailable("This project may have been removed or you lost access.")
           return
         }
         setProject(data)
@@ -66,6 +95,11 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
         console.error("Failed to fetch project", error)
         if (!active) return
         setLoadError("Unable to load project information.")
+        notify({
+          title: "Failed to load project",
+          description: "Unable to load project information right now.",
+          variant: "destructive",
+        })
       })
       .finally(() => {
         if (!active) return
@@ -75,10 +109,10 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
     return () => {
       active = false
     }
-  }, [projectId])
+  }, [handleProjectUnavailable, notify, projectId])
 
   useEffect(() => {
-    if (!projectId) {
+    if (!projectId || redirectedRef.current) {
       return
     }
     let active = true
@@ -128,7 +162,7 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
       try {
         const title = values.title.trim()
         if (!title) {
-          setSubmitError("Project title is required.")
+          surfaceSubmitError("Project title is required.")
           setSubmitting(false)
           return
         }
@@ -144,7 +178,8 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
             imageUrl = await uploadProjectImage(values.imageFile)
           } catch (error) {
             console.error("Failed to upload project image", error)
-            setSubmitError("Unable to upload project image. Please try again.")
+            surfaceSubmitError("Unable to upload project image. Please try again.")
+            setSubmitting(false)
             return
           }
         }
@@ -209,7 +244,7 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
         console.error("Failed to update project", error)
         const raw =
           error instanceof Error ? error.message : "Unable to save changes right now."
-        setSubmitError(
+        surfaceSubmitError(
           raw === "Authentication required" || raw === "Unauthorized"
             ? "Please sign in again and retry."
             : raw
@@ -218,7 +253,7 @@ export default function EditProjectPage({ params }: EditProjectPageProps) {
         setSubmitting(false)
       }
     },
-    [project?.imageUrl, projectId, router]
+    [project?.imageUrl, projectId, router, surfaceSubmitError]
   )
 
   const renderContent = () => {

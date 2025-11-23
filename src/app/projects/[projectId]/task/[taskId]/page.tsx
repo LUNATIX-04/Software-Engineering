@@ -693,8 +693,7 @@ function TaskSubmissionPanel({
     hasSubmission &&
     !canSubmitTask &&
     (taskStatus === "BLOCKED" || taskStatus === "SUBMITTED")
-  const showSubmissionButton =
-    isAssignee && hasSubmission && (canSubmitTask || isSeeYourTaskMode)
+  const showSubmissionButton = isAssignee && (canSubmitTask || !hasSubmission || isSeeYourTaskMode)
   const descriptionText = isSeeYourTaskMode
     ? "Submission recorded. Please wait for the owner or assignee to review and approve it."
     : shouldShowWaitingHint
@@ -726,10 +725,10 @@ function TaskSubmissionPanel({
                 className={`h-11 rounded-full px-6 text-xs font-semibold uppercase tracking-[0.3em] shadow-[0_6px_0_rgba(63,52,120,0.2)] transition ${
                   effectiveHasSubmission
                     ? "bg-primary text-white hover:bg-primary/90"
-                    : "bg-[var(--task-description-bg)] text-[var(--task-hero-text)] border border-primary/30 hover:border-primary/60 hover:bg-white"
+                    : "bg-[var(--task-status-in-progress-bg)] text-[var(--task-status-in-progress-text)] border border-primary/30 hover:border-primary/60 hover:bg-white"
                 }`}
               >
-                {isSeeYourTaskMode ? "See Submission" : "Edit Submission"}
+                {isSeeYourTaskMode ? "See Submission" : hasSubmission ? "Edit Submission" : "Submit Work"}
               </Button>
             </DialogTrigger>
             <DialogContent className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-6 shadow-[0_20px_60px_rgba(63,52,120,0.2)]">
@@ -1008,6 +1007,17 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const { projectId, taskId } = React.use(params)
   const router = useRouter()
   const { notify } = useNotifications()
+  const navigateBackToTaskList = useCallback(() => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.back()
+      return
+    }
+    if (projectId) {
+      router.push(`/projects/${projectId}/task`)
+      return
+    }
+    router.push("/projects")
+  }, [projectId, router])
   const supabase = React.useMemo(
     () => (typeof window === "undefined" ? null : getSupabaseBrowserClient()),
     []
@@ -1064,7 +1074,13 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         cache: "no-store",
       })
       if (response.status === 404) {
-        throw new Error("Not found")
+        notify({
+          title: "Task unavailable",
+          description: "This task no longer exists or you no longer have access.",
+          variant: "destructive",
+        })
+        navigateBackToTaskList()
+        return
       }
       if (!response.ok) {
         throw new Error("Failed to load task")
@@ -1080,7 +1096,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     } finally {
       setLoading(false)
     }
-  }, [projectId, taskId])
+  }, [navigateBackToTaskList, notify, projectId, taskId])
 
   React.useEffect(() => {
     loadTask()
@@ -1401,7 +1417,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   }, [task])
   const isAssignedMember = membership ? assignedMemberIds.has(membership.id) : false
   const viewerIsAssigner = Boolean(task && membership?.id === task.createdBy.id)
-  const isAssignee = Boolean(membership) && isAssignedMember && !viewerIsAssigner
+  const isAssignee = Boolean(membership) && isAssignedMember
   const taskBlocked = status === "BLOCKED"
   const taskComplete = status === "SUBMITTED"
   const canSubmitTask = isAssignee && !taskBlocked && !taskComplete
@@ -1412,9 +1428,13 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       : savedTaskStatus === "SUBMITTED"
         ? "The owner accepted this submission, so no more edits are allowed."
         : null
-  const canReviewSubmission = viewerIsAssigner && Boolean(task?.submission)
-  const ownerViewingSubmission = viewerIsAssigner && Boolean(task?.submission)
-  const assignedMemberWaitingReview = Boolean(task?.submission) && isAssignee
+  const viewerHasReviewPrivileges = Boolean(
+    membership && [PROJECT_ROLE.OWNER, PROJECT_ROLE.HEADER].includes(membership.role)
+  )
+  const reviewerOrAssigner = viewerIsAssigner || viewerHasReviewPrivileges
+  const canReviewSubmission = reviewerOrAssigner && Boolean(task?.submission)
+  const ownerViewingSubmission = reviewerOrAssigner && Boolean(task?.submission)
+  const assignedMemberWaitingReview = isAssignee
 
   const detailUrl = React.useMemo(() => `/projects/${projectId}/task/${taskId}`, [projectId, taskId])
   const pendingSubmissionNotifyRef = React.useRef<string | null>(null)
@@ -1751,12 +1771,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   }
 
   const handleBackClick = useCallback(() => {
-    if (typeof window !== "undefined" && window.history.length > 1) {
-      router.back()
-      return
-    }
-    router.push("/projects")
-  }, [router])
+    navigateBackToTaskList()
+  }, [navigateBackToTaskList])
 
   const assignDateValue = useMemo(() => parseUtcDateAsLocal(task?.createdAt ?? null), [task?.createdAt])
   const startlineDateValue = useMemo(() => {
@@ -2100,7 +2116,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
             <div className="space-y-6 w-full max-w-2xl">
 
-              {!viewerIsAssigner && isAssignee && (
+              {isAssignee && (
                 <TaskSubmissionPanel
                   shouldShowWaitingHint={shouldShowWaitingHint}
                   hasSubmission={hasSubmission}
@@ -2134,7 +2150,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                 />
               )}
 
-              {viewerIsAssigner && !canSubmitTask && !ownerViewingSubmission &&(
+              {reviewerOrAssigner && !canSubmitTask && !ownerViewingSubmission && (
                 <div className="rounded-[2rem] border border-dashed border-primary/40 bg-white/70 px-6 py-5 text-sm font-medium text-[var(--task-hero-text)] shadow-inner">
                   <p className="text-base font-semibold text-primary">Awaiting Submission</p>
                   <p className="mt-1 text-sm text-[var(--task-subtle-text)]">
@@ -2143,7 +2159,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                 </div>
               )}
 
-              {!viewerIsAssigner && assignedMemberWaitingReview && (
+              {assignedMemberWaitingReview && (
                 <TaskFeedbackPanel
                   feedbackMarker={feedbackMarker}
                   feedbackAcknowledgedMarker={feedbackAcknowledgedMarker}
@@ -2154,7 +2170,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               )}
 
 
-              {viewerIsAssigner && ownerViewingSubmission && (
+              {reviewerOrAssigner && ownerViewingSubmission && (
                 <TaskSubmissionDetailsPanel
                   submissionMarker={submissionMarker}
                   hasPendingSubmissionAcknowledgement={hasPendingSubmissionAcknowledgement}
@@ -2165,7 +2181,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               )}
 
 
-              {viewerIsAssigner && canReviewSubmission && (
+              {reviewerOrAssigner && canReviewSubmission && (
                 <TaskReviewSection
                   status={status}
                   setStatus={setStatus}

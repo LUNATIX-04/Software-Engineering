@@ -20,6 +20,7 @@ export function useTaskFormData(projectId?: string) {
   const [memberOptions, setMemberOptions] = useState<TaskAssigneeOption[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [notFound, setNotFound] = useState(false)
 
   const load = useCallback(async () => {
     if (!projectId) {
@@ -31,6 +32,7 @@ export function useTaskFormData(projectId?: string) {
 
     setLoading(true)
     setError(null)
+    setNotFound(false)
 
     try {
       const response = await fetch(`/api/projects/${projectId}/members`, {
@@ -38,6 +40,7 @@ export function useTaskFormData(projectId?: string) {
       })
 
       if (response.status === 404) {
+        setNotFound(true)
         throw new Error("Not found")
       }
       if (!response.ok) {
@@ -69,7 +72,7 @@ export function useTaskFormData(projectId?: string) {
     void load()
   }, [load])
 
-  return { memberOptions, loading, error, reload: load }
+  return { memberOptions, loading, error, reload: load, notFound }
 }
 
 export async function createProjectTask(
