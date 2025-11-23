@@ -35,6 +35,7 @@ import {
   getCachedProjectDepartments,
   getCachedProjectMembers,
   getCachedProjectMembership,
+  invalidateProjectMembers,
   loadProjectDepartments,
   loadProjectMembers,
   loadProjectMembership,
@@ -1151,6 +1152,8 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
           departmentId: nextDepartmentId,
           role: shouldDemoteHeader,
         })
+        invalidateProjectMembers(projectId)
+        await loadMembers()
         if (wasDepartmentHead && previous.departmentId) {
           setRemoteDepartments((prev) =>
             prev.map((dept) =>
@@ -1183,7 +1186,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
         })
       }
     },
-    [departmentHeadMap, fetchDepartments, members, notify, projectId, remoteDepartments]
+    [departmentHeadMap, fetchDepartments, loadMembers, members, notify, projectId, remoteDepartments]
   )
 
   const backAriaLabel = projectId

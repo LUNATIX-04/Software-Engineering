@@ -26,9 +26,10 @@ const normalizeUrl = (value: string) => {
 
 type LinkifiedTextProps = {
   value?: string | null
+  className?: string
 }
 
-export function LinkifiedText({ value }: LinkifiedTextProps) {
+export function LinkifiedText({ value, className }: LinkifiedTextProps) {
   const segments = React.useMemo(() => {
     if (!value) {
       return []
@@ -78,11 +79,12 @@ export function LinkifiedText({ value }: LinkifiedTextProps) {
   }, [pendingHref, handleDialogOpenChange])
 
   if (segments.length === 0) {
-    return <>{value ?? ""}</>
+    return <span className={className}>{value ?? ""}</span>
   }
 
   return (
     <>
+      <span className={className}>
       {segments.map((segment, index) => {
         if (!segment) {
           return null
@@ -109,6 +111,7 @@ export function LinkifiedText({ value }: LinkifiedTextProps) {
           </React.Fragment>
         )
       })}
+      </span>
       <AlertDialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
         <AlertDialogContent className="rounded-[2rem] border-2 border-primary/30 px-8 py-8 text-center shadow-[0_20px_40px_rgba(63,52,120,0.25)]">
           <AlertDialogTitle className="text-lg font-semibold text-[var(--task-hero-text)]">

@@ -266,6 +266,7 @@ body[data-theme-init="pending"] {
   --task-status-blocked-text: var(--destructive-foreground);
   --calendar-range-start-bg: #EBDFFF;
   --calendar-range-middle-bg: #BEDCFF;
+  --calendar-range: #BEDCFF;
   --calendar-range-text: #3F3478;
 
   --destructive: #ef4444;
@@ -541,9 +542,10 @@ body[data-theme-init="pending"] {
   --task-status-in-progress-text: #3f0f0f;
   --task-status-blocked-bg: var(--destructive);
   --task-status-blocked-text: var(--destructive-foreground);
-  --calendar-range-start-bg: #EBDFFF;
-  --calendar-range-middle-bg: #BEDCFF;
-  --calendar-range-text: #3F3478;
+  --calendar-range-start-bg: #ffdfdf;
+  --calendar-range-middle-bg: #ffbebe;
+  --calendar-range: #ffbebe;
+  --calendar-range-text: #ffa4a4;
 
   --destructive: #b91c1c;
   --destructive-foreground: #fff5f5;
@@ -591,6 +593,7 @@ body[data-theme-init="pending"] {
   --notify-destructive-text: #fff5f5;
   --project-info-bg: color-mix(in srgb, #f7f1f3 82%, #ffffff 18%);
   --photo-dialog-bg: #fff5f5;
+  
 }
 
 :root[data-theme="green"] {
@@ -651,6 +654,7 @@ body[data-theme-init="pending"] {
   --task-status-blocked-text: var(--destructive-foreground);
   --calendar-range-start-bg: #d1fae5;
   --calendar-range-middle-bg: #86efac;
+  --calendar-range: #86efac;
   --calendar-range-text: #064e3b;
 
   --destructive: #dc2626;
@@ -761,6 +765,7 @@ body[data-theme-init="pending"] {
   --task-status-blocked-text: var(--destructive-foreground);
   --calendar-range-start-bg: #fde68a;
   --calendar-range-middle-bg: #fcd34d;
+  --calendar-range: #fcd34d;
   --calendar-range-text: #78350f;
 
   --destructive: #b91c1c;
@@ -1565,9 +1570,12 @@ body[data-theme-init="pending"] {
   color: var(--primary);
   text-decoration: underline;
   text-underline-offset: 0.2rem;
+  word-break: break-all;
+  display: inline-block;
 }
 
 .asap-read-link:hover {
   color: var(--link-hover, var(--secondary));
 }
+
 }
