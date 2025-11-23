@@ -8,7 +8,8 @@
     "start": "next start",
     "test": "jest",
     "dev:api": "bun --watch run src/server/elysia.ts",
-    "start:api": "bun run src/server/elysia.ts"
+    "start:api": "bun run src/server/elysia.ts",
+    "prisma:migrate": "prisma migrate deploy"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
