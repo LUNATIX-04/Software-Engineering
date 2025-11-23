@@ -1245,114 +1245,113 @@ export function registerTaskRoutes(app: Elysia) {
         payload,
       })
       const title = typeof payload?.title === "string" ? payload.title.trim() : undefined
-    const detail =
-      typeof payload?.detail === "string" && payload.detail.trim().length > 0
-        ? payload.detail.trim()
-        : null
-    const departmentId =
-      typeof payload?.departmentId === "string" && payload.departmentId.trim().length > 0
-        ? payload.departmentId
-        : null
-    const assigneeIds = Array.isArray(payload?.assigneeIds)
-      ? payload.assigneeIds.filter((value: unknown): value is string => typeof value === "string")
-      : undefined
-    const statusRaw = typeof payload?.status === "string" ? payload.status.toUpperCase() : undefined
-    const status =
-      statusRaw && TASK_STATUS_VALUES.includes(statusRaw as TaskStatusEnum)
-        ? (statusRaw as TaskStatusEnum)
+      const detail =
+        typeof payload?.detail === "string" && payload.detail.trim().length > 0
+          ? payload.detail.trim()
+          : null
+      const departmentId =
+        typeof payload?.departmentId === "string" && payload.departmentId.trim().length > 0
+          ? payload.departmentId
+          : null
+      const assigneeIds = Array.isArray(payload?.assigneeIds)
+        ? payload.assigneeIds.filter((value: unknown): value is string => typeof value === "string")
         : undefined
-    const startDate = parseDeadlineInput(payload?.startDate)
-    const dueDate = parseDeadlineInput(payload?.deadline)
-    const cardColor = payload?.cardColor ? parseCardColor(payload.cardColor) : undefined
-    const cardTextColor = cardColor ? resolveCardTextColor(cardColor) : undefined
+      const statusRaw = typeof payload?.status === "string" ? payload.status.toUpperCase() : undefined
+      const status =
+        statusRaw && TASK_STATUS_VALUES.includes(statusRaw as TaskStatusEnum)
+          ? (statusRaw as TaskStatusEnum)
+          : undefined
+      const startDate = parseDeadlineInput(payload?.startDate)
+      const dueDate = parseDeadlineInput(payload?.deadline)
+      const cardColor = payload?.cardColor ? parseCardColor(payload.cardColor) : undefined
+      const cardTextColor = cardColor ? resolveCardTextColor(cardColor) : undefined
 
-    const updatePayload: Record<string, unknown> = {}
-    if (title !== undefined) {
-      if (!title) {
-        return new Response(JSON.stringify({ error: "Title is required" }), { status: 400 })
-      }
-      updatePayload.title = title
-    }
-    if (detail !== undefined) {
-      updatePayload.detail = detail
-    }
-    if (departmentId !== undefined) {
-      if (departmentId) {
-        const department = await prisma.projectDepartment.findFirst({
-          where: { id: departmentId, projectId: params.projectId },
-          select: { id: true },
-        })
-        if (!department) {
-          return new Response(JSON.stringify({ error: "Department not found" }), { status: 404 })
+      const updatePayload: Record<string, unknown> = {}
+      if (title !== undefined) {
+        if (!title) {
+          return new Response(JSON.stringify({ error: "Title is required" }), { status: 400 })
         }
-        updatePayload.departmentId = departmentId
-      } else {
-        updatePayload.departmentId = null
+        updatePayload.title = title
       }
-    }
-    if (status !== undefined) {
-      updatePayload.status = status
-    }
-    if (startDate !== undefined) {
-      updatePayload.startDate = startDate
-    }
-    if (dueDate !== undefined) {
-      updatePayload.dueDate = dueDate
-    }
-    if (cardColor) {
-      updatePayload.cardColor = cardColor
-      updatePayload.cardTextColor = cardTextColor ?? resolveCardTextColor(cardColor)
-    }
-
-    if (Object.keys(updatePayload).length === 0 && assigneeIds === undefined) {
-      return new Response(JSON.stringify({ error: "No updates provided" }), { status: 400 })
-    }
-
-    if (assigneeIds !== undefined) {
-      if (assigneeIds.length > 0) {
-        const members = await projectMembers.findMany({
-          where: {
-            id: { in: assigneeIds },
-            projectId: params.projectId,
-          },
-          select: { id: true },
-        })
-        if (members.length !== assigneeIds.length) {
-          return new Response(JSON.stringify({ error: "One or more assignees are invalid" }), { status: 400 })
+      if (detail !== undefined) {
+        updatePayload.detail = detail
+      }
+      if (departmentId !== undefined) {
+        if (departmentId) {
+          const department = await prisma.projectDepartment.findFirst({
+            where: { id: departmentId, projectId: params.projectId },
+            select: { id: true },
+          })
+          if (!department) {
+            return new Response(JSON.stringify({ error: "Department not found" }), { status: 404 })
+          }
+          updatePayload.departmentId = departmentId
+        } else {
+          updatePayload.departmentId = null
         }
       }
-    }
-
-    const task = await prisma.$transaction(async (tx) => {
-      if (Object.keys(updatePayload).length > 0) {
-        await tx.projectTask.update({
-          where: { id: params.taskId },
-          data: updatePayload,
-        })
+      if (status !== undefined) {
+        updatePayload.status = status
       }
+      if (startDate !== undefined) {
+        updatePayload.startDate = startDate
+      }
+      if (dueDate !== undefined) {
+        updatePayload.dueDate = dueDate
+      }
+      if (cardColor) {
+        updatePayload.cardColor = cardColor
+        updatePayload.cardTextColor = cardTextColor ?? resolveCardTextColor(cardColor)
+      }
+
+      if (Object.keys(updatePayload).length === 0 && assigneeIds === undefined) {
+        return new Response(JSON.stringify({ error: "No updates provided" }), { status: 400 })
+      }
+
       if (assigneeIds !== undefined) {
-        await tx.projectTaskAssignee.deleteMany({
-          where: { taskId: params.taskId },
-        })
         if (assigneeIds.length > 0) {
-          await tx.projectTaskAssignee.createMany({
-            data: assigneeIds.map((memberId: string) => ({
-              taskId: params.taskId,
-              memberId,
-            })),
+          const members = await projectMembers.findMany({
+            where: {
+              id: { in: assigneeIds },
+              projectId: params.projectId,
+            },
+            select: { id: true },
+          })
+          if (members.length !== assigneeIds.length) {
+            return new Response(JSON.stringify({ error: "One or more assignees are invalid" }), { status: 400 })
+          }
+        }
+      }
+
+      const task = await prisma.$transaction(async (tx) => {
+        if (Object.keys(updatePayload).length > 0) {
+          await tx.projectTask.update({
+            where: { id: params.taskId },
+            data: updatePayload,
           })
         }
+        if (assigneeIds !== undefined) {
+          await tx.projectTaskAssignee.deleteMany({
+            where: { taskId: params.taskId },
+          })
+          if (assigneeIds.length > 0) {
+            await tx.projectTaskAssignee.createMany({
+              data: assigneeIds.map((memberId: string) => ({
+                taskId: params.taskId,
+                memberId,
+              })),
+            })
+          }
+        }
+
+        return loadTask(params.projectId, params.taskId)
+      })
+
+      if (!task) {
+        return new Response(JSON.stringify({ error: "Not found" }), { status: 404 })
       }
 
-      return loadTask(params.projectId, params.taskId)
-    })
-
-    if (!task) {
-      return new Response(JSON.stringify({ error: "Not found" }), { status: 404 })
-    }
-
-    return new Response(JSON.stringify(serializeTask(task)))
-  })
+      return new Response(JSON.stringify(serializeTask(task)))
     } catch (error) {
       console.error("Failed to update task", {
         projectId: params.projectId,
@@ -1361,7 +1360,7 @@ export function registerTaskRoutes(app: Elysia) {
       })
       return new Response(JSON.stringify({ error: "Internal server error" }), { status: 500 })
     }
-
+  })
   app.delete("/projects/:projectId/tasks/:taskId", async ({ params }) => {
     const supabase = await createClient()
     const {
