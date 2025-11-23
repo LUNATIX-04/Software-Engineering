@@ -136,7 +136,8 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
       if (navigationAbortRef.current) {
         return
       }
-      setDepartments(applyPendingColors(sortedDepartments(data)))
+      const normalized = Array.isArray(data) ? data : []
+      setDepartments(applyPendingColors(sortedDepartments(normalized)))
     } catch (error) {
       console.error("Failed to load departments", error)
       const message =
