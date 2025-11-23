@@ -167,7 +167,7 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
       if (navigationAbortRef.current) {
         return
       }
-      setMembers(data)
+      setMembers(Array.isArray(data) ? data : [])
     } catch (error) {
       console.error("Failed to load project members", error)
       if (!navigationAbortRef.current) {
