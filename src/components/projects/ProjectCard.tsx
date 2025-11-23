@@ -240,7 +240,7 @@ export function ProjectCard({
         </div>
         {description ? (
           <p
-            className="clamp-ellipsis-1 min-w-0 text-foreground/70"
+            className="clamp-ellipsis-1 min-w-0 text-foreground/70 whitespace-pre-line"
             data-cy={buildDataCy("project-card-description")}
           >
             {description}

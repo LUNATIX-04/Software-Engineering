@@ -247,7 +247,10 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
 
     const role = project.membership?.role ?? "MEMBER"
     const isOwner = role === "OWNER"
-    const hasDescription = Boolean(project.description?.trim())
+    const descriptionLines = project.description
+      ? project.description.split(/\r?\n/)
+      : []
+    const hasDescription = descriptionLines.some((line) => Boolean(line.trim()))
     const hasDepartments = project.departments.length > 0
     const departmentChipVariant = profile?.departmentLayout ?? "fullWidth"
     const departmentChipBaseClass =
@@ -264,9 +267,9 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
       background: "color-mix(in srgb, var(--muted) 70%, var(--card) 30%)",
       text: "var(--foreground)",
     }
-    const projectDetailCopy = hasDescription
-      ? project.description
-      : "This project does not have a description yet. Add one from the edit page to help your team stay aligned."
+    const projectDetailCopyLines = hasDescription
+      ? descriptionLines
+      : ["This project does not have a description yet. Add one from the edit page to help your team stay aligned."]
 
     return (
       <>
@@ -377,8 +380,16 @@ export default function ProjectInfoPage({ params }: ProjectInfoPageProps) {
           <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-xl font-semibold text-foreground">Project Detail</h2>
-              <p className="mt-1 text-x text-foreground/70" data-cy="project-description">
-                {projectDetailCopy}
+              <p
+                className="mt-1 text-x text-foreground/70 whitespace-pre-line break-words"
+                data-cy="project-description"
+              >
+                {projectDetailCopyLines.map((line, index) => (
+                  <React.Fragment key={`project-description-line-${index}`}>
+                    {line}
+                    {index !== projectDetailCopyLines.length - 1 && <br />}
+                  </React.Fragment>
+                ))}
               </p>
             </div>
           </header>
