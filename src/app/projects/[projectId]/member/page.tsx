@@ -646,7 +646,13 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   }, [fetchDepartments, loadMembers, navigationAbortRef, projectId])
 
   useEffect(() => {
-    setActiveDepartments((prev) => prev.filter((dept) => departmentOptions.includes(dept)))
+    setActiveDepartments((prev) => {
+      const next = prev.filter((dept) => departmentOptions.includes(dept))
+      if (next.length === prev.length) {
+        return prev
+      }
+      return next
+    })
   }, [departmentOptions])
 
   useEffect(() => {
