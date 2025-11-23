@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
   "installCommand": "bun install --frozen-lockfile",
-  "buildCommand": "bun prisma generate && bun run build",
+  "buildCommand": "bun prisma migrate dev && bun run build",
   "devCommand": "bun run dev"
 }
