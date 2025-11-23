@@ -1431,8 +1431,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const viewerHasReviewPrivileges =
     membership?.role === PROJECT_ROLE.OWNER || membership?.role === PROJECT_ROLE.HEADER
   const reviewerOrAssigner = viewerIsAssigner || viewerHasReviewPrivileges
-  const canReviewSubmission = reviewerOrAssigner && Boolean(task?.submission)
   const ownerViewingSubmission = reviewerOrAssigner && Boolean(task?.submission)
+  const canReviewSubmission = ownerViewingSubmission && !isAssignee
   const assignedMemberWaitingReview = isAssignee
 
   const detailUrl = React.useMemo(() => `/projects/${projectId}/task/${taskId}`, [projectId, taskId])
@@ -2149,7 +2149,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                 />
               )}
 
-              {reviewerOrAssigner && !canSubmitTask && !ownerViewingSubmission && (
+              {reviewerOrAssigner && !canSubmitTask && !ownerViewingSubmission && !isAssignee && (
                 <div className="rounded-[2rem] border border-dashed border-primary/40 bg-white/70 px-6 py-5 text-sm font-medium text-[var(--task-hero-text)] shadow-inner">
                   <p className="text-base font-semibold text-primary">Awaiting Submission</p>
                   <p className="mt-1 text-sm text-[var(--task-subtle-text)]">
@@ -2169,7 +2169,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               )}
 
 
-              {reviewerOrAssigner && ownerViewingSubmission && (
+              {canReviewSubmission && (
                 <TaskSubmissionDetailsPanel
                   submissionMarker={submissionMarker}
                   hasPendingSubmissionAcknowledgement={hasPendingSubmissionAcknowledgement}
@@ -2180,7 +2180,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               )}
 
 
-              {reviewerOrAssigner && canReviewSubmission && (
+              {canReviewSubmission && (
                 <TaskReviewSection
                   status={status}
                   setStatus={setStatus}
