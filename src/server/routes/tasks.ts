@@ -1323,7 +1323,7 @@ export function registerTaskRoutes(app: Elysia) {
         }
       }
 
-      const task = await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx) => {
         if (Object.keys(updatePayload).length > 0) {
           await tx.projectTask.update({
             where: { id: params.taskId },
@@ -1343,9 +1343,9 @@ export function registerTaskRoutes(app: Elysia) {
             })
           }
         }
-
-        return loadTask(params.projectId, params.taskId)
       })
+
+      const task = await loadTask(params.projectId, params.taskId)
 
       if (!task) {
         return new Response(JSON.stringify({ error: "Not found" }), { status: 404 })
