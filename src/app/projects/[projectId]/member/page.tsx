@@ -336,7 +336,8 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       if (navigationAbortRef.current) {
         return
       }
-      const normalized = normalizeMemberDepartments(response).sort(
+      const normalizedSource = Array.isArray(response) ? response : []
+      const normalized = normalizeMemberDepartments(normalizedSource).sort(
         (a, b) => a.order - b.order || a.name.localeCompare(b.name)
       )
       setRemoteDepartments(normalized)
