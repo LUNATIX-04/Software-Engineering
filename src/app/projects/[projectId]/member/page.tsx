@@ -368,7 +368,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       if (navigationAbortRef.current) {
         return
       }
-      const normalized = normalizeMembers(remoteMembers)
+      const normalized = normalizeMembers(Array.isArray(remoteMembers) ? remoteMembers : [])
       setMembers(normalized)
     } catch (error) {
       console.error("Failed to load members", error)
