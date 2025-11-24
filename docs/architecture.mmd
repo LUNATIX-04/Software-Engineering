@@ -1,0 +1,76 @@
+flowchart TD
+
+    %% ---------- Client Layer ----------
+    subgraph ClientLayer["Client Layer (Frontend)"]
+        Browser["Web Browser"]
+        NextApp["Next.js + React (AppShell, Projects, Tasks UI)"]
+        Browser --> NextApp
+    end
+
+    %% ---------- Next.js Server Layer ----------
+    subgraph NextServer["Next.js Server"]
+        NextRuntime["Next.js Runtime"]
+        Middleware["Middleware (Supabase SSR Auth, CSP)\nsrc/middleware.ts"]
+        ApiRoute["API Route /api/[...elysia]\nsrc/app/api/[...elysia]/route.ts"]
+        NextRuntime --> Middleware
+        Middleware --> ApiRoute
+    end
+
+    NextApp -->|HTTP pages & fetch /api| Middleware
+
+    %% ---------- Service Layer (Elysia) ----------
+    subgraph ServiceLayer["Service Layer (Elysia API)\nsrc/server/elysia.ts"]
+        Elysia["Elysia App Server"]
+
+        AuthMod["Auth & OAuth Callback\nsrc/server/routes/auth.ts"]
+        TradAuthMod["Traditional Auth (Email/Password)\nsrc/server/routes/traditional-auth.ts"]
+        ProjectMod["Projects (CRUD, Usage)\nsrc/server/routes/projects.ts"]
+        DeptMod["Departments (CRUD, Head, Color)\nsrc/server/routes/departments.ts"]
+        MemberMod["Members & Invites\nsrc/server/routes/members.ts, invites.ts"]
+        TaskMod["Tasks & Submissions\nsrc/server/routes/tasks.ts"]
+        AccountMod["Account/Profile\nsrc/server/routes/account.ts"]
+        MediaMod["Media & Image Proxy\nsrc/server/routes/media.ts"]
+
+        Elysia --> AuthMod
+        Elysia --> TradAuthMod
+        Elysia --> ProjectMod
+        Elysia --> DeptMod
+        Elysia --> MemberMod
+        Elysia --> TaskMod
+        Elysia --> AccountMod
+        Elysia --> MediaMod
+    end
+
+    ApiRoute --> Elysia
+
+    %% ---------- Data Layer ----------
+    subgraph DataLayer["Data Layer"]
+        Prisma["Prisma ORM Client\nsrc/lib/prisma.ts"]
+        DB["Supabase PostgreSQL\nprisma/schema.prisma"]
+        Prisma --> DB
+    end
+
+    ServiceLayer --> Prisma
+
+    %% ---------- External Services ----------
+    subgraph External["External Services"]
+        SupabaseAuth["Supabase Auth\n(Sessions & Cookies)"]
+        GoogleOAuth["Google OAuth Provider"]
+    end
+
+    NextApp --> SupabaseAuth
+    Middleware --> SupabaseAuth
+    Elysia --> SupabaseAuth
+    SupabaseAuth --> GoogleOAuth
+
+    %% ---------- DevOps & Deployment ----------
+    subgraph DevOps["DevOps & Deployment"]
+        GitHub["GitHub Repository"]
+        Vercel["Vercel CI/CD & Hosting\nvercel.json, DEPLOY.md"]
+    end
+
+    GitHub --> Vercel
+    Vercel --> NextServer
+    Vercel --> DB
+    Vercel --> SupabaseAuth
+

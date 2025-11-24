@@ -23,7 +23,7 @@ import {
   User as UserIcon,
   X,
 } from "lucide-react"
-import type { AuthChangeEvent, Session, RealtimeChannel } from "@supabase/supabase-js"
+import type { AuthChangeEvent, Session } from "@supabase/supabase-js"
 
 import { Button } from "@/components/ui/button"
 import { AccountSettingsContent } from "@/components/account/AccountSettingsPageContent"
@@ -864,71 +864,6 @@ function AppShellInner({ children }: AppShellProps) {
     }
     void loadPendingNotifications()
   }, [authenticatedUser?.id, handleTaskNotification])
-
-  useEffect(() => {
-    if (!authenticatedUser?.id) {
-      return
-    }
-    let active = true
-    let statusChannel: RealtimeChannel | null = null
-
-    const subscribe = () => {
-      const nextChannel = supabase
-        .channel("project-task-status-notifications")
-        .on(
-          "postgres_changes",
-          {
-            event: "update",
-            schema: "public",
-            table: "project_tasks",
-          },
-          (payload: { new?: Record<string, unknown> | null; old?: Record<string, unknown> | null }) => {
-            const newStatus = payload.new?.status as string | undefined
-            const oldStatus = payload.old?.status as string | undefined
-            if (newStatus !== "IN_PROGRESS") {
-              return
-            }
-            if (!["BLOCKED", "SUBMITTED"].includes(oldStatus ?? "")) {
-              return
-            }
-            const projectId = (payload.new?.project_id ?? payload.old?.project_id) as string | undefined
-            const taskId = (payload.new?.id ?? payload.old?.id) as string | undefined
-            if (!projectId || !taskId) {
-              return
-            }
-            void notifyTaskBackInProgress(projectId, taskId)
-          }
-        )
-
-      nextChannel.subscribe((status: string) => {
-        if (!active) return
-        if (status === "SUBSCRIBED") {
-          statusChannel = nextChannel
-          return
-        }
-        if (["CHANNEL_ERROR", "CLOSED", "TIMED_OUT"].includes(status)) {
-          void supabase.removeChannel(nextChannel).finally(() => {
-            if (active) {
-              setTimeout(() => {
-                if (active) {
-                  subscribe()
-                }
-              }, 300)
-            }
-          })
-        }
-      })
-    }
-
-    subscribe()
-
-    return () => {
-      active = false
-      if (statusChannel) {
-        void supabase.removeChannel(statusChannel)
-      }
-    }
-  }, [authenticatedUser?.id, supabase, notifyTaskBackInProgress])
 
   useLayoutEffect(() => {
     const storedTheme = loadStoredTheme()

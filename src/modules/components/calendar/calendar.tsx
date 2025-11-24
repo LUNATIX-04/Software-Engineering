@@ -23,6 +23,9 @@ const STATUS_COLOR_MAP: Record<TaskStatus, TEventColor> = {
 }
 
 const DEFAULT_EVENT_COLOR: TEventColor = "blue"
+const CALENDAR_PAGE_SIZE = 100
+const CALENDAR_MAX_PAGES = 5
+const CALENDAR_MAX_TASKS = CALENDAR_PAGE_SIZE * CALENDAR_MAX_PAGES
 
 function toEventId(taskId: string) {
   let hash = 0
@@ -133,29 +136,57 @@ export function Calendar({ projectId }: CalendarProps) {
 
   React.useEffect(() => {
     let active = true
+    const controller = new AbortController()
     setLoading(true)
     setError(null)
-    fetchProjectTasks(projectId)
-      .then(({ tasks }) => {
+    const aggregated: TaskRecord[] = []
+
+    const loadPagedTasks = async () => {
+      try {
+        let page = 1
+        while (active && page <= CALENDAR_MAX_PAGES) {
+          const result = await fetchProjectTasks(projectId, {
+            page,
+            pageSize: CALENDAR_PAGE_SIZE,
+            signal: controller.signal,
+          })
+          if (!active) {
+            return
+          }
+          aggregated.push(...result.tasks)
+          const reachedEnd =
+            result.tasks.length < CALENDAR_PAGE_SIZE ||
+            (result.totalPages !== null && page >= result.totalPages) ||
+            aggregated.length >= CALENDAR_MAX_TASKS
+          if (reachedEnd) {
+            break
+          }
+          page += 1
+        }
         if (!active) return
-        setEvents(mapTasksToEvents(tasks, projectId))
-        setUsers(mapTasksToUsers(tasks))
-      })
-      .catch((fetchError) => {
-        if (!active) return
+        setEvents(mapTasksToEvents(aggregated, projectId))
+        setUsers(mapTasksToUsers(aggregated))
+      } catch (fetchError) {
+        if (!active || (fetchError as Error)?.name === "AbortError") {
+          return
+        }
         console.error(fetchError)
         setError(
           fetchError instanceof Error ? fetchError.message : "Unable to load tasks"
         )
         setEvents([])
         setUsers([])
-      })
-      .finally(() => {
+      } finally {
         if (!active) return
         setLoading(false)
-      })
+      }
+    }
+
+    void loadPagedTasks()
+
     return () => {
       active = false
+      controller.abort()
     }
   }, [projectId])
 

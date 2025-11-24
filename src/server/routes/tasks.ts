@@ -40,7 +40,8 @@ type TaskQueryFilters = {
 }
 
 type ParsedTaskQuery = TaskQueryFilters & {
-  pagination: TaskPagination | null
+  pagination: TaskPagination
+  paginationExplicit: boolean
 }
 
 type TaskWithRelations = {
@@ -116,19 +117,19 @@ function collectParamValues(params: URLSearchParams, keys: string[]) {
   return Array.from(values)
 }
 
-function parsePaginationParams(params: URLSearchParams): TaskPagination | null {
+function parsePaginationParams(params: URLSearchParams): { pagination: TaskPagination; explicit: boolean } {
   const hasPage = params.has("page")
   const hasPageSize = params.has("pageSize")
-  if (!hasPage && !hasPageSize) {
-    return null
-  }
   const rawPage = Number(params.get("page"))
   const rawPageSize = Number(params.get("pageSize"))
   const page = Number.isFinite(rawPage) ? clampNumber(Math.trunc(rawPage), 1, Number.MAX_SAFE_INTEGER) : 1
   const pageSize = Number.isFinite(rawPageSize)
     ? clampNumber(Math.trunc(rawPageSize), 1, MAX_PAGE_SIZE)
     : DEFAULT_PAGE_SIZE
-  return { page, pageSize }
+  return {
+    pagination: { page, pageSize },
+    explicit: hasPage || hasPageSize,
+  }
 }
 
 function parseTaskQueryParams(searchParams: URLSearchParams): ParsedTaskQuery {
@@ -153,7 +154,7 @@ function parseTaskQueryParams(searchParams: URLSearchParams): ParsedTaskQuery {
       ? (normalizedScope as TaskScopeFilter)
       : undefined
   const memberId = searchParams.get("memberId") ?? searchParams.get("membershipId") ?? undefined
-  const pagination = parsePaginationParams(searchParams)
+  const { pagination, explicit } = parsePaginationParams(searchParams)
 
   return {
     search: search && search.length > 0 ? search : undefined,
@@ -163,6 +164,7 @@ function parseTaskQueryParams(searchParams: URLSearchParams): ParsedTaskQuery {
     scope,
     memberId: memberId ?? undefined,
     pagination,
+    paginationExplicit: explicit,
   }
 }
 
@@ -427,10 +429,7 @@ function serializeSubmission(
   }
 }
 
-function fetchTasks(
-  where: Prisma.ProjectTaskWhereInput,
-  pagination?: TaskPagination | null
-): Promise<TaskWithRelations[]> {
+function fetchTasks(where: Prisma.ProjectTaskWhereInput, pagination: TaskPagination): Promise<TaskWithRelations[]> {
   const query: Parameters<typeof projectTasks.findMany>[0] = {
     where,
     include: {
@@ -511,10 +510,8 @@ function fetchTasks(
     ],
   }
 
-  if (pagination) {
-    query.skip = (pagination.page - 1) * pagination.pageSize
-    query.take = pagination.pageSize
-  }
+  query.skip = (pagination.page - 1) * pagination.pageSize
+  query.take = pagination.pageSize
 
   return projectTasks.findMany(query).then((result) => result as unknown as TaskWithRelations[])
 }
@@ -652,18 +649,19 @@ export function registerTaskRoutes(app: Elysia) {
     }
     const url = new URL(request.url)
     const parsedQuery = parseTaskQueryParams(url.searchParams)
-    const { pagination, ...filters } = parsedQuery
+    const { pagination, paginationExplicit, ...filters } = parsedQuery
     const where = buildTaskWhere(params.projectId, filters)
+    const shouldIncludeTotals = paginationExplicit
     const [tasks, totalCount] = await Promise.all([
       fetchTasks(where, pagination),
-      pagination ? projectTasks.count({ where }) : Promise.resolve(null),
+      shouldIncludeTotals ? projectTasks.count({ where }) : Promise.resolve(null),
     ])
     const headers = new Headers({
       "Content-Type": "application/json",
     })
-    if (pagination && totalCount !== null) {
-      headers.set("X-Page", String(pagination.page))
-      headers.set("X-Page-Size", String(pagination.pageSize))
+    headers.set("X-Page", String(pagination.page))
+    headers.set("X-Page-Size", String(pagination.pageSize))
+    if (shouldIncludeTotals && totalCount !== null) {
       headers.set("X-Total-Count", String(totalCount))
       headers.set(
         "X-Total-Pages",
