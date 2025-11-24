@@ -128,8 +128,8 @@ export function MemberDetailDialog({
                   />
                 </div>
                 ) : (
-                  <div className="rounded-2xl -mt-2 border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-task-hero whitespace-pre-line break-words break-all">
-                    <div className="asap-scroll max-h-[10rem] overflow-y-auto">
+                <div className="rounded-2xl -mt-2 border border-primary/15 bg-primary/5 px-4 py-3 text-sm text-task-hero whitespace-pre-line break-words break-all">
+                  <div className="asap-scroll max-h-[10rem] overflow-y-auto pr-3">
                       <LinkifiedText
                         value={memberTarget.bio?.length ? memberTarget.bio : "No bio provided."}
                         className="break-words break-all"
