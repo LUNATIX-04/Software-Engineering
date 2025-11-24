@@ -707,6 +707,8 @@ function AppShellInner({ children }: AppShellProps) {
       authenticatedUser.user_metadata?.picture
     )
 
+    const hasEmailIdentity =
+      authenticatedUser.identities?.some((identity) => identity.provider === "email") ?? false
     setPreferencesLoading(true)
     try {
       const { data, error } = await supabase
@@ -736,7 +738,7 @@ function AppShellInner({ children }: AppShellProps) {
           lastSignIn: data.last_sign_in ?? null,
           departmentLayout: ensureDepartmentLayout(loadStoredDepartmentLayout()),
           theme: ensureTheme(loadStoredTheme()),
-          hasPassword: Boolean(data.password_hash),
+          hasPassword: Boolean(data.password_hash) || hasEmailIdentity,
         })
       } else {
         setProfile({
@@ -752,7 +754,7 @@ function AppShellInner({ children }: AppShellProps) {
           lastSignIn: authenticatedUser.last_sign_in_at ?? null,
           departmentLayout: ensureDepartmentLayout(loadStoredDepartmentLayout()),
           theme: ensureTheme(loadStoredTheme()),
-          hasPassword: false,
+          hasPassword: hasEmailIdentity,
         })
       }
     } finally {
