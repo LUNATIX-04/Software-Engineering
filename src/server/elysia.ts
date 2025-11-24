@@ -1,4 +1,5 @@
 import { Elysia } from "elysia"
+import { openapi } from "@elysiajs/openapi"
 
 import { registerProjectRoutes } from "./routes/projects"
 import { registerInviteRoutes } from "./routes/invites"
@@ -10,7 +11,18 @@ import { registerAuthRoutes } from "./routes/auth"
 import { registerAccountRoutes } from "./routes/account"
 import { registerTraditionalAuthRoutes } from "./routes/traditional-auth"
 
-const app = new Elysia()
+const app = new Elysia().use(
+  openapi({
+    path: "/openapi",
+    documentation: {
+      info: {
+        title: "ASAP Project API",
+        version: "1.0.0",
+      },
+    },
+  })
+)
+
 registerMediaRoutes(app)
 registerProjectRoutes(app)
 registerInviteRoutes(app)
@@ -24,3 +36,4 @@ registerAuthRoutes(app)
 export async function handleElysiaRequest(request: Request) {
   return app.handle(request)
 }
+

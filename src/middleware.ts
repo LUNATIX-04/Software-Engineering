@@ -24,7 +24,12 @@ export async function middleware(request: NextRequest) {
   }
 
   const isDev = process.env.NODE_ENV !== "production"
-  const scriptDirectives = ["'self'", "'unsafe-inline'", isDev ? "'unsafe-eval'" : null]
+  const scriptDirectives = [
+    "'self'",
+    "'unsafe-inline'",
+    isDev ? "'unsafe-eval'" : null,
+    "https://cdn.jsdelivr.net",
+  ]
     .filter(Boolean)
     .join(" ")
   const connectSources = [
