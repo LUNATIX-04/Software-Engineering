@@ -103,7 +103,7 @@ export function MemberFilterBar({
             align="start"
             className="dropdown-surface w-60 overflow-hidden rounded-3xl border border-primary/40 bg-popover text-sm font-semibold text-foreground"
           >
-            <div className="member-filter-scroll max-h-[22rem] overflow-y-auto px-2 py-2">
+            <div className="member-filter-scroll dialog-scroll max-h-[22rem] overflow-y-auto px-2 py-2">
               <div className="flex items-center justify-between px-3 py-1.5">
                 <DropdownMenuLabel className="text-xs font-semibold uppercase tracking-wide text-primary/60">
                   Filters

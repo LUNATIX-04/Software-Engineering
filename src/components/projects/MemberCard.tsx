@@ -207,7 +207,7 @@ export function MemberCard({
                   <ChevronDown className="size-4" aria-hidden="true" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="dropdown-surface w-48 rounded-3xl border border-primary/30 bg-card text-sm font-semibold text-primary">
+              <DropdownMenuContent className="dialog-scroll dropdown-surface w-48 max-h-[28rem] overflow-y-auto rounded-3xl border border-primary/30 bg-card text-sm font-semibold text-primary">
                 {roleOptions.map((option) => (
                   <DropdownMenuItem
                     key={option}
@@ -295,7 +295,7 @@ export function MemberCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="dropdown-surface w-44 select-none rounded-3xl border border-primary/40 bg-card px-2 py-2 text-sm font-semibold text-foreground"
+              className="dialog-scroll dropdown-surface w-44 select-none rounded-3xl border border-primary/40 bg-card px-2 py-2 text-sm font-semibold text-foreground"
               onClick={(event) => event.stopPropagation()}
               onPointerDown={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
