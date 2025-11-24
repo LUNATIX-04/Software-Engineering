@@ -262,70 +262,78 @@ export function MemberCard({
             <span className="max-w-[10rem] truncate">{department}</span>
           </span>
         ) : (
-          <DropdownMenu onOpenChange={setDepartmentMenuOpen}>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                className={cn(
-                  "inline-flex h-[2.5rem] min-w-[14rem] select-none items-center justify-center gap-2 rounded-full border-2 border-primary/40 px-5 py-2 text-sm font-semibold shadow-[0_4px_0_color-mix(in_srgb,var(--primary)_20%,transparent)] transition focus:outline-none hover:border-primary hover:bg-primary/10",
-                  department === ADD_DEPARTMENT_LABEL
-                    ? "bg-card text-primary/80 hover:border-primary hover:text-primary"
-                    : "text-foreground",
-                  departmentMenuOpen &&
-                    (department === ADD_DEPARTMENT_LABEL
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-primary bg-primary/10 text-primary")
-                )}
-                style={
-                  department === ADD_DEPARTMENT_LABEL
-                    ? undefined
-                    : {
-                        backgroundColor: departmentStyle?.background,
-                        color: departmentStyle?.text ?? DEFAULT_DEPARTMENT_TEXT_COLOR,
-                      }
-                }
+          <div
+            onClick={(event) => event.stopPropagation()}
+            onPointerDown={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            <DropdownMenu open={departmentMenuOpen} onOpenChange={setDepartmentMenuOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "inline-flex h-[2.5rem] min-w-[14rem] select-none items-center justify-center gap-2 rounded-full border-2 border-primary/40 px-5 py-2 text-sm font-semibold shadow-[0_4px_0_color-mix(in_srgb,var(--primary)_20%,transparent)] transition focus:outline-none hover:border-primary hover:bg-primary/10",
+                    department === ADD_DEPARTMENT_LABEL
+                      ? "bg-card text-primary/80 hover:border-primary hover:text-primary"
+                      : "text-foreground",
+                    departmentMenuOpen &&
+                      (department === ADD_DEPARTMENT_LABEL
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-primary bg-primary/10 text-primary")
+                  )}
+                  style={
+                    department === ADD_DEPARTMENT_LABEL
+                      ? undefined
+                      : {
+                          backgroundColor: departmentStyle?.background,
+                          color: departmentStyle?.text ?? DEFAULT_DEPARTMENT_TEXT_COLOR,
+                        }
+                  }
+                  onClick={(event) => event.stopPropagation()}
+                  onPointerDown={(event) => event.stopPropagation()}
+                  onKeyDown={(event) => event.stopPropagation()}
+                  data-cy={buildDataCy("member-card-department-trigger")}
+                >
+                  <span className="max-w-[10rem] truncate">{department}</span>
+                  <ChevronDown className="size-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="dialog-scroll dropdown-surface w-44 select-none rounded-3xl border border-primary/40 bg-card px-2 py-2 text-sm font-semibold text-foreground"
                 onClick={(event) => event.stopPropagation()}
                 onPointerDown={(event) => event.stopPropagation()}
                 onKeyDown={(event) => event.stopPropagation()}
-                data-cy={buildDataCy("member-card-department-trigger")}
               >
-                <span className="max-w-[10rem] truncate">{department}</span>
-                <ChevronDown className="size-4" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="dialog-scroll dropdown-surface w-44 select-none rounded-3xl border border-primary/40 bg-card px-2 py-2 text-sm font-semibold text-foreground"
-              onClick={(event) => event.stopPropagation()}
-              onPointerDown={(event) => event.stopPropagation()}
-              onKeyDown={(event) => event.stopPropagation()}
-            >
-              {availableDepartments.map((option) => {
-                const isActive = option === department
-                return (
-                  <DropdownMenuItem
-                    key={option}
-                    data-cy={buildDataCy(
-                      `member-card-department-option-${option.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`
-                    )}
-                    onSelect={(event) => {
-                      event.stopPropagation()
-                      onDepartmentSelect(option)
-                    }}
-                    className={cn(
-                      "flex select-none items-center justify-between rounded-2xl px-3 py-2 hover:bg-primary/10 hover:text-primary focus:bg-primary/10",
-                      option === ADD_DEPARTMENT_LABEL
-                        ? "text-primary/100 hover:text-primary focus:text-primary"
-                        : "focus:text-primary"
-                    )}
-                  >
-                    <span className="block max-w-[10rem] truncate">{option}</span>
-                    {isActive ? <Check className="size-4 text-primary" /> : null}
-                  </DropdownMenuItem>
-                )
-              })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+                {availableDepartments.map((option) => {
+                  const isActive = option === department
+                  return (
+                    <DropdownMenuItem
+                      key={option}
+                      data-cy={buildDataCy(
+                        `member-card-department-option-${option.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`
+                      )}
+                      onSelect={(event) => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        onDepartmentSelect(option)
+                        setDepartmentMenuOpen(false)
+                      }}
+                      className={cn(
+                        "flex select-none items-center justify-between rounded-2xl px-3 py-2 hover:bg-primary/10 hover:text-primary focus:bg-primary/10",
+                        option === ADD_DEPARTMENT_LABEL
+                          ? "text-primary/100 hover:text-primary focus:text-primary"
+                          : "focus:text-primary"
+                      )}
+                    >
+                      <span className="block max-w-[10rem] truncate">{option}</span>
+                      {isActive ? <Check className="size-4 text-primary" /> : null}
+                    </DropdownMenuItem>
+                  )
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         )}
       </div>
     </article>
