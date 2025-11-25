@@ -903,6 +903,7 @@ type TaskReviewSectionProps = {
   handleReviewSubmit: () => Promise<void>
   reviewing: boolean
   interactionLocked: boolean
+  isSelfManaged?: boolean
 }
 
 function TaskReviewSection({
@@ -916,12 +917,24 @@ function TaskReviewSection({
   handleReviewSubmit,
   reviewing,
   interactionLocked,
+  isSelfManaged = false,
 }: TaskReviewSectionProps) {
+  const headingText = isSelfManaged ? "Update task status" : "Review submission"
+  const subheadingText = isSelfManaged
+    ? "Set the status for this self-assigned task. Submissions are skipped for personal tasks."
+    : "Provide feedback and set the task status before sending the response."
+  const submitLabel = reviewing
+    ? isSelfManaged
+      ? "Saving…"
+      : "Sending…"
+    : isSelfManaged
+      ? "Save status"
+      : "Send review"
   return (
     <div className="rounded-[2rem] border border-primary/30 bg-white/95 px-6 py-5 shadow-inner space-y-4">
       <div className="space-y-1">
-        <p className="text-base font-semibold text-[var(--task-hero-text)]">Review submission</p>
-        <p className="text-xs text-[var(--task-subtle-text)]">Provide feedback and set the task status before sending the response.</p>
+        <p className="text-base font-semibold text-[var(--task-hero-text)]">{headingText}</p>
+        <p className="text-xs text-[var(--task-subtle-text)]">{subheadingText}</p>
       </div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
         <span className="text-base font-semibold text-[var(--task-hero-text)] sm:flex-shrink-0">Task Status :</span>
@@ -974,16 +987,18 @@ function TaskReviewSection({
           </DropdownMenu>
         </div>
       </div>
-      <div className="textarea-surface group/textarea overflow-hidden rounded-[1.25rem]">
-        <Textarea
-          value={reviewComment}
-          onChange={(event) => onReviewCommentChange(event.target.value)}
-          data-cy="project-task-detail-review-comment"
-          className="project-detail-scroll min-h-[8rem] w-full border-none bg-transparent px-4 py-3 text-sm shadow-none focus-visible:outline-none focus-visible:ring-0"
-          placeholder="Share feedback…"
-          disabled={reviewing || interactionLocked}
-        />
-      </div>
+      {!isSelfManaged && (
+        <div className="textarea-surface group/textarea overflow-hidden rounded-[1.25rem]">
+          <Textarea
+            value={reviewComment}
+            onChange={(event) => onReviewCommentChange(event.target.value)}
+            data-cy="project-task-detail-review-comment"
+            className="project-detail-scroll min-h-[8rem] w-full border-none bg-transparent px-4 py-3 text-sm shadow-none focus-visible:outline-none focus-visible:ring-0"
+            placeholder="Share feedback…"
+            disabled={reviewing || interactionLocked}
+          />
+        </div>
+      )}
       {reviewError && <p className="mt-2 text-xs font-semibold text-destructive">{reviewError}</p>}
       <Button
         type="button"
@@ -993,7 +1008,7 @@ function TaskReviewSection({
         className="inline-flex h-12 w-full items-center justify-center rounded-full border border-primary/30 bg-[var(--task-description-bg)] px-8 text-sm font-semibold text-[var(--task-hero-text)] transition hover:bg-[var(--task-description-bg-hover)]"
         style={{ boxShadow: "0 6px 0 var(--task-shadow)" }}
       >
-        {reviewing ? "Sending…" : "Send review"}
+        {submitLabel}
       </Button>
     </div>
   )
@@ -1422,9 +1437,11 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const isAssignedMember = membership ? assignedMemberIds.has(membership.id) : false
   const viewerIsAssigner = Boolean(task && membership?.id === task.createdBy.id)
   const isAssignee = Boolean(membership) && isAssignedMember
+  const totalAssignees = task?.assignees.length ?? 0
+  const isSelfManagedTask = viewerIsAssigner && isAssignee && totalAssignees === 1
   const taskBlocked = status === "BLOCKED"
   const taskComplete = status === "SUBMITTED"
-  const canSubmitTask = isAssignee && !taskBlocked && !taskComplete
+  const canSubmitTask = isAssignee && !taskBlocked && !taskComplete && !isSelfManagedTask
   const savedTaskStatus = task?.status
   const assigneeStatusNotice =
     savedTaskStatus === "BLOCKED"
@@ -1436,6 +1453,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     membership?.role === PROJECT_ROLE.OWNER || membership?.role === PROJECT_ROLE.HEADER
   const ownerViewingSubmission = viewerIsAssigner && Boolean(task?.submission)
   const canReviewSubmission = ownerViewingSubmission && !isAssignee
+  const shouldShowReviewSection = canReviewSubmission || isSelfManagedTask
   const viewerIsMember = membership?.role === PROJECT_ROLE.MEMBER
   const submissionIsSubmitted = task?.submission?.status === "SUBMITTED"
   const canViewSubmission =
@@ -1443,7 +1461,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
     !viewerIsAssigner &&
     !isAssignee &&
     (viewerHasReviewPrivileges || (viewerIsMember && submissionIsSubmitted))
-  const assignedMemberWaitingReview = isAssignee
+  const assignedMemberWaitingReview = isAssignee && !isSelfManagedTask
+  const showSubmissionPanel = isAssignee && !isSelfManagedTask
   const taskDepartmentId = task?.department?.id ?? null
   const isHeaderOfTaskDepartment =
     membership?.role === PROJECT_ROLE.HEADER &&
@@ -1698,6 +1717,55 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   }, [submissionDialogOpen, task?.submission])
 
   const handleReviewSubmit = async () => {
+    if (isSelfManagedTask) {
+      setReviewing(true)
+      setReviewError(null)
+      try {
+        const taskResponse = await fetch(`/api/projects/${projectId}/tasks/${taskId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status,
+          }),
+        })
+        if (!taskResponse.ok) {
+          const payload = await taskResponse.json().catch(() => null)
+          const message =
+            typeof payload?.error === "string" ? payload.error : "Unable to update task status"
+          throw new Error(message)
+        }
+        const updatedTask = (await taskResponse.json()) as TaskRecord
+        setTask(updatedTask)
+        setStatus(updatedTask.status)
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent(PROJECT_REFRESH_EVENT, {
+              detail: { projectId },
+            })
+          )
+        }
+        notify({
+          title: "Status updated",
+          description: "Task status has been saved.",
+          variant: "success",
+        })
+      } catch (err) {
+        console.error(err)
+        const message = err instanceof Error ? err.message : "Unable to update task status"
+        setReviewError(message)
+        notify({
+          title: "Update failed",
+          description: message,
+          variant: "destructive",
+        })
+      } finally {
+        setReviewing(false)
+      }
+      return
+    }
+
     const submissionId = task?.submission?.id
     if (!submissionId) {
       setReviewError("Submission not found.")
@@ -1845,7 +1913,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const waitingForOwnerResponse =
     Boolean(submissionRecord && submissionRecord.status === "SUBMITTED" && !submissionRecord.acknowledgedAt)
   const effectiveHasSubmission = hasSubmission && !waitingForOwnerResponse
-  const shouldShowWaitingHint = hasSubmission && !effectiveHasSubmission
+  const shouldShowWaitingHint = !isSelfManagedTask && hasSubmission && !effectiveHasSubmission
   const hasPendingSubmissionAcknowledgement = waitingForOwnerResponse
   const submissionViewerDialogProps = React.useMemo(() => {
     if (!submissionRecord) {
@@ -2183,7 +2251,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
             <div className="space-y-6 w-full max-w-2xl">
 
-              {isAssignee && (
+              {showSubmissionPanel && (
                 <TaskSubmissionPanel
                   shouldShowWaitingHint={shouldShowWaitingHint}
                   hasSubmission={hasSubmission}
@@ -2288,7 +2356,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               )}
 
 
-              {canReviewSubmission && (
+              {shouldShowReviewSection && (
                 <TaskReviewSection
                   status={status}
                   setStatus={setStatus}
@@ -2300,6 +2368,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                   handleReviewSubmit={handleReviewSubmit}
                   reviewing={reviewing}
                   interactionLocked={acknowledgingSubmission}
+                  isSelfManaged={isSelfManagedTask}
                 />
               )}
 

@@ -35,7 +35,7 @@ export type ProjectCardProps = {
   onEditProject?: () => void
   onDelete?: () => Promise<void> | void
   onChangeOwner?: () => void
-  onLeaveProject?: () => void
+  onLeaveProject?: () => Promise<void> | void
   onPointerEnter?: () => void
   canEdit?: boolean
   canDelete?: boolean
@@ -68,6 +68,8 @@ export function ProjectCard({
   const [isHovering, setIsHovering] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
+  const [leaving, setLeaving] = useState(false)
   const cardFrame = projectCardSizing.cardProject
 
   const cardStyle: CSSProperties = {
@@ -164,6 +166,50 @@ export function ProjectCard({
       setMenuOpen(false)
       setIsHovering(false)
     }
+  }
+
+  const handleLeaveClick = () => {
+    setLeaveDialogOpen(true)
+    setMenuOpen(false)
+    setIsHovering(true)
+  }
+
+  const handleConfirmLeave = async () => {
+    if (!onLeaveProject) {
+      setLeaveDialogOpen(false)
+      setIsHovering(false)
+      return
+    }
+
+    try {
+      setLeaving(true)
+      await onLeaveProject()
+      setLeaveDialogOpen(false)
+    } catch (error) {
+      console.error("Failed to leave project", error)
+    } finally {
+      setLeaving(false)
+      setIsHovering(false)
+    }
+  }
+
+  const handleLeaveDialogChange = (open: boolean) => {
+    if (leaving) {
+      return
+    }
+    setLeaveDialogOpen(open)
+    if (open) {
+      setMenuOpen(false)
+      setIsHovering(false)
+    }
+  }
+
+  const handleLeaveCancel = () => {
+    if (leaving) {
+      return
+    }
+    setLeaveDialogOpen(false)
+    setIsHovering(false)
   }
 
   const dataCySuffix = typeof dataCyIndex === "number" ? `-${dataCyIndex}` : ""
@@ -335,7 +381,7 @@ export function ProjectCard({
               onSelect={(event) => {
                 event.preventDefault()
                 event.stopPropagation()
-                onLeaveProject?.()
+                handleLeaveClick()
               }}
             >
               <span className="inline-flex items-center gap-2">
@@ -374,6 +420,36 @@ export function ProjectCard({
               data-cy={buildDataCy("project-delete-confirm")}
             >
               {deleting ? "Deleting…" : "Yes"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={leaveDialogOpen} onOpenChange={handleLeaveDialogChange}>
+        <AlertDialogContent className="bg-background border-2 border-primary/30 rounded-[2rem] px-8 py-10 text-center shadow-xl">
+          <AlertDialogTitle className="text-2xl font-semibold text-foreground">
+            Leave this project?
+            <br />
+            <br />
+            <span className="block break-words break-all px-2 text-primary">
+              "{title}"
+            </span>
+          </AlertDialogTitle>
+          <AlertDialogFooter className="mt-8 flex w-full flex-row justify-end gap-4 sm:gap-6">
+            <AlertDialogCancel
+              className="rounded-full bg-secondary border-none px-8 py-3 text-base font-semibold text-secondary-foreground shadow-none transition-colors hover:bg-secondary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              onClick={handleLeaveCancel}
+              disabled={leaving}
+              data-cy={buildDataCy("project-leave-cancel")}
+            >
+              Stay
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-full bg-destructive px-8 py-3 text-base font-semibold text-white hover:bg-destructive/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40"
+              onClick={handleConfirmLeave}
+              disabled={leaving}
+              data-cy={buildDataCy("project-leave-confirm")}
+            >
+              {leaving ? "Leaving…" : "Leave project"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
