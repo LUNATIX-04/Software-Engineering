@@ -705,6 +705,11 @@ export default function ProjectsPage() {
                         setLeaveError(null)
                         await leaveProject(project.id)
                         setProjects((prev) => prev.filter((item) => item.id !== project.id))
+                        notify({
+                          title: "Left project",
+                          description: `You have left "${project.title}" successfully.`,
+                          variant: "success",
+                        })
                       } catch (error) {
                         const raw =
                           error instanceof Error ? error.message : "Unable to leave this project."
