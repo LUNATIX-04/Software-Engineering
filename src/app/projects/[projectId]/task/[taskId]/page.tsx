@@ -919,6 +919,13 @@ function TaskReviewSection({
   interactionLocked,
   isSelfManaged = false,
 }: TaskReviewSectionProps) {
+  const dropdownDisabled = reviewing || interactionLocked
+  const [statusMenuOpen, setStatusMenuOpen] = React.useState(false)
+  React.useEffect(() => {
+    if (dropdownDisabled && statusMenuOpen) {
+      setStatusMenuOpen(false)
+    }
+  }, [dropdownDisabled, statusMenuOpen])
   const headingText = isSelfManaged ? "Update task status" : "Review submission"
   const subheadingText = isSelfManaged
     ? "Set the status for this self-assigned task. Submissions are skipped for personal tasks."
@@ -939,11 +946,20 @@ function TaskReviewSection({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
         <span className="text-base font-semibold text-[var(--task-hero-text)] sm:flex-shrink-0">Task Status :</span>
         <div className="w-full sm:flex-1">
-          <DropdownMenu>
+          <DropdownMenu
+            open={statusMenuOpen}
+            onOpenChange={(open) => {
+              if (dropdownDisabled) {
+                setStatusMenuOpen(false)
+                return
+              }
+              setStatusMenuOpen(open)
+            }}
+          >
             <DropdownMenuTrigger asChild>
               <button
                 type="button"
-                disabled={reviewing || interactionLocked}
+                disabled={dropdownDisabled}
                 className="flex w-full items-center justify-between rounded-full border-2 border-primary/40 px-6 py-3 text-sm font-semibold shadow-[0_6px_0_rgba(144,122,214,0.2)] transition hover:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:border-primary/20 disabled:bg-muted"
                 style={{
                   backgroundColor: statusColors.background,
@@ -960,7 +976,7 @@ function TaskReviewSection({
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
-              className="w-72 rounded-3xl border border-primary/40 bg-white px-3 py-2 text-sm font-semibold text-primary shadow-[0_10px_30px_rgba(72,68,110,0.2)]"
+              className={`w-72 rounded-3xl border border-primary/40 bg-white px-3 py-2 text-sm font-semibold text-primary shadow-[0_10px_30px_rgba(72,68,110,0.2)] ${dropdownDisabled ? "pointer-events-none opacity-60" : ""}`}
             >
               {Object.entries(TASK_STATUS_LABEL).map(([value, label]) => {
                 const itemColors = TASK_STATUS_COLORS[value as TaskStatus]
@@ -968,8 +984,9 @@ function TaskReviewSection({
                 return (
                   <DropdownMenuItem
                     key={value}
+                    disabled={dropdownDisabled}
                     onSelect={() => {
-                      if (reviewing || interactionLocked) {
+                      if (dropdownDisabled) {
                         return
                       }
                       setStatus(value as TaskStatus)

@@ -883,7 +883,20 @@ export function registerTaskRoutes(app: Elysia) {
     }
 
     const payload = await request.json().catch(() => null)
-    const description = typeof payload?.description === "string" ? payload.description.trim() : null
+    const hasDescription = payload !== null && Object.prototype.hasOwnProperty.call(payload, "description")
+    let description: string | null | undefined = null
+    if (hasDescription) {
+      if (payload?.description === null) {
+        description = null
+      } else if (typeof payload?.description === "string") {
+        const trimmed = payload.description.trim()
+        description = trimmed.length > 0 ? trimmed : null
+      } else {
+        description = null
+      }
+    } else {
+      description = undefined
+    }
     const reviewerComment =
       typeof payload?.reviewerComment === "string" ? payload.reviewerComment.trim() : null
     const statusValue = typeof payload?.status === "string" ? payload.status.toUpperCase() : null
@@ -908,20 +921,23 @@ export function registerTaskRoutes(app: Elysia) {
       submission.status = status
     }
     const now = new Date()
+    const updateData: Prisma.ProjectTaskSubmissionUncheckedUpdateInput = {
+      reviewerComment,
+      status: status ?? submission.status,
+      ...(submission.submittedById === membership.id ? { acknowledgedAt: null } : {}),
+      ownerAcknowledgedAt: null,
+      reviewerId:
+        membership.id !== submission.submittedById ? membership.id : submission.reviewerId,
+      updatedAt: now,
+      attachmentMetadata:
+        attachments !== undefined ? (attachments.length > 0 ? attachments : null) : submission.attachmentMetadata,
+    }
+    if (description !== undefined) {
+      updateData.description = description
+    }
     const updatedSubmission = await projectTaskSubmissions.update({
       where: { id: submission.id },
-      data: {
-        description,
-        reviewerComment,
-        status: status ?? submission.status,
-        ...(submission.submittedById === membership.id ? { acknowledgedAt: null } : {}),
-        ownerAcknowledgedAt: null,
-        reviewerId:
-          membership.id !== submission.submittedById ? membership.id : submission.reviewerId,
-        updatedAt: now,
-        attachmentMetadata:
-          attachments !== undefined ? (attachments.length > 0 ? attachments : null) : submission.attachmentMetadata,
-      },
+      data: updateData,
       include: {
         submittedBy: { select: { id: true, username: true, role: true } },
         reviewer: { select: { id: true, username: true, role: true } },
