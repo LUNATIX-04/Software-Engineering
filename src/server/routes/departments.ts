@@ -3,7 +3,7 @@ import type { Elysia } from "elysia"
 import { createClient } from "../../utils/supabase/server"
 import { prisma } from "../../lib/prisma"
 import { projectMembers } from "../projects/db"
-import { requireProjectMembership } from "../projects/permissions"
+import { ensureActiveMembership, requireProjectMembership } from "../projects/permissions"
 import { PROJECT_MEMBER_STATUS, PROJECT_ROLE } from "../../types/projects"
 import { MAX_DEPARTMENT_LENGTH } from "./constants"
 import {
@@ -23,7 +23,7 @@ export function registerDepartmentRoutes(app: Elysia) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 })
     }
 
-    await requireProjectMembership(params.projectId, user.id)
+    await ensureActiveMembership(params.projectId, user.id)
 
     const departments = await prisma.projectDepartment.findMany({
       where: { projectId: params.projectId },
@@ -173,6 +173,8 @@ export function registerDepartmentRoutes(app: Elysia) {
     }
 
     const updates: Record<string, unknown> = {}
+    let nameChanged = false
+    let orderChanged = false
 
     if (typeof payload.name === "string") {
       const trimmedName = payload.name.trim()
@@ -184,6 +186,7 @@ export function registerDepartmentRoutes(app: Elysia) {
           )
         }
         updates.name = trimmedName
+        nameChanged = true
       }
     }
 
@@ -217,6 +220,7 @@ export function registerDepartmentRoutes(app: Elysia) {
 
     if (typeof payload.order === "number" && Number.isFinite(payload.order)) {
       updates.order = Math.max(0, Math.floor(payload.order))
+      orderChanged = true
     }
 
     if (Object.keys(updates).length === 0) {
@@ -228,7 +232,9 @@ export function registerDepartmentRoutes(app: Elysia) {
       data: updates,
     })
 
-    await syncProjectDepartmentNames(params.projectId)
+    if (nameChanged || orderChanged) {
+      await syncProjectDepartmentNames(params.projectId)
+    }
 
     return new Response(JSON.stringify(updated))
   })
