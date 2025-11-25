@@ -1259,10 +1259,17 @@ export function registerTaskRoutes(app: Elysia) {
         payload,
       })
       const title = typeof payload?.title === "string" ? payload.title.trim() : undefined
-      const detail =
-        typeof payload?.detail === "string" && payload.detail.trim().length > 0
-          ? payload.detail.trim()
-          : null
+      let detail: string | null | undefined = undefined
+      if (payload && Object.prototype.hasOwnProperty.call(payload, "detail")) {
+        if (payload?.detail === null) {
+          detail = null
+        } else if (typeof payload?.detail === "string") {
+          const trimmedDetail = payload.detail.trim()
+          detail = trimmedDetail.length > 0 ? trimmedDetail : null
+        } else {
+          detail = null
+        }
+      }
       const departmentId =
         typeof payload?.departmentId === "string" && payload.departmentId.trim().length > 0
           ? payload.departmentId
