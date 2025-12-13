@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="Mocha Tests" time="27.782" tests="4" failures="0">
+  <testsuite name="Root Suite" timestamp="2025-10-29T13:16:12" tests="0" file="cypress\e2e\project.feature" time="0.000" failures="0">
+  </testsuite>
+  <testsuite name="project management" timestamp="2025-10-29T13:16:12" tests="4" time="27.781" failures="0">
+    <testcase name="project management Create a new project" time="7.428" classname="Create a new project">
+    </testcase>
+    <testcase name="project management View project details" time="6.887" classname="View project details">
+    </testcase>
+    <testcase name="project management Edit an existing project" time="8.592" classname="Edit an existing project">
+    </testcase>
+    <testcase name="project management Delete a project" time="4.714" classname="Delete a project">
+    </testcase>
+  </testsuite>
+</testsuites>

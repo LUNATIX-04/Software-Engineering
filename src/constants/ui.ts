@@ -1,0 +1,1 @@
+export const TOOLTIP_DELAY_DURATION_MS = 300

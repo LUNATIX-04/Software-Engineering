@@ -1,0 +1,1573 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+body[data-theme-init="pending"] {
+  visibility: hidden;
+}
+
+.nav-auth-button:hover {
+  background-color: var(--button-hover-background-on-nav);
+}
+
+@keyframes asap-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes asap-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.02) translateY(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+[data-animate="fade-up"] {
+  opacity: 0;
+  animation: asap-fade-up 650ms ease-out forwards;
+  animation-delay: var(--animate-delay, 0ms);
+}
+
+[data-animate="pop"] {
+  opacity: 0;
+  animation: asap-pop 550ms ease-out forwards;
+  animation-delay: var(--animate-delay, 0ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-animate] {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+:root {
+  --background: #f4effa;          
+  --foreground: #2c2a4a;  
+  
+  --foreground-for-nav: #ffffff;  
+  --hover-foreground-for-nav: #ffbffa;
+  --underline-foreground-for-nav: #ffffff;
+
+  --button-background-on-nav: #f4effa;
+  --button-foreground-on-nav: #ffffff;
+  --button-hover-background-on-nav: #e8c3ff;
+  --hover-foreground-for-nav-header:rgb(250, 191, 255);
+
+  --button-background: #4f518c;
+  --button-foreground: #ffffff;
+  --button-hover-background: #4A4270;
+  --photo-input-bg: var(--card);
+  --photo-input-foreground: var(--foreground);
+  --photo-zoom-label: var(--muted-foreground);
+  --photo-dialog-bg: color-mix(in srgb, var(--card) 95%, #e8f1ff 5%);
+  --photo-action-ghost: #1f2937;
+  --photo-preview-button-bg: color-mix(in srgb, var(--card) 90%, #ffffff 10%);
+  --photo-preview-button-foreground: var(--foreground);
+  --photo-preview-button-border: color-mix(in srgb, var(--border) 70%, transparent);
+  --photo-preview-button-hover-bg: color-mix(in srgb, var(--card) 80%, var(--primary) 20%);
+  --photo-preview-button-hover-foreground: var(--foreground);
+
+  --back-button-bg: #ffffff;
+  --back-button-text: var(--primary);
+  --back-button-border: color-mix(in srgb, var(--primary) 20%, transparent);
+  --back-button-hover-bg: color-mix(in srgb, var(--primary) 12%, #ffffff 88%);
+  --back-button-hover-border: color-mix(in srgb, var(--primary) 35%, transparent);
+
+  --footer-bar: #4f518c;
+  --app-shell-bg: var(--primary);
+
+  --card: #ffffff;
+  --card-foreground: #2c2a4a;
+
+  --card-project: #F4EFFA;
+  --card-project-foreground: #2c2a4a;
+
+  --popover: #ffffff;
+  --popover-foreground: #2c2a4a;
+
+  --primary: #907ad6;             
+  --primary-foreground: #f4effa;   
+  --primary-soft: #c6b6f2;         
+
+  --secondary: #dabfff;          
+  --secondary-foreground: #2c2a4a;
+  --link-hover: #9a63ff;
+
+  --muted: #f4effa;
+  --muted-foreground: #4f518c;
+
+  --accent: #ffd2f8;               
+  --accent-foreground: #2c2a4a;
+  --calendar-today-bg: #ffaffa;
+  --calendar-today-text: #ff0b0b;
+  --task-status-submitted-bg: var(--primary);
+  --task-status-submitted-text: var(--primary-foreground);
+  --task-status-in-progress-bg: #ffffff;
+  --task-status-in-progress-text: #2c2a4a;
+  --task-status-blocked-bg: var(--destructive);
+  --task-status-blocked-text: var(--destructive-foreground);
+  --calendar-range: #d0c2ff;
+  --calendar-range-text: #ffffff;
+
+  --destructive: #ff4d4f;
+  --destructive-foreground: #ffffff;
+
+  --border: #e5e7eb;
+  --input: #e5e7eb;
+  --ring: #4f518c;
+  --photo-dialog-bg: color-mix(in srgb, var(--card) 95%, var(--primary) 5%);
+  --task-hero-background: #E9E0FF;
+  --task-hero-text: #2F2766;
+  --task-subtle-text: #3F3478;
+  --task-description-bg: #F6F0FF;
+  --task-description-bg-hover: #E9E0FF;
+  --task-description-border: color-mix(in srgb, var(--primary) 35%, #ffffff 65%);
+  --task-placeholder: #AFA9D0;
+  --task-cta-bg: #4C43F2;
+  --task-cta-hover: #3933d1;
+  --task-detail-card-bg: color-mix(in srgb, var(--card) 92%, #ffffff 8%);
+  --task-detail-card-border: color-mix(in srgb, var(--primary) 40%, var(--border) 60%);
+  --pagination-surface-bg: #f1effe;
+  --pagination-surface-border: #cbc7f0;
+  --pagination-surface-foreground: var(--primary);
+  --pagination-surface-hover: #ede6ff;
+  --pagination-surface-foreground-hover: color-mix(in srgb, var(--pagination-surface-foreground) 70%, #ffffff 30%);
+  --project-card-border: #d8cbf1;
+  --app-shell-bg: var(--primary);
+  --project-owner-card-bg: var(--primary-soft);
+  --project-owner-card-hover: color-mix(in srgb, var(--primary-soft) 82%, #ffffff 18%);
+  --card-menu-bg: #f1f1f1;
+  --card-menu-shadow: 0 1px 6px rgba(79, 61, 152, 0.45);
+
+  --photo-preview-bg: color-mix(in srgb, var(--card) 90%, #f3f3ff 10%);
+  --photo-preview-border: color-mix(in srgb, var(--primary) 25%, var(--border));
+  --photo-preview-inner-border: color-mix(in srgb, var(--border) 65%, transparent);
+
+  /* Sidebar */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #2c2a4a;
+  --sidebar-primary: #907ad6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #dabfff;
+  --sidebar-accent-foreground: #2c2a4a;
+  --sidebar-border: #e5e7eb;
+  --sidebar-ring: #97dffc;
+
+  --radius: 0.625rem;
+
+  --scrollbar-track: #686bc8;
+  --scrollbar-thumb: #ab8dff;
+  --scrollbar-thumb-hover: #907ad6;
+
+  --textarea-surface: color-mix(in srgb, var(--card) 94%, #ffffff 6%);
+  --textarea-border: color-mix(in srgb, var(--border) 78%, var(--primary) 22%);
+  --textarea-border-active: color-mix(in srgb, var(--primary) 75%, var(--ring) 25%);
+  --textarea-foreground: var(--foreground);
+  --textarea-placeholder: color-mix(in srgb, var(--muted-foreground) 72%, var(--foreground) 28%);
+
+  --project-info-bg: color-mix(in srgb, var(--card) 88%, #e7e9f2 12%);
+
+  --tooltip-bg: var(--primary);
+  --tooltip-foreground: var(--primary-foreground);
+
+  --role-owner-bg: var(--primary);
+  --role-owner-text: var(--primary-foreground);
+  --role-owner-shadow: color-mix(in srgb, var(--primary) 32%, transparent);
+
+  --notify-success-bg: var(--primary);
+  --notify-success-text: var(--primary-foreground);
+  --notify-info-bg: var(--primary-soft);
+  --notify-info-text: var(--secondary-foreground);
+  --notify-warning-bg: #fbbf24;
+  --notify-warning-text: #1f2937;
+  --notify-destructive-bg: var(--destructive);
+  --notify-destructive-text: var(--destructive-foreground);
+}
+
+:root[data-theme="blue"] {
+  --background: #fdfbff;
+  --foreground: #1f2937;
+
+  --foreground-for-nav: #ffffff;
+  --hover-foreground-for-nav: #a7e6ff;
+  --hover-foreground-for-nav-header:rgb(250, 191, 255);
+  --underline-foreground-for-nav: #ffffff;
+
+  --button-background-on-nav: #ffffff;
+  --button-foreground-on-nav: #ffffff;
+  --button-hover-background-on-nav: #e5e7eb;
+
+  --button-background: #2550ac;
+  --button-foreground: #ffffff;
+  --button-hover-background: #1d4ed8;
+
+  --back-button-bg: #ffffff;
+  --back-button-text: var(--primary);
+  --back-button-border: color-mix(in srgb, var(--primary) 20%, transparent);
+  --back-button-hover-bg: color-mix(in srgb, var(--primary) 12%, #ffffff 88%);
+  --back-button-hover-border: color-mix(in srgb, var(--primary) 35%, transparent);
+
+  --tooltip-bg: var(--primary);
+  --tooltip-foreground: var(--primary-foreground);
+
+  --role-owner-bg: var(--primary);
+  --role-owner-text: var(--primary-foreground);
+  --role-owner-shadow: color-mix(in srgb, var(--primary) 32%, transparent);
+
+  --footer-bar: #2563eb;
+  --app-shell-bg: var(--primary);
+
+  --card: #ffffff;
+  --card-foreground: #1f2937;
+
+  --card-project: #f0f4ff;
+  --card-project-foreground: #1f2937;
+
+  --popover: #ffffff;
+  --popover-foreground: #1f2937;
+
+  --primary: #2563eb;
+  --primary-foreground: #f9fafb;
+  --primary-soft: #93c5fd;
+
+  --secondary: #a5b4fc;
+  --secondary-foreground: #1f2937;
+  --link-hover: #5f6ee5;
+
+  --muted: #e0e7ff;
+  --muted-foreground: #1f2937;
+
+  --accent: #bae6fd;
+  --accent-foreground: #1f2937;
+  --calendar-today-bg: var(--primary-soft);
+  --calendar-today-text: var(--primary-foreground);
+  --task-status-submitted-bg: var(--primary);
+  --task-status-submitted-text: var(--primary-foreground);
+  --task-status-in-progress-bg: #ffffff;
+  --task-status-in-progress-text: #1f2937;
+  --task-status-blocked-bg: var(--destructive);
+  --task-status-blocked-text: var(--destructive-foreground);
+  --calendar-range-start-bg: #EBDFFF;
+  --calendar-range-middle-bg: #BEDCFF;
+  --calendar-range-text: #3F3478;
+
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  --border: #dbeafe;
+  --input: #dbeafe;
+  --ring: #60a5fa;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1f2937;
+  --sidebar-primary: #2563eb;
+  --sidebar-primary-foreground: #f9fafb;
+  --sidebar-accent: #93c5fd;
+  --sidebar-accent-foreground: #1f2937;
+  --sidebar-border: #dbeafe;
+  --sidebar-ring: #93c5fd;
+
+  --task-hero-background: #E9E0FF;
+  --task-hero-text: #2F2766;
+  --task-subtle-text: #3F3478;
+  --task-description-bg: #F6F0FF;
+  --task-description-bg-hover: #E9E0FF;
+  --task-description-border: color-mix(in srgb, var(--primary) 35%, #ffffff 65%);
+  --task-placeholder: #AFA9D0;
+  --task-cta-bg: #4C43F2;
+  --task-cta-hover: #3933d1;
+  --pagination-surface-bg: #eef2f8;
+  --pagination-surface-border: #cbd5e1;
+  --pagination-surface-foreground: var(--primary);
+  --pagination-surface-hover: #e8eefc;
+  --pagination-surface-foreground-hover: color-mix(in srgb, var(--pagination-surface-foreground) 70%, #ffffff 30%);
+  --project-card-border: #cbd5ff;
+  --app-shell-bg: var(--primary);
+  --card-menu-bg: #f5f7fb;
+  --card-menu-shadow: 0 1px 6px rgba(37, 99, 235, 0.35);
+  --photo-preview-bg: color-mix(in srgb, var(--card) 90%, #e3efff 10%);
+  --photo-preview-border: color-mix(in srgb, var(--primary) 25%, var(--border));
+  --photo-preview-inner-border: color-mix(in srgb, var(--border) 65%, transparent);
+  --photo-preview-button-bg: color-mix(in srgb, var(--card) 85%, #eff6ff 15%);
+  --photo-preview-button-foreground: var(--foreground);
+  --photo-preview-button-border: color-mix(in srgb, var(--primary) 55%, var(--border));
+  --photo-preview-button-hover-bg: color-mix(in srgb, var(--primary) 20%, var(--card) 80%);
+  --photo-preview-button-hover-foreground: var(--primary-foreground);
+
+  --scrollbar-track: #bfd5ff;
+  --scrollbar-thumb: #60a5fa;
+  --scrollbar-thumb-hover: #2563eb;
+
+  --project-info-bg: color-mix(in srgb, var(--card) 90%, #e7e9f2 10%);
+
+  --notify-success-bg: var(--primary);
+  --notify-success-text: var(--primary-foreground);
+  --notify-info-bg: var(--primary-soft);
+  --notify-info-text: var(--secondary-foreground);
+  --notify-warning-bg: #eab308;
+  --notify-warning-text: #0f172a;
+  --notify-destructive-bg: var(--destructive);
+  --notify-destructive-text: var(--destructive-foreground);
+}
+
+/* :root[data-theme="dark"] {
+  --background: #111827;
+  --foreground: #f9fafb;
+
+  --foreground-for-nav: #ffffff;
+  --hover-foreground-for-nav: #b1ffb6;
+  --underline-foreground-for-nav: #ffffff;
+
+  --button-background-on-nav: #2f3a4a;
+  --button-foreground-on-nav: #f9fafb;
+  --button-hover-background-on-nav: #3d4a5c;
+  --hover-foreground-for-nav-header:rgb(250, 191, 255);
+
+  --button-background: #1f2937;
+  --button-foreground: #f9fafb;
+  --button-hover-background: #374151;
+
+  --back-button-bg: #0f172a;
+  --back-button-text: #f8fafc;
+  --back-button-border: #1f2937;
+  --back-button-hover-bg: color-mix(in srgb, #0f172a 30%, #ffffff 70%);
+  --back-button-hover-border: color-mix(in srgb, #1f2937 65%, #334155 35%);
+
+  --tooltip-bg: #e5e7eb;
+  --tooltip-foreground: #0b1220;
+
+  --role-owner-bg: #5a6686;
+  --role-owner-text: #f8fafc;
+  --role-owner-shadow: color-mix(in srgb, #2f3545 35%, transparent);
+
+  --footer-bar: #1f2937;
+  --app-shell-bg: #1f2937;
+
+  --card: #111827;
+  --card-foreground: #f9fafb;
+
+  --card-project: #121a26;
+  --card-project-foreground: #f9fafb;
+
+  --popover: #0b1220;
+  --popover-foreground: #f9fafb;
+
+  --primary: #ffffff;
+  --primary-foreground: #ffffff;
+  --primary-soft: #334155;
+
+  --secondary: #334155;
+  --secondary-foreground: #f9fafb;
+  --link-hover: #0f172a;
+
+  --muted: #1f2937;
+  --muted-foreground: #f1f5f9;
+
+  --accent: #5c5c5c;
+  --accent-foreground: #f9fafb;
+  --calendar-today-bg: var(--primary-soft);
+  --calendar-today-text: var(--primary-foreground);
+  --task-status-submitted-bg: var(--primary);
+  --task-status-submitted-text: var(--primary-foreground);
+  --task-status-in-progress-bg: #1f2937;
+  --task-status-in-progress-text: #f9fafb;
+  --task-status-blocked-bg: var(--destructive);
+  --task-status-blocked-text: var(--destructive-foreground);
+  --calendar-range-start-bg: #EBDFFF;
+  --calendar-range-middle-bg: #BEDCFF;
+  --calendar-range-text: #3F3478;
+
+  --destructive: #f87171;
+  --destructive-foreground: #111827;
+
+  --border: #2f3a4a;
+  --input: #2f3a4a;
+  --ring: #9ba8b7;
+
+  --sidebar: #101826;
+  --sidebar-foreground: #f9fafb;
+  --sidebar-primary: #9ba8b7;
+  --sidebar-primary-foreground: #0b1220;
+  --sidebar-accent: #94a3b8;
+  --sidebar-accent-foreground: #0b1220;
+  --sidebar-border: #1f2937;
+  --sidebar-ring: #9ba8b7;
+
+  --scrollbar-track: #1f2937;
+  --scrollbar-thumb: #9ba8b7;
+  --scrollbar-thumb-hover: #cbd5e1;
+  --notify-success-bg: #0d1524;
+  --notify-success-text: #f9fafb;
+  --notify-info-bg: #0f1a2c;
+  --notify-info-text: #e5e7eb;
+  --notify-warning-bg: #a16207;
+  --notify-warning-text: #fef9c3;
+  --notify-destructive-bg: #7f1d1d;
+  --notify-destructive-text: #fee2e2;
+  --project-info-bg: color-mix(in srgb, #0f172a 78%, #111827 22%);
+  --photo-dialog-bg: #0b1220;
+  --photo-preview-bg: #1f2937;
+  --photo-preview-border: #4b5563;
+  --photo-preview-inner-border: rgba(255, 255, 255, 0.08);
+  --photo-preview-button-bg: #1f2937;
+  --photo-preview-button-foreground: #f9fafb;
+  --photo-preview-button-border: #374151;
+  --photo-preview-button-hover-bg: #111827;
+  --photo-preview-button-hover-foreground: #f9fafb;
+  --photo-zoom-panel-bg: #111827;
+  --photo-button-bg: #1f2937;
+  --photo-button-foreground: #f9fafb;
+  --photo-button-border: transparent;
+  --photo-button-hover-bg: #374151;
+  --photo-button-hover-foreground: #f9fafb;
+  --photo-input-bg: #0f172a;
+  --photo-input-foreground: #f3f4f6;
+  --photo-zoom-label: #e5e7eb;
+  --photo-action-ghost: #d1d5db;
+  --task-hero-background: #1b2433;
+  --task-hero-text: #e5e7eb;
+  --task-subtle-text: #cbd5e1;
+  --task-description-bg: #0f172a;
+  --task-description-bg-hover: #1b2433;
+  --task-description-border: color-mix(in srgb, var(--primary) 35%, #0f172a 65%);
+  --task-placeholder: #9ca3af;
+  --task-cta-bg: #9ba8b7;
+  --task-cta-hover: #818b98;
+
+  --project-owner-card-bg: #202a38;
+  --project-owner-card-hover: #2f3a4a;
+  --project-card-border: #2f3a4a;
+  --app-shell-bg: #1f2937;
+  --pagination-surface-bg: #1c2432;
+  --pagination-surface-border: #2a3442;
+  --pagination-surface-foreground: #f8fafc;
+  --pagination-surface-hover: #232d3c;
+  --pagination-surface-foreground-hover: color-mix(in srgb, var(--pagination-surface-foreground) 90%, #000000 10%);
+  --card-menu-bg: #2f3a4a;
+  --card-menu-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  --photo-preview-bg: #1f2937;
+  --photo-preview-border: #374151;
+  --photo-preview-inner-border: rgba(255, 255, 255, 0.08);
+  --photo-zoom-panel-bg: #1a2130;
+  --photo-button-foreground: #e5e7eb;
+  --photo-input-bg: #0f172a;
+  --photo-input-foreground: #f3f4f6;
+  --photo-zoom-label: #cbd5f5;
+  --photo-dialog-bg: #0b1220;
+  --photo-action-ghost: #d1d5db;
+  --photo-preview-bg: color-mix(in srgb, var(--card) 85%, #1a2430 15%);
+  --photo-preview-border: color-mix(in srgb, var(--primary) 45%, var(--border));
+  --photo-preview-inner-border: color-mix(in srgb, var(--border) 75%, rgba(255,255,255,0));
+}
+*/
+
+:root[data-theme="red"] {
+  --background: #fff5f5;
+  --foreground: #3f0f0f;
+
+  --foreground-for-nav: #ffffff;
+  --hover-foreground-for-nav: #ffadad;
+  --underline-foreground-for-nav: #ffffff;
+  --hover-foreground-for-nav-header:rgb(250, 191, 255);
+
+  --button-background-on-nav: #ffe3e3;
+  --button-foreground-on-nav: #ffffff;
+  --button-hover-background-on-nav: #ffc9c9;
+
+  --button-background: #e45d7b;
+  --button-foreground: #fff5f5;
+  --button-hover-background: #be123c;
+
+  --back-button-bg: #ffffff;
+  --back-button-text: var(--primary);
+  --back-button-border: color-mix(in srgb, var(--primary) 20%, transparent);
+  --back-button-hover-bg: color-mix(in srgb, var(--primary) 12%, #ffffff 88%);
+  --back-button-hover-border: color-mix(in srgb, var(--primary) 35%, transparent);
+
+  --tooltip-bg: var(--primary);
+  --tooltip-foreground: var(--primary-foreground);
+
+  --role-owner-bg: var(--primary);
+  --role-owner-text: var(--primary-foreground);
+  --role-owner-shadow: color-mix(in srgb, var(--primary) 32%, transparent);
+
+  --footer-bar: #e11d48;
+  --app-shell-bg: var(--primary);
+
+  --card: #ffffff;
+  --card-foreground: #3f0f0f;
+
+  --card-project: #ffe8e8;
+  --card-project-foreground: #3f0f0f;
+
+  --popover: #ffffff;
+  --popover-foreground: #3f0f0f;
+
+  --primary: #e11d48;
+  --primary-foreground: #fff5f5;
+  --primary-soft: #fda4af;
+
+  --secondary: #fecdd3;
+  --secondary-foreground: #3f0f0f;
+  --link-hover: #ff859f;
+
+  --muted: #ffe3e3;
+  --muted-foreground: #7f1d1d;
+
+  --accent: #fbcfe8;
+  --accent-foreground: #3f0f0f;
+  --calendar-today-bg: var(--primary-soft);
+  --calendar-today-text: var(--primary-foreground);
+  --task-status-submitted-bg: var(--primary);
+  --task-status-submitted-text: var(--primary-foreground);
+  --task-status-in-progress-bg: #ffffff;
+  --task-status-in-progress-text: #3f0f0f;
+  --task-status-blocked-bg: var(--destructive);
+  --task-status-blocked-text: var(--destructive-foreground);
+  --calendar-range-start-bg: #EBDFFF;
+  --calendar-range-middle-bg: #BEDCFF;
+  --calendar-range-text: #3F3478;
+
+  --destructive: #b91c1c;
+  --destructive-foreground: #fff5f5;
+
+  --border: #fecaca;
+  --input: #fecaca;
+  --ring: #f43f5e;
+
+  --sidebar: #fff0f1;
+  --sidebar-foreground: #3f0f0f;
+  --sidebar-primary: #e11d48;
+  --sidebar-primary-foreground: #fff5f5;
+  --sidebar-accent: #fecdd3;
+  --sidebar-accent-foreground: #3f0f0f;
+  --sidebar-border: #fecaca;
+  --sidebar-ring: #fda4af;
+
+  --scrollbar-track: #ffd1d6;
+  --scrollbar-thumb: #f97386;
+  --scrollbar-thumb-hover: #e11d48;
+  --project-card-border: #f8b4c2;
+  --app-shell-bg: var(--primary);
+  --pagination-surface-bg: #f8e4e7;
+  --pagination-surface-border: #f1c9d2;
+  --pagination-surface-foreground: var(--primary);
+  --pagination-surface-hover: #f7dde3;
+  --pagination-surface-foreground-hover: color-mix(in srgb, var(--pagination-surface-foreground) 70%, #ffffff 30%);
+  --card-menu-bg: #f6e4e7;
+  --card-menu-shadow: 0 1px 6px rgba(225, 29, 72, 0.35);
+  --photo-preview-bg: color-mix(in srgb, var(--card) 85%, #ffeff1 15%);
+  --photo-preview-border: color-mix(in srgb, var(--primary) 40%, var(--border));
+  --photo-preview-inner-border: color-mix(in srgb, var(--border) 75%, transparent);
+  --photo-preview-button-bg: #fff5f5;
+  --photo-preview-button-foreground: #3f0f0f;
+  --photo-preview-button-border: color-mix(in srgb, var(--border) 70%, transparent);
+  --photo-preview-button-hover-bg: color-mix(in srgb, var(--primary) 15%, #fff5f5 85%);
+  --photo-preview-button-hover-foreground: #3f0f0f;
+  --notify-success-bg: var(--primary);
+  --notify-success-text: var(--primary-foreground);
+  --notify-info-bg: var(--primary-soft);
+  --notify-info-text: var(--secondary-foreground);
+  --notify-warning-bg: #f59e0b;
+  --notify-warning-text: #3f0f0f;
+  --notify-destructive-bg: #b91c1c;
+  --notify-destructive-text: #fff5f5;
+  --project-info-bg: color-mix(in srgb, #f7f1f3 82%, #ffffff 18%);
+  --photo-dialog-bg: #fff5f5;
+}
+
+:root[data-theme="green"] {
+  --background: #ecfdf5;
+  --foreground: #156f57;
+
+  --foreground-for-nav: #ffffff;
+  --hover-foreground-for-nav: #b4f8dc;
+  --underline-foreground-for-nav: #ffffff;
+  --hover-foreground-for-nav-header:rgb(145, 254, 188);
+
+  --button-background-on-nav: #f0fdf4;
+  --button-foreground-on-nav: #fdfffe;
+  --button-hover-background-on-nav: #d1fae5;
+
+  --button-background: #166b50;
+  --button-foreground: #f0fdf4;
+  --button-hover-background: #047857;
+
+  --back-button-bg: #ffffff;
+  --back-button-text: var(--primary);
+  --back-button-border: color-mix(in srgb, var(--primary) 20%, transparent);
+  --back-button-hover-bg: color-mix(in srgb, var(--primary) 12%, #ffffff 88%);
+  --back-button-hover-border: color-mix(in srgb, var(--primary) 35%, transparent);
+
+  --footer-bar: #059669;
+  --app-shell-bg: var(--primary);
+
+  --card: #ffffff;
+  --card-foreground: #064e3b;
+
+  --card-project: #d1fae5;
+  --card-project-foreground: #064e3b;
+
+  --popover: #f0fdf4;
+  --popover-foreground: #064e3b;
+
+  --primary: #059669;
+  --primary-foreground: #f0fdf4;
+  --primary-soft: #34d399;
+
+  --secondary: #4ade80;
+  --secondary-foreground: #064e3b;
+  --link-hover: #15803d;
+
+  --muted: #dcfce7;
+  --muted-foreground: #064e3b;
+
+  --accent: #a7f3d0;
+  --accent-foreground: #064e3b;
+  --calendar-today-bg: var(--primary-soft);
+  --calendar-today-text: var(--primary-foreground);
+  --task-status-submitted-bg: var(--primary);
+  --task-status-submitted-text: var(--primary-foreground);
+  --task-status-in-progress-bg: #ffffff;
+  --task-status-in-progress-text: #064e3b;
+  --task-status-blocked-bg: var(--destructive);
+  --task-status-blocked-text: var(--destructive-foreground);
+  --calendar-range-start-bg: #d1fae5;
+  --calendar-range-middle-bg: #86efac;
+  --calendar-range-text: #064e3b;
+
+  --destructive: #dc2626;
+  --destructive-foreground: #f0fdf4;
+
+  --border: #bbf7d0;
+  --input: #bbf7d0;
+  --ring: #22c55e;
+
+  --sidebar: #0f2f1d;
+  --sidebar-foreground: #f0fdf4;
+  --sidebar-primary: #34d399;
+  --sidebar-primary-foreground: #064e3b;
+  --sidebar-accent: #4ade80;
+  --sidebar-accent-foreground: #064e3b;
+  --sidebar-border: #0f2f1d;
+  --sidebar-ring: #4ade80;
+
+  --scrollbar-track: #c0f0da;
+  --scrollbar-thumb: #22c55e;
+  --scrollbar-thumb-hover: #16a34a;
+  --project-card-border: #bbf7d0;
+  --app-shell-bg: var(--primary);
+  --pagination-surface-bg: #dcfde7;
+  --pagination-surface-border: #bbf7d0;
+  --pagination-surface-foreground: var(--primary);
+  --pagination-surface-hover: #c0f7dc;
+  --pagination-surface-foreground-hover: color-mix(in srgb, var(--pagination-surface-foreground) 70%, #ffffff 30%);
+  --card-menu-bg: #d1fae5;
+  --card-menu-shadow: 0 1px 6px rgba(5, 150, 105, 0.35);
+  --photo-preview-bg: color-mix(in srgb, var(--card) 85%, #defbe9 15%);
+  --photo-preview-border: color-mix(in srgb, var(--primary) 40%, var(--border));
+  --photo-preview-inner-border: color-mix(in srgb, var(--border) 70%, transparent);
+  --photo-preview-button-bg: #f0fdf4;
+  --photo-preview-button-foreground: #064e3b;
+  --photo-preview-button-border: #bbf7d0;
+  --photo-preview-button-hover-bg: color-mix(in srgb, #059669 10%, #f0fdf4 90%);
+  --photo-preview-button-hover-foreground: #064e3b;
+
+  --notify-success-bg: var(--primary);
+  --notify-success-text: var(--primary-foreground);
+  --notify-info-bg: var(--primary-soft);
+  --notify-info-text: var(--secondary-foreground);
+  --notify-warning-bg: #f59e0b;
+  --notify-warning-text: #064e3b;
+  --notify-destructive-bg: #dc2626;
+  --notify-destructive-text: #f0fdf4;
+
+  --project-info-bg: color-mix(in srgb, #d6f5e5 82%, #ffffff 18%);
+  --photo-dialog-bg: color-mix(in srgb, var(--card) 92%, #ddf7e5 8%);
+}
+
+:root[data-theme="yellow"] {
+  --background: #fef9c3;
+  --foreground: #78350f;
+
+  --foreground-for-nav: #ffffff;
+  --hover-foreground-for-nav: #92400e;
+  --underline-foreground-for-nav: #ffffff;
+  --hover-foreground-for-nav-header: rgb(251, 191, 36);
+
+  --button-background-on-nav: #fefac8;
+  --button-foreground-on-nav: #78350f;
+  --button-hover-background-on-nav: #fef3c7;
+
+  --button-background: #b68349;
+  --button-foreground: #fefce8;
+  --button-hover-background: #b45309;
+
+  --back-button-bg: #ffffff;
+  --back-button-text: var(--primary);
+  --back-button-border: color-mix(in srgb, var(--primary) 20%, transparent);
+  --back-button-hover-bg: color-mix(in srgb, var(--primary) 12%, #ffffff 88%);
+  --back-button-hover-border: color-mix(in srgb, var(--primary) 35%, transparent);
+
+  --footer-bar: #d97706;
+  --app-shell-bg: var(--primary);
+
+  --card: #ffffff;
+  --card-foreground: #78350f;
+
+  --card-project: #fef3c7;
+  --card-project-foreground: #78350f;
+
+  --popover: #fff9ed;
+  --popover-foreground: #78350f;
+
+  --primary: #d97706;
+  --primary-foreground: #fefce8;
+  --primary-soft: #fbbf24;
+
+  --secondary: #fcd34d;
+  --secondary-foreground: #78350f;
+  --link-hover: #b45309;
+
+  --muted: #fff7e5;
+  --muted-foreground: #78350f;
+
+  --accent: #fde68a;
+  --accent-foreground: #78350f;
+  --calendar-today-bg: var(--primary-soft);
+  --calendar-today-text: var(--primary-foreground);
+  --task-status-submitted-bg: var(--primary);
+  --task-status-submitted-text: var(--primary-foreground);
+  --task-status-in-progress-bg: #ffffff;
+  --task-status-in-progress-text: #78350f;
+  --task-status-blocked-bg: var(--destructive);
+  --task-status-blocked-text: var(--destructive-foreground);
+  --calendar-range-start-bg: #fde68a;
+  --calendar-range-middle-bg: #fcd34d;
+  --calendar-range-text: #78350f;
+
+  --destructive: #b91c1c;
+  --destructive-foreground: #fefce8;
+
+  --border: #fde68a;
+  --input: #fde68a;
+  --ring: #f59e0b;
+
+  --sidebar: #4f2a0d;
+  --sidebar-foreground: #fefce8;
+  --sidebar-primary: #fcd34d;
+  --sidebar-primary-foreground: #78350f;
+  --sidebar-accent: #fbbf24;
+  --sidebar-accent-foreground: #78350f;
+  --sidebar-border: #4f2a0d;
+  --sidebar-ring: #fbbf24;
+
+  --scrollbar-track: #fde9b0;
+  --scrollbar-thumb: #d97706;
+  --scrollbar-thumb-hover: #b45309;
+  --project-card-border: #fcd34d;
+  --app-shell-bg: var(--primary);
+  --pagination-surface-bg: #fff4d6;
+  --pagination-surface-border: #fde68a;
+  --pagination-surface-foreground: var(--primary);
+  --pagination-surface-hover: #fff1cb;
+  --pagination-surface-foreground-hover: color-mix(in srgb, var(--pagination-surface-foreground) 70%, #ffffff 30%);
+  --card-menu-bg: #fff5d0;
+  --card-menu-shadow: 0 1px 6px rgba(217, 119, 6, 0.35);
+  --photo-preview-bg: color-mix(in srgb, var(--card) 85%, #fff4d6 15%);
+  --photo-preview-border: color-mix(in srgb, var(--primary) 40%, var(--border));
+  --photo-preview-inner-border: color-mix(in srgb, var(--border) 70%, transparent);
+  --photo-preview-button-bg: #fff9ed;
+  --photo-preview-button-foreground: #78350f;
+  --photo-preview-button-border: #fde68a;
+  --photo-preview-button-hover-bg: color-mix(in srgb, #d97706 15%, #fff9ed 85%);
+  --photo-preview-button-hover-foreground: #78350f;
+
+  --notify-success-bg: var(--primary);
+  --notify-success-text: var(--primary-foreground);
+  --notify-info-bg: var(--primary-soft);
+  --notify-info-text: var(--secondary-foreground);
+  --notify-warning-bg: #f59e0b;
+  --notify-warning-text: #78350f;
+  --notify-destructive-bg: #b91c1c;
+  --notify-destructive-text: #fefce8;
+
+  --project-info-bg: color-mix(in srgb, #fff6db 82%, #ffffff 18%);
+  --photo-dialog-bg: color-mix(in srgb, var(--card) 92%, #fff4d6 8%);
+}
+
+.calendar-no-past [data-past="true"] {
+  color: var(--foreground) !important;
+  opacity: 1;
+}
+
+.calendar-no-past [data-outside="true"] {
+  color: var(--muted-foreground) !important;
+  opacity: 0.6;
+}
+
+
+/* .dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --link-hover: #0f172a;
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --calendar-today-bg: var(--primary);
+  --calendar-today-text: var(--primary-foreground);
+  --task-status-submitted-bg: var(--primary);
+  --task-status-submitted-text: var(--primary-foreground);
+  --task-status-in-progress-bg: #1f2937;
+  --task-status-in-progress-text: #f9fafb;
+  --task-status-blocked-bg: var(--destructive);
+  --task-status-blocked-text: var(--destructive-foreground);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+  --photo-preview-button-bg: oklch(0.145 0 0);
+  --photo-preview-button-foreground: oklch(0.985 0 0);
+  --photo-preview-button-border: oklch(0.269 0 0);
+  --photo-preview-button-hover-bg: oklch(0.205 0 0);
+  --photo-preview-button-hover-foreground: oklch(0.985 0 0);
+} */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-button-background-on-nav: var(--button-background-on-nav);
+  --color-button-foreground-on-nav: var(--button-foreground-on-nav);
+  --color-button-hover-background-on-nav: var(--button-hover-background-on-nav);
+  --color-button-background: var(--button-background);
+  --color-button-foreground: var(--button-foreground);
+  --color-button-hover-background: var(--button-hover-background);
+  --color-footer-bar: var(--footer-bar);
+  --color-foreground-for-nav: var(--foreground-for-nav);
+  --color-hover-foreground-for-nav: var(--hover-foreground-for-nav);
+  --color-underline-foreground-for-nav: var(--underline-foreground-for-nav);
+  --color-primary-soft: var(--primary-soft);
+  --color-hover-foreground-for-nav-header: var(--hover-foreground-for-nav-header);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-card-project: var(--card-project);
+  --color-card-project-foreground: var(--card-project-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+  
+  textarea {
+    scrollbar-width: medium;
+    scrollbar-color: var(--scrollbar-thumb);
+    background-clip: padding-box;
+  }
+
+  textarea::-webkit-scrollbar {
+    width: 0.8rem;
+  }
+
+  body::-webkit-scrollbar {
+    width: 0.6rem;
+  }
+
+  body::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 9999px;
+    background-clip: padding-box;
+  }
+
+  body::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 9999px;
+    border: 0.125rem solid transparent;
+    background-clip: padding-box;
+  }
+
+  body::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  textarea::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 9999px;
+    background-clip: padding-box;
+  }
+
+  textarea::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 9999px;
+    border: 0.125rem solid transparent;
+    background-clip: padding-box;
+  }
+
+  textarea::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  textarea::-webkit-resizer {
+    background: var(--primary-soft)
+  }
+}
+
+@layer components {
+  .textarea-surface {
+    background-color: var(--textarea-surface);
+    border: 2px solid var(--textarea-border);
+    color: var(--textarea-foreground);
+    transition: border-color 180ms ease, box-shadow 180ms ease, background-color 180ms ease;
+  }
+
+  .textarea-surface:focus-within {
+    border-color: var(--textarea-border-active);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--textarea-border-active) 25%, transparent);
+  }
+
+  .textarea-surface textarea {
+    background-color: transparent;
+    color: inherit;
+  }
+
+  .textarea-surface textarea::placeholder {
+    color: var(--textarea-placeholder);
+  }
+
+  .project-card {
+    @apply bg-card-project border-2 transition-colors;
+    border-color: var(--project-card-border, var(--primary));
+  }
+  .project-card-border {
+    border-color: var(--project-card-border, var(--primary));
+  }
+
+  .project-card--active {
+    @apply bg-primary/20;
+  }
+
+  .project-card--owner {
+    background-color: var(--project-owner-card-bg);
+    border-color: var(--project-card-border, var(--primary));
+  }
+
+  .project-card--owner.project-card--active {
+    background-color: var(--project-owner-card-hover);
+    border-color: var(--project-card-border, var(--primary));
+  }
+
+  .project-card--owner:hover,
+  .project-card--owner-open {
+    background-color: var(--project-owner-card-hover);
+    border-color: var(--project-card-border, var(--primary));
+  }
+  .project-card-thumbnail {
+    @apply bg-card-project border-2 border-primary/30;
+  }
+
+  .card-menu-trigger {
+    background-color: var(--card-menu-bg);
+  }
+
+  .pagination-surface {
+    background-color: var(--pagination-surface-bg) !important;
+    color: var(--pagination-surface-foreground) !important;
+    border: 2px solid var(--pagination-surface-border) !important;
+  }
+
+  .pagination-surface:hover:not(:disabled) {
+    background-color: var(--pagination-surface-hover, var(--pagination-surface-bg)) !important;
+    color: var(--pagination-surface-foreground-hover, var(--pagination-surface-foreground)) !important;
+  }
+
+  .back-button {
+    background-color: var(--back-button-bg);
+    color: var(--back-button-text);
+    border-color: var(--back-button-border);
+    transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  .back-button:hover:not(:disabled) {
+    background-color: var(--back-button-hover-bg) !important;
+    border-color: var(--back-button-hover-border) !important;
+    color: var(--back-button-text) !important;
+  }
+
+  .project-info-surface {
+    background-color: var(--project-info-bg);
+  }
+
+.dropdown-surface {
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--primary) 25%, transparent);
+}
+
+[data-slot="dropdown-menu-content"] {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+}
+
+.text-button-foreground-on-nav {
+  color: var(--button-foreground-on-nav);
+}
+
+.text-foreground-for-nav {
+  color: var(--foreground-for-nav);
+}
+
+.hover\:text-hover-foreground-for-nav:hover {
+  color: var(--hover-foreground-for-nav);
+}
+
+.settings-select-trigger {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  border-color: var(--border);
+}
+
+.settings-select-item {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+}
+
+.settings-select-item:hover,
+.settings-select-item[data-state="checked"] {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.settings-palette-preview {
+  background-color: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 1.5rem;
+  padding: 0.4rem 0.5rem;
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--border) 40%, transparent);
+}
+
+.settings-palette-swatch {
+  border-color: var(--border);
+}
+
+.settings-palette-label {
+  color: var(--muted-foreground);
+}
+  .filter-flag {
+    display: inline-block;
+    margin-left: 0.35rem;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 9999px;
+    background: #ef4444;
+    box-shadow: 0 0 0 2px #ffffff;
+  }
+
+  [data-slot="dropdown-menu-content"] {
+    background-color: var(--popover);
+    color: var(--popover-foreground);
+  }
+
+  .pagination-surface:disabled {
+    opacity: 0.3;
+  }
+
+  .pagination-input {
+    background-color: var(--pagination-surface-bg);
+    color: var(--pagination-surface-foreground);
+    border: 2px solid var(--pagination-surface-border);
+  }
+
+  .pagination-hint {
+    background-color: var(--pagination-surface-bg);
+    color: var(--pagination-surface-foreground);
+    border-color: var(--pagination-surface-border);
+  }
+
+  .projects-scroll {
+    @apply overflow-y-auto;
+    overflow-x: visible;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+    scrollbar-gutter: stable both-edges;
+    --projects-scrollbar-offset: 0.1rem;
+    padding-inline-end: calc(var(--projects-scrollbar-offset) + 0.5rem);
+    padding-right: calc(var(--projects-scrollbar-offset) + 0.5rem);
+  }
+
+  .projects-scroll::-webkit-scrollbar {
+    width: 0.625rem;
+    height: 0.625rem;
+  }
+
+  .projects-scroll::-webkit-scrollbar-track {
+    background-color: var(--scrollbar-track);
+    border-radius: 9999px;
+    background-clip: padding-box;
+  }
+
+  .projects-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 9999px;
+    border: 0.125rem solid transparent;
+    background-clip: padding-box;
+  }
+
+  .projects-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  .projects-scroll::-webkit-scrollbar-corner {
+    background-color: transparent;
+  }
+
+  @media (min-width: 640px) {
+    .projects-scroll {
+      --projects-scrollbar-offset: 1rem;
+    }
+  }
+
+  .create-card {
+    @apply bg-card border-2 border-primary/40 transition-colors hover:bg-primary/20;
+  }
+
+  .create-card-thumbnail {
+    @apply bg-transparent border-2 border-foreground;
+  }
+
+  .clamp-ellipsis-1 {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+  }
+
+  .asap-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+    scrollbar-gutter: stable both-edges;
+  }
+
+  .asap-scroll::-webkit-scrollbar {
+    width: 0.5rem;
+  }
+
+  .asap-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .asap-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 9999px;
+  }
+
+  .asap-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+  .dialog-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  .dialog-scroll::-webkit-scrollbar {
+    width: 0.5rem;
+  }
+
+  .dialog-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .dialog-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 9999px;
+  }
+
+  .dialog-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+
+  .project-detail-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+
+  .project-detail-scroll::-webkit-scrollbar {
+    width: 0.8rem;
+  }
+
+  .page-fade {
+    animation: pageFade 240ms ease-out;
+  }
+
+  .page-slide {
+    animation: pageSlide 280ms ease-out;
+  }
+
+  .page-slide-horizontal-right {
+    animation: pageSlideRight 260ms ease-in-out;
+  }
+
+  .page-slide-horizontal-left {
+    animation: pageSlideLeft 260ms ease-in-out;
+  }
+
+  .form-entry {
+    animation: pageSlide 280ms ease-out;
+  }
+
+  @keyframes pageFade {
+    from {
+      opacity: 0.92;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes pageSlide {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes pageSlideRight {
+    from {
+      opacity: 0;
+      transform: translateX(18px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes pageSlideLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-18px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .project-detail-scroll::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 9999px;
+    background-clip: padding-box;
+  }
+
+  .member-filter-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+    scrollbar-gutter: stable both-edges;
+  }
+
+  .member-filter-scroll::-webkit-scrollbar {
+    width: 0.4rem;
+  }
+
+  .member-filter-scroll::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .member-filter-scroll::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 9999px;
+  }
+
+  .member-filter-scroll::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+
+.project-detail-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 9999px;
+  border: 0.125rem solid transparent;
+  background-clip: padding-box;
+}
+
+.project-detail-scroll::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+.photo-section-label {
+  color: var(--muted-foreground);
+}
+
+.photo-preview-card {
+  border: 2px solid color-mix(in srgb, var(--border) 80%, var(--primary) 20%);
+  background-color: var(--card);
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--card) 35%, rgba(0, 0, 0, 0));
+}
+
+.photo-preview-frame {
+  border-color: color-mix(in srgb, var(--border) 70%, var(--primary) 30%);
+}
+
+.photo-preview-canvas {
+  background-color: var(--card);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.photo-preview-placeholder {
+  color: var(--muted-foreground);
+}
+
+.photo-placeholder-initial {
+  background-color: color-mix(in srgb, var(--primary) 10%, var(--card) 90%);
+  color: var(--primary);
+}
+
+.photo-preview-placeholder-title {
+  color: var(--task-hero-text);
+}
+
+.photo-preview-placeholder-subtitle {
+  color: var(--muted-foreground);
+}
+
+.photo-zoom-panel {
+  border: 1px solid var(--border);
+  background-color: var(--photo-zoom-panel-bg, color-mix(in srgb, var(--card) 92%, var(--primary) 8%));
+  box-shadow: 0 12px 25px color-mix(in srgb, var(--card) 35%, transparent);
+}
+
+.photo-zoom-button {
+  border-color: var(--photo-preview-button-border, var(--border));
+  background-color: var(--photo-preview-button-bg, var(--photo-button-bg, var(--card)));
+  color: var(--photo-preview-button-foreground, var(--photo-button-foreground, var(--foreground)));
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.photo-zoom-button:hover:not(:disabled) {
+  background-color: var(--photo-preview-button-hover-bg, var(--photo-preview-button-bg));
+  color: var(--photo-preview-button-hover-foreground, var(--photo-preview-button-foreground));
+  border-color: var(--photo-preview-button-border, var(--border));
+}
+
+.photo-preview-close {
+  border-color: var(--photo-preview-button-border, var(--border));
+  background-color: var(--photo-preview-button-bg, var(--photo-button-bg, var(--card)));
+  color: var(--photo-preview-button-foreground, var(--photo-button-foreground, var(--foreground)));
+  transition: background-color 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.photo-preview-close:hover:not(:disabled) {
+  background-color: var(--photo-preview-button-hover-bg, var(--photo-preview-button-bg));
+  color: var(--photo-preview-button-hover-foreground, var(--photo-preview-button-foreground));
+  border-color: var(--photo-preview-button-border, var(--border));
+}
+
+.photo-zoom-label {
+  color: var(--photo-zoom-label, var(--muted-foreground));
+}
+
+.photo-zoom-range {
+  accent-color: var(--primary);
+}
+
+.photo-zoom-input {
+  background-color: var(--photo-input-bg, var(--card));
+  color: var(--photo-input-foreground, var(--foreground));
+}
+
+.photo-preview-card {
+  background-color: var(--photo-preview-bg, var(--card));
+  border: 2px solid var(--photo-preview-border, var(--border));
+}
+
+.photo-preview-frame {
+  border-color: var(--photo-preview-inner-border, color-mix(in srgb, var(--border) 65%, transparent));
+}
+
+.photo-dialog-surface {
+  background-color: var(--photo-dialog-bg, var(--card));
+}
+
+  .photo-action-button {
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+
+  .photo-action-button--ghost {
+    background-color: transparent;
+    border-color: transparent;
+    color: var(--photo-action-ghost, var(--photo-button-foreground));
+  }
+
+  :root[data-theme="dark"] .photo-action-button,
+  .dark .photo-action-button {
+    background-color: var(--photo-button-bg, var(--button-background));
+    color: var(--photo-button-foreground, var(--button-foreground));
+    border-color: var(--photo-button-border, transparent);
+  }
+
+  :root[data-theme="dark"] .photo-action-button:hover:not(:disabled),
+  .dark .photo-action-button:hover:not(:disabled) {
+    background-color: var(--photo-button-hover-bg, var(--button-hover-background));
+    color: var(--photo-button-hover-foreground, var(--button-hover-foreground));
+  }
+
+  *::-webkit-scrollbar {
+    width: 0.6rem;
+    height: 0.6rem;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 9999px;
+    background-clip: padding-box;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb);
+    border-radius: 9999px;
+    border: 0.125rem solid transparent;
+    background-clip: padding-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+  }
+  :root {
+  --asap-calendar-today: #e7e0ff;
+}
+
+.asap-calendar .asap-calendar-day {
+  border-radius: 0.75rem;
+  height: var(--cell-size, 2.75rem);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.asap-calendar .asap-calendar-today {
+  background-color: var(--asap-calendar-today);
+  color: #2f2766;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(63, 52, 120, 0.25);
+}
+.asap-scroll {
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+.text-task-hero {
+  color: var(--task-hero-text);
+}
+
+.prefetch-progress-track {
+  position: relative;
+  overflow: hidden;
+}
+
+.prefetch-progress-track::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(79, 61, 152, 0.65) 50%, transparent 100%);
+  animation: asap-prefetch-progress 1.4s ease-in-out infinite;
+}
+
+@keyframes asap-prefetch-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.asap-read-link {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+
+.asap-read-link:hover {
+  color: var(--link-hover, var(--secondary));
+}
+}

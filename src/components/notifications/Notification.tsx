@@ -1,0 +1,307 @@
+"use client"
+
+import {
+  ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
+import { X as CloseIcon } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+
+export type NotificationVariant = "success" | "info" | "warning" | "destructive"
+
+export const MAX_NOTIFICATIONS = 3
+
+export type NotificationOptions = {
+  title: string
+  description?: string
+  variant?: NotificationVariant
+  durationMs?: number
+  href?: string
+}
+
+const EXIT_DURATION_MS = 250
+
+type NotificationRecord = {
+  id: string
+  title: string
+  description?: string
+  variant: NotificationVariant
+  durationMs: number
+  status: "enter" | "visible" | "exit"
+}
+
+export type NotificationHistoryEntry = {
+  id: string
+  title: string
+  description?: string
+  variant: NotificationVariant
+  timestamp: string
+  href?: string
+}
+
+type NotificationContextValue = {
+  notify: (options: NotificationOptions) => string
+  dismiss: (id: string) => void
+  history: NotificationHistoryEntry[]
+  removeHistoryEntry: (id: string) => void
+  clearHistory: () => void
+}
+
+const NotificationContext = createContext<NotificationContextValue | null>(null)
+
+export function useNotifications() {
+  const context = useContext(NotificationContext)
+  if (!context) {
+    throw new Error("useNotifications must be used within a NotificationProvider")
+  }
+  return context
+}
+
+const VARIANT_CLASSES: Record<NotificationVariant, string> = {
+  success:
+    "bg-[color:var(--notify-success-bg)] text-[color:var(--notify-success-text)] shadow-[0_4px_2px_rgba(144,122,214,0.2)]",
+  info: "bg-[color:var(--notify-info-bg)] text-[color:var(--notify-info-text)] shadow-[0_4px_2px_rgba(144,122,214,0.15)]",
+  warning:
+    "bg-[color:var(--notify-warning-bg)] text-[color:var(--notify-warning-text)] shadow-[0_4px_2px_rgba(245,158,11,0.2)]",
+  destructive:
+    "bg-[color:var(--notify-destructive-bg)] text-[color:var(--notify-destructive-text)] shadow-[0_4px_2px_rgba(239,68,68,0.2)]",
+}
+
+type NotificationViewportProps = {
+  notifications: NotificationRecord[]
+  onDismiss: (id: string) => void
+}
+
+function NotificationViewport({ notifications, onDismiss }: NotificationViewportProps) {
+  return (
+    <div className="pointer-events-none fixed right-[clamp(0.75rem,1vw,1.75rem)] top-[clamp(1.5rem,5vh,3rem)] z-[70] flex w-full max-w-sm flex-col items-end gap-3 px-4 sm:px-0">
+      {notifications.map((notification) => (
+        <div
+          key={notification.id}
+          className={cn(
+            "pointer-events-auto flex items-start justify-between gap-4 overflow-hidden rounded-[1.75rem] border border-white/10 px-6 py-4 transition-all duration-300 ease-out",
+            VARIANT_CLASSES[notification.variant],
+            notification.status === "enter" && "-translate-y-5 scale-[0.96] opacity-0",
+            notification.status === "visible" && "translate-y-0 scale-100 opacity-100",
+            notification.status === "exit" &&
+              "-translate-y-5 scale-[0.96] opacity-0 pointer-events-none"
+          )}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex flex-1 flex-col gap-1">
+            <span className="text-base font-semibold leading-tight">{notification.title}</span>
+            {notification.description ? (
+              <span className="text-sm leading-snug opacity-90 max-w-[20rem] break-words whitespace-pre-line">
+                {notification.description}
+              </span>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            aria-label="Dismiss notification"
+            onClick={() => onDismiss(notification.id)}
+            className="rounded-full bg-white/15 p-1.5 text-current transition hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+          >
+            <CloseIcon className="size-4" />
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+type NotificationProviderProps = {
+  children: ReactNode
+}
+
+const HISTORY_STORAGE_KEY = "asap:notification-history"
+
+export function NotificationProvider({ children }: NotificationProviderProps) {
+  const [notifications, setNotifications] = useState<NotificationRecord[]>([])
+  const [history, setHistory] = useState<NotificationHistoryEntry[]>([])
+  const idRef = useRef(0)
+  const autoDismissTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const exitTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return undefined
+    }
+    const normalizeEntry = (entry: NotificationHistoryEntry, index: number) => ({
+      ...entry,
+      id: `${entry.id}-${index}-${Date.now().toString(36)}-${Math.random()
+        .toString(36)
+        .slice(2)}`,
+      href: entry.href,
+    })
+    try {
+      const stored = window.localStorage.getItem(HISTORY_STORAGE_KEY)
+      if (stored) {
+        const parsed: NotificationHistoryEntry[] = JSON.parse(stored)
+        setHistory(parsed.map(normalizeEntry))
+      }
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to read notification history", error)
+      }
+    }
+    return undefined
+  }, [])
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return
+    }
+    try {
+      window.localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history))
+    } catch (error) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Failed to persist notification history", error)
+      }
+    }
+  }, [history])
+
+  const dismiss = useCallback((id: string) => {
+    const autoTimer = autoDismissTimers.current[id]
+    if (autoTimer) {
+      clearTimeout(autoTimer)
+      delete autoDismissTimers.current[id]
+    }
+
+    let shouldScheduleRemoval = false
+    setNotifications((prev) =>
+      prev.map((item) => {
+        if (item.id === id && item.status !== "exit") {
+          shouldScheduleRemoval = true
+          return { ...item, status: "exit" }
+        }
+        return item
+      })
+    )
+
+    if (!shouldScheduleRemoval) {
+      return
+    }
+
+    exitTimers.current[id] = setTimeout(() => {
+      setNotifications((prev) => prev.filter((item) => item.id !== id))
+      delete exitTimers.current[id]
+    }, EXIT_DURATION_MS)
+  }, [])
+
+  const notify = useCallback(
+    (options: NotificationOptions) => {
+      idRef.current += 1
+      const id = `notify-${idRef.current}`
+      const durationMs = options.durationMs ?? 1500
+      const record: NotificationRecord = {
+        id,
+        title: options.title,
+        description: options.description,
+        variant: options.variant ?? "info",
+        durationMs,
+        status: "enter",
+      }
+
+      setHistory((prev) => {
+        const nextHistory = prev.filter((entry) => entry.title !== options.title)
+        return [
+          ...nextHistory,
+          {
+            id: `${id}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`,
+            title: options.title,
+            description: options.description,
+            variant: options.variant ?? "info",
+            timestamp: new Date().toISOString(),
+            href: options.href,
+          },
+        ]
+      })
+
+      setNotifications((prev) => {
+        const stablePrev = prev.filter((item) => item.status !== "exit")
+        const next = [record, ...stablePrev]
+        if (next.length <= MAX_NOTIFICATIONS) {
+          return next
+        }
+        const trimmed = next.slice(0, MAX_NOTIFICATIONS)
+        next.slice(MAX_NOTIFICATIONS).forEach((item) => {
+          const autoTimer = autoDismissTimers.current[item.id]
+          if (autoTimer) {
+            clearTimeout(autoTimer)
+            delete autoDismissTimers.current[item.id]
+          }
+          const exitTimer = exitTimers.current[item.id]
+          if (exitTimer) {
+            clearTimeout(exitTimer)
+            delete exitTimers.current[item.id]
+          }
+        })
+        return trimmed
+      })
+
+      requestAnimationFrame(() => {
+        setNotifications((prev) =>
+          prev.map((item) =>
+            item.id === id && item.status === "enter" ? { ...item, status: "visible" } : item
+          )
+        )
+      })
+
+      if (durationMs > 0) {
+        autoDismissTimers.current[id] = setTimeout(() => {
+          dismiss(id)
+        }, durationMs)
+      }
+
+      return id
+    },
+    [dismiss]
+  )
+
+  const removeHistoryEntry = useCallback((id: string) => {
+    setHistory((prev) => prev.filter((entry) => entry.id !== id))
+  }, [])
+
+  const clearHistory = useCallback(() => {
+    setHistory([])
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      Object.values(autoDismissTimers.current).forEach((timer) => {
+        clearTimeout(timer)
+      })
+      autoDismissTimers.current = {}
+      Object.values(exitTimers.current).forEach((timer) => {
+        clearTimeout(timer)
+      })
+      exitTimers.current = {}
+    }
+  }, [])
+
+  const value = useMemo(
+    () => ({
+      notify,
+      dismiss,
+      history,
+      removeHistoryEntry,
+      clearHistory,
+    }),
+    [clearHistory, dismiss, history, notify, removeHistoryEntry]
+  )
+
+  return (
+    <NotificationContext.Provider value={value}>
+      {children}
+      <NotificationViewport notifications={notifications} onDismiss={dismiss} />
+    </NotificationContext.Provider>
+  )
+}

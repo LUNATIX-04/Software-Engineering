@@ -1,0 +1,77 @@
+import Image from "next/image";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { AvatarGroup } from "@/components/ui/avatar-group";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { useCalendar } from "@/modules/components/calendar/contexts/calendar-context";
+
+export function UserSelect() {
+	const { users, selectedUserId, filterEventsBySelectedUser } = useCalendar();
+
+	return (
+		<Select value={selectedUserId!} onValueChange={filterEventsBySelectedUser}>
+			<SelectTrigger className="w-full">
+				<SelectValue placeholder="Select a user" />
+			</SelectTrigger>
+			<SelectContent align="end">
+				<SelectItem value="all">
+					<AvatarGroup className="mx-2 flex items-center" max={3}>
+						{users.map((user) => (
+							<Avatar key={user.id} className="size-6 text-xxs">
+								{user.picturePath ? (
+									<Image
+										src={user.picturePath}
+										alt={user.name}
+										width={24}
+										height={24}
+										className="size-full rounded-full object-cover"
+										data-cy="calendar-user-avatar"
+									/>
+								) : (
+									<AvatarFallback className="text-xxs">
+										{user.name[0]}
+									</AvatarFallback>
+								)}
+							</Avatar>
+						))}
+					</AvatarGroup>
+					All
+				</SelectItem>
+
+				{users.map((user) => (
+					<SelectItem
+						key={user.id}
+						value={user.id}
+						className="flex-1 cursor-pointer"
+					>
+						<div className="flex items-center gap-2">
+							<Avatar key={user.id} className="size-6">
+								{user.picturePath ? (
+									<Image
+										src={user.picturePath}
+										alt={user.name}
+										width={24}
+										height={24}
+										className="size-full rounded-full object-cover"
+										data-cy="calendar-user-avatar-option"
+									/>
+								) : (
+									<AvatarFallback className="text-xxs">
+										{user.name[0]}
+									</AvatarFallback>
+								)}
+							</Avatar>
+
+							<p className="truncate">{user.name}</p>
+						</div>
+					</SelectItem>
+				))}
+			</SelectContent>
+		</Select>
+	);
+}
