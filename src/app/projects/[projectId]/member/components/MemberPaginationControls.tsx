@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 export type MemberPaginationControlsProps = {
-  paginationRef: RefObject<HTMLDivElement | null>
+  paginationRef: RefObject<HTMLDivElement>
   page: number
   totalPages: number
   pageInput: string

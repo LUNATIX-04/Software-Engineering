@@ -906,7 +906,7 @@ function AppShellInner({ children }: AppShellProps) {
           }
         )
 
-      nextChannel.subscribe((status: string) => {
+      nextChannel.subscribe((status) => {
         if (!active) return
         if (status === "SUBSCRIBED") {
           channel = nextChannel
@@ -971,7 +971,7 @@ function AppShellInner({ children }: AppShellProps) {
           }
         )
 
-      nextChannel.subscribe((status: string) => {
+      nextChannel.subscribe((status) => {
         if (!active) return
         if (status === "SUBSCRIBED") {
           statusChannel = nextChannel

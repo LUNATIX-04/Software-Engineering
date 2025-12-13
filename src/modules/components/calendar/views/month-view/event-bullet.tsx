@@ -34,7 +34,7 @@ export function EventBullet({
 	const baseClass = accentColor ? "size-2 rounded-full" : undefined;
 	return (
 		<motion.div
-			className={cn(baseClass, !accentColor && eventBulletVariants({ color: color as any }), className)}
+			className={cn(baseClass, !accentColor && eventBulletVariants({ color }), className)}
 			style={style}
 			initial={{ scale: 0, opacity: 0 }}
 			animate={{ scale: 1, opacity: 1 }}

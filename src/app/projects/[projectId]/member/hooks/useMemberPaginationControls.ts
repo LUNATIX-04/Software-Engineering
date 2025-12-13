@@ -1,20 +1,12 @@
 "use client"
 
-import {
-  FocusEvent as ReactFocusEvent,
-  KeyboardEvent as ReactKeyboardEvent,
-  RefObject,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react"
+import { FocusEvent, KeyboardEvent, RefObject, useCallback, useEffect, useRef, useState } from "react"
 
 export type UseMemberPaginationControlsProps = {
   page: number
   totalPages: number
   onPageChange: (page: number) => void
-  paginationRef: RefObject<HTMLDivElement | null>
+  paginationRef: RefObject<HTMLDivElement>
 }
 
 export function useMemberPaginationControls({
@@ -114,7 +106,7 @@ export function useMemberPaginationControls({
   }, [page, pageInput, totalPages, onPageChange])
 
   const handleContainerBlur = useCallback(
-    (event: ReactFocusEvent<HTMLDivElement>) => {
+    (event: FocusEvent<HTMLDivElement>) => {
       const nextTarget = event.relatedTarget as HTMLElement | null
       if (!nextTarget || !paginationRef.current?.contains(nextTarget)) {
         hidePageHint()
@@ -142,7 +134,7 @@ export function useMemberPaginationControls({
   )
 
   const handlePageInputKeyDown = useCallback(
-    (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    (event: KeyboardEvent<HTMLInputElement>) => {
       if (event.key === "Enter") {
         commitPageInput()
         triggerPageHint()

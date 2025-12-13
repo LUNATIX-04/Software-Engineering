@@ -39,7 +39,7 @@ import {
   ImageCropSelection,
   ProjectFormInitialValues,
   ProjectFormValues,
-} from "./ProjectForm/types"
+} from "./types"
 import DepartmentColorMenu, { QUICK_DEPARTMENT_COLORS } from "@/components/projects/DepartmentColorMenu"
 import { computeTextColor, sanitizeHexColor } from "@/utils/colors"
 import DepartmentDeleteDialog from "@/app/projects/[projectId]/department/components/DepartmentDeleteDialog"
@@ -100,7 +100,7 @@ export function ProjectForm({
     (names: string[]) => {
       const styles: Record<string, { color: string; textColor: string }> = {}
       names.forEach((name, index) => {
-        const paletteColor = QUICK_DEPARTMENT_COLORS[index % QUICK_DEPARTMENT_COLORS.length].value
+        const paletteColor = QUICK_DEPARTMENT_COLORS[index % QUICK_DEPARTMENT_COLORS.length]
         const color = sanitizeHexColor(
           normalizedInitial.departmentColors?.[name]?.color ?? paletteColor ?? DEFAULT_DEPARTMENT_COLOR
         )
@@ -395,7 +395,7 @@ export function ProjectForm({
           return prevStyles
         }
         const paletteColor =
-          QUICK_DEPARTMENT_COLORS[next.length % QUICK_DEPARTMENT_COLORS.length]?.value ??
+          QUICK_DEPARTMENT_COLORS[next.length % QUICK_DEPARTMENT_COLORS.length] ??
           DEFAULT_DEPARTMENT_COLOR
         const color = sanitizeHexColor(paletteColor)
         return {
@@ -1013,6 +1013,7 @@ export function ProjectForm({
                       <TooltipTrigger asChild>
                         <span
                           className={chipClassName}
+                          draggable
                           role="button"
                           tabIndex={0}
                           aria-pressed={isActive}

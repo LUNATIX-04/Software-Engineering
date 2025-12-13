@@ -2,6 +2,7 @@
 
 import { useCallback } from "react"
 import { Link2, LogOut, MoreHorizontal, PencilLine, RefreshCcw, Trash2, UserPen } from "lucide-react"
+import type { AppRouterInstance } from "next/navigation"
 
 import {
   DropdownMenu,
@@ -13,17 +14,14 @@ import {
 import type { ProjectMembershipSummary } from "@/utils/projects/api"
 import { cn } from "@/lib/utils"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
-import { PROJECT_ROLE, type ProjectRole } from "@/types/projects"
+import { PROJECT_ROLE } from "@/types/projects"
 
 export type ProjectActionsMenuProps = {
   activeProjectId: string | null
   projectActionsOpen: boolean
   projectMembership: ProjectMembershipSummary | null
   promptProjectDelete: (projectId: string) => void
-  router: {
-    refresh: () => void
-    push: (href: string) => void
-  }
+  router: AppRouterInstance
   setLeaveDialogOpen: (open: boolean) => void
   setOwnerDialogOpen: (open: boolean) => void
   setPendingUsername: (value: string) => void
@@ -51,7 +49,7 @@ export function ProjectActionsMenu({
     return null
   }
 
-  const role: ProjectRole = projectMembership?.role ?? PROJECT_ROLE.MEMBER
+  const role = (projectMembership?.role ?? "MEMBER") as PROJECT_ROLE
   const canInviteMembers = role === PROJECT_ROLE.OWNER || role === PROJECT_ROLE.HEADER
   const canEditThisProject = role === PROJECT_ROLE.OWNER
   const canDeleteThisProject = role === PROJECT_ROLE.OWNER

@@ -8,21 +8,14 @@ import {
   fetchProjectInvites,
   type ProjectInviteRecord,
 } from "@/utils/projects/api"
-import {
-  fetchProjectDepartments as fetchDepts,
-  type ProjectDepartmentRecord,
-} from "@/utils/projects/departments"
-import {
-  INVITE_EXPIRY_OPTIONS,
-  INVITE_EXPIRY_PRESETS_MS,
-  INVITE_ROLE_OPTIONS,
-} from "../invite/constants"
+import { fetchProjectDepartments as fetchDepts, type ProjectDepartmentRecord } from "@/utils/projects/departments"
+import { INVITE_EXPIRY_OPTIONS, INVITE_EXPIRY_PRESETS_MS, INVITE_ROLE_OPTIONS } from "../invite/constants"
 import type {
   InviteExpiryOption,
   InviteRoleOption,
   InviteRoleOptionKey,
 } from "../invite/constants"
-import type { NotificationOptions } from "@/components/notifications/Notification"
+import type { UseNotificationsReturn } from "@/components/notifications/Notification"
 
 const INVITE_DIALOG_OPEN_EVENT = "asap:open-invite-dialog"
 
@@ -68,7 +61,7 @@ type UseProjectInvitesOptions = {
   activeProjectId: string | null
   viewerDepartmentId: string | null
   isHeaderViewer: boolean
-  notify: (options: NotificationOptions) => string
+  notify: UseNotificationsReturn["notify"]
 }
 
 export function useProjectInvites({
@@ -254,17 +247,13 @@ export function useProjectInvites({
       return
     }
     const effectiveDepartmentId = isHeaderViewer ? viewerDepartmentId : inviteDepartmentId
-    const expiryMs =
-      inviteExpiry === "never" ? undefined : INVITE_EXPIRY_PRESETS_MS[inviteExpiry]
     setInviteError(null)
     setInviteSaving(true)
     try {
       const newInvite = await createProjectInvite(activeProjectId, {
         maxUses: inviteMaxUsesCustom ? Number(inviteMaxUses) : undefined,
-        expiresAt:
-          typeof expiryMs === "number"
-            ? new Date(Date.now() + expiryMs).toISOString()
-            : undefined,
+        expiresInSeconds:
+          inviteExpiry === "never" ? undefined : INVITE_EXPIRY_PRESETS_MS[inviteExpiry],
         departmentId: effectiveDepartmentId,
         role: inviteRoleOption.role,
       })

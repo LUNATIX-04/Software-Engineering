@@ -1428,8 +1428,9 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       : savedTaskStatus === "SUBMITTED"
         ? "The owner accepted this submission, so no more edits are allowed."
         : null
-  const viewerHasReviewPrivileges =
-    membership?.role === PROJECT_ROLE.OWNER || membership?.role === PROJECT_ROLE.HEADER
+  const viewerHasReviewPrivileges = Boolean(
+    membership && [PROJECT_ROLE.OWNER, PROJECT_ROLE.HEADER].includes(membership.role)
+  )
   const reviewerOrAssigner = viewerIsAssigner || viewerHasReviewPrivileges
   const canReviewSubmission = reviewerOrAssigner && Boolean(task?.submission)
   const ownerViewingSubmission = reviewerOrAssigner && Boolean(task?.submission)

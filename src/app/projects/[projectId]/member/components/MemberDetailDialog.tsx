@@ -97,7 +97,7 @@ export function MemberDetailDialog({
                     <span className="text-foreground/40">Department : </span>
                     {memberTarget.department}
                   </p>
-                  {memberTarget.rawRole !== PROJECT_ROLE.MEMBER ? (
+                  {memberTarget.role !== PROJECT_ROLE.MEMBER ? (
                     <p className="text-sm font-semibold  text-primary/70">
                       <span className="text-foreground/40">Role : </span>
                       {memberTarget.role}
