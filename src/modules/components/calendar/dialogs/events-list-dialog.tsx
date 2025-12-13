@@ -67,7 +67,7 @@ export function EventListDialog({
                                         className={cn(
                                             "flex items-center gap-2 p-2 border rounded-md hover:bg-muted cursor-pointer",
                                             {
-                                                [dayCellVariants({color: event.color})]:
+                                                [dayCellVariants({ color: event.color as any })]:
                                                     badgeVariant === "colored",
                                             },
                                         )}

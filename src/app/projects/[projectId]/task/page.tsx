@@ -124,14 +124,17 @@ const readStoredTaskFilters = (key: string): StoredTaskFilters | null => {
           .map((value: unknown) =>
             typeof value === "string" ? normalizeHexColorValue(value) : null
           )
-          .filter((value): value is string => Boolean(value))
+          .filter((value: string | null): value is string => Boolean(value))
       : []
     const statuses = Array.isArray(parsed?.statuses)
       ? (parsed.statuses
           .map((value: unknown) =>
             typeof value === "string" ? value.trim().toUpperCase() : ""
           )
-          .filter((value): value is TaskStatus => TASK_STATUS_VALUES.includes(value as TaskStatus)))
+          .filter(
+            (value: string): value is TaskStatus =>
+              TASK_STATUS_VALUES.includes(value as TaskStatus)
+          ))
       : []
     return { departments, exactMatch, taskScope, search, colors, statuses }
   } catch (error) {
@@ -393,7 +396,10 @@ export default function ProjectTaskPage({ params }: ProjectTaskPageProps) {
     setActiveColorFilters((prev) =>
       prev
         .map((color) => normalizeHexColorValue(color))
-        .filter((color): color is string => Boolean(color) && normalizedAvailableColors.has(color))
+        .filter(
+          (color: string | null): color is string =>
+            typeof color === "string" && normalizedAvailableColors.has(color)
+        )
     )
   }, [normalizedAvailableColors])
 

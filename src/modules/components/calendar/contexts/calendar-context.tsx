@@ -43,7 +43,7 @@ interface ICalendarContext {
 	toggleDepartmentFilter: (departmentName: string, departmentId?: string | null) => void;
 	availableDepartments: string[];
 	availableColors: string[];
-	departmentMeta: Record<string, { id?: string | null; color?: string; textColor?: string }>;
+	departmentMeta: Record<string, { id?: string | null; color?: string | null; textColor?: string | null }>;
 	clearDepartmentFilters: () => void;
 	users: IUser[];
 	events: IEvent[];
@@ -162,7 +162,7 @@ export function CalendarProvider({
 	const departmentMeta = useMemo(() => {
 		const meta: Record<
 			string,
-			{ id?: string | null; color?: string; textColor?: string }
+			{ id?: string | null; color?: string | null; textColor?: string | null }
 		> = {};
 		allEvents.forEach((event) => {
 			const departmentName = event.departmentName?.trim();

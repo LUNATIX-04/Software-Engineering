@@ -765,6 +765,12 @@ export function registerTaskRoutes(app: Elysia) {
       return tx.projectTask.findUniqueOrThrow({
         where: { id: created.id },
         include: {
+          project: {
+            select: {
+              id: true,
+              title: true,
+            },
+          },
           department: {
             select: {
               id: true,
