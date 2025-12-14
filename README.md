@@ -304,7 +304,7 @@ If anything in this README is unclear during review or testing, please follow th
 ### 10.1 Hosted deployment (Vercel)
 
 - Production deployment (used for the course submission):  
-  <https://software-engineering-jmylsporv-asap8.vercel.app/>
+  <https://software-engineering-mtbr54u8n-asap8.vercel.app>
 
 This instance is connected to our Supabase project and pre‑seeded with the two demo accounts from **Test Credentials**.
 
@@ -325,3 +325,17 @@ Because Supabase uses multiple schemas (`public`, `auth`, `storage`), **do not**
    - `database/supabase only/storage_seed.sql` – inserts storage metadata (buckets/objects) used by the demo (project images, profile pictures for those two users).
 
 > These SQL files are meant only for demo and testing. Do not use them as‑is for real production data. For a clean production database, prefer the approaches in **4.1** or **4.2** instead.
+
+---
+
+## 11. Traceability to Design Diagrams (Part B)
+
+**Traceability – Do folder names and class names in the code match the original Design Diagrams (Class Diagram in Part B)?**
+
+Not exactly. During implementation we migrated the design to run fully on **Supabase** and **Prisma**, which changed some of the original entities:
+
+- Several classes/relationships in the old Class Diagram were simplified or removed when mapped to Supabase Auth, Storage, and Postgres tables.
+- The “true” source of the current domain model is the Prisma schema in `prisma/schema.prisma` together with the SQL under `supabase/migrations/` and `database/`.
+- Folder names and TypeScript types are therefore aligned with the **current schema and running application**, rather than the earlier conceptual diagram.
+
+The design in Part B should be read as a high‑level conceptual model; for precise, up‑to‑date structures, please refer to the codebase and Prisma/Supabase schemas.
