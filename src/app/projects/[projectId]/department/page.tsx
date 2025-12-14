@@ -136,7 +136,7 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
       if (navigationAbortRef.current) {
         return
       }
-      setDepartments(applyPendingColors(sortedDepartments(data)))
+      setDepartments(applyPendingColors(sortedDepartments(data ?? [])))
     } catch (error) {
       console.error("Failed to load departments", error)
       const message =
@@ -166,7 +166,7 @@ export default function ProjectDepartmentPage({ params }: ProjectDepartmentPageP
       if (navigationAbortRef.current) {
         return
       }
-      setMembers(data)
+      setMembers(data ?? [])
     } catch (error) {
       console.error("Failed to load project members", error)
       if (!navigationAbortRef.current) {

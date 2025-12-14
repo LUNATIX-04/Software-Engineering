@@ -1,3 +1,1 @@
 https://github.com/ASAPSekmutt/Software-Engineering.git
-
-เลือก Branch ใช้ Lastest_Release-Version- เพราะเป็น ver1.2.1

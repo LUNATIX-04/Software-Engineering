@@ -864,6 +864,21 @@ function AppShellInner({ children }: AppShellProps) {
 
     let active = true
     let channel: RealtimeChannel | null = null
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+
+    const scheduleReconnect = (target: RealtimeChannel) => {
+      if (!active) return
+      if (reconnectTimer) return
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null
+        if (!active) return
+        void supabase.removeChannel(target).finally(() => {
+          if (active) {
+            subscribe()
+          }
+        })
+      }, 300)
+    }
 
     const subscribe = () => {
       const nextChannel = supabase
@@ -906,22 +921,14 @@ function AppShellInner({ children }: AppShellProps) {
           }
         )
 
-      nextChannel.subscribe((status) => {
+      nextChannel.subscribe((status: string) => {
         if (!active) return
         if (status === "SUBSCRIBED") {
           channel = nextChannel
           return
         }
         if (["CHANNEL_ERROR", "CLOSED", "TIMED_OUT"].includes(status)) {
-          void supabase.removeChannel(nextChannel).finally(() => {
-            if (active) {
-              setTimeout(() => {
-                if (active) {
-                  subscribe()
-                }
-              }, 300)
-            }
-          })
+          scheduleReconnect(nextChannel)
         }
       })
     }
@@ -930,6 +937,9 @@ function AppShellInner({ children }: AppShellProps) {
 
     return () => {
       active = false
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer)
+      }
       if (channel) {
         void supabase.removeChannel(channel)
       }
@@ -971,7 +981,7 @@ function AppShellInner({ children }: AppShellProps) {
           }
         )
 
-      nextChannel.subscribe((status) => {
+      nextChannel.subscribe((status: string) => {
         if (!active) return
         if (status === "SUBSCRIBED") {
           statusChannel = nextChannel

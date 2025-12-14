@@ -310,6 +310,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
   const [kickError, setKickError] = useState<string | null>(null)
   const [memberDetailDialogOpen, setMemberDetailDialogOpen] = useState(false)
   const [memberDetailTarget, setMemberDetailTarget] = useState<MemberRecord | null>(null)
+  const [detailRoleLabel, setDetailRoleLabel] = useState<string | null>(null)
   const [detailUsername, setDetailUsername] = useState("")
   const [detailBio, setDetailBio] = useState("")
   const [detailSaving, setDetailSaving] = useState(false)
@@ -336,7 +337,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       if (navigationAbortRef.current) {
         return
       }
-      const normalized = normalizeMemberDepartments(response).sort(
+      const normalized = normalizeMemberDepartments(response ?? []).sort(
         (a, b) => a.order - b.order || a.name.localeCompare(b.name)
       )
       setRemoteDepartments(normalized)
@@ -367,7 +368,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
       if (navigationAbortRef.current) {
         return
       }
-      const normalized = normalizeMembers(remoteMembers)
+      const normalized = normalizeMembers(remoteMembers ?? [])
       setMembers(normalized)
     } catch (error) {
       console.error("Failed to load members", error)
@@ -945,8 +946,21 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
     setDetailUsername(member.name)
     setDetailBio(member.bio ?? "")
     setDetailError(null)
+    const departmentHeadUsername =
+      member.departmentId && departmentHeadMap[member.departmentId]
+        ? departmentHeadMap[member.departmentId]
+        : null
+    const isDepartmentHead =
+      Boolean(departmentHeadUsername) && departmentHeadUsername === member.name
+    const roleLabel =
+      member.rawRole === PROJECT_ROLE.OWNER
+        ? isDepartmentHead
+          ? "Header (Project Owner)"
+          : "Member (Project Owner)"
+        : member.role
+    setDetailRoleLabel(roleLabel)
     setMemberDetailDialogOpen(true)
-  }, [])
+  }, [departmentHeadMap])
 
   const handleKickDialogOpenChange = useCallback((open: boolean) => {
     setKickDialogOpen(open)
@@ -1324,6 +1338,7 @@ export default function ProjectMemberPage({ params }: ProjectMemberPageProps) {
           onOpenChange={handleMemberDetailClose}
           memberTarget={memberDetailTarget}
           membership={membership}
+          roleLabel={detailRoleLabel}
           usernameValue={detailUsername}
           bioValue={detailBio}
           detailError={detailError}

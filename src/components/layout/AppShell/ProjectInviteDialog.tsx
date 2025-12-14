@@ -11,14 +11,14 @@ import {
 import { cn } from "@/lib/utils"
 import { INVITE_EXPIRY_OPTIONS, INVITE_ROLE_OPTIONS } from "@/components/layout/invite/constants"
 import { ProjectInvitesState } from "../hooks/useProjectInvites"
-import { PROJECT_ROLE } from "@/types/projects"
+import { PROJECT_ROLE, type ProjectRole } from "@/types/projects"
 import { Check, ChevronDown } from "lucide-react"
 import { ProgressBar } from "@/components/ui/progress-bar"
 
 type ProjectInviteDialogProps = {
   manager: ProjectInvitesState
   viewerDepartmentId: string | null
-  viewerRole: PROJECT_ROLE | null
+  viewerRole: ProjectRole | null
   isHeaderViewer: boolean
 }
 

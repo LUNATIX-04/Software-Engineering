@@ -15,6 +15,25 @@ import {dayCellVariants} from "@/modules/components/calendar/views/month-view/da
 import {EventBullet} from "@/modules/components/calendar/views/month-view/event-bullet";
 import {TaskDetailsDialog} from "@/modules/components/calendar/dialogs/task-details-dialog";
 
+type DayCellVariantColor = "blue" | "green" | "red" | "yellow" | "purple" | "orange" | "gray";
+
+function mapEventColorToDayCellVariant(color: string | null | undefined): DayCellVariantColor | undefined {
+    if (!color) return undefined;
+    const normalized = color.trim().toLowerCase();
+    switch (normalized) {
+        case "blue":
+        case "green":
+        case "red":
+        case "yellow":
+        case "purple":
+        case "orange":
+        case "gray":
+            return normalized;
+        default:
+            return undefined;
+    }
+}
+
 interface EventListDialogProps {
     date: Date;
     events: IEvent[];
@@ -60,6 +79,7 @@ export function EventListDialog({
                     {cellEvents.length > 0 ? (
                         cellEvents.map((event) => {
                             const eventCyId = event.taskId ?? event.id;
+                            const variantColor = mapEventColorToDayCellVariant(event.color);
                             return (
                                 <TaskDetailsDialog event={event} key={event.id}>
                                     <div
@@ -67,8 +87,8 @@ export function EventListDialog({
                                         className={cn(
                                             "flex items-center gap-2 p-2 border rounded-md hover:bg-muted cursor-pointer",
                                             {
-                                                [dayCellVariants({color: event.color})]:
-                                                    badgeVariant === "colored",
+                                                [dayCellVariants({color: variantColor})]:
+                                                    badgeVariant === "colored" && Boolean(variantColor),
                                             },
                                         )}
                                         style={badgeVariant === "colored" ? getEventAccentStyles(event, { text: true }) : undefined}

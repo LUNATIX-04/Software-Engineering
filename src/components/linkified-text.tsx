@@ -115,7 +115,9 @@ export function LinkifiedText({ value }: LinkifiedTextProps) {
             Follow this link?
           </AlertDialogTitle>
           <AlertDialogDescription className="mt-4 text-base text-[var(--task-subtle-text)]">
-            <span className="font-semibold text-[var(--primary)]">{pendingLabel}</span>
+            <span className="font-semibold text-[var(--primary)] break-all break-words">
+              {pendingLabel}
+            </span>
           </AlertDialogDescription>
           <AlertDialogFooter className="mt-8 flex w-full flex-row justify-end gap-4">
             <AlertDialogCancel

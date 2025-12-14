@@ -21,6 +21,25 @@ const eventBulletVariants = cva("size-2 rounded-full", {
 	},
 });
 
+type EventBulletVariantColor = "blue" | "green" | "red" | "yellow" | "purple" | "orange" | "gray";
+
+function mapEventColorToVariant(color: TEventColor | null | undefined): EventBulletVariantColor | undefined {
+	if (!color) return undefined;
+	const normalized = color.trim().toLowerCase();
+	switch (normalized) {
+		case "blue":
+		case "green":
+		case "red":
+		case "yellow":
+		case "purple":
+		case "orange":
+		case "gray":
+			return normalized;
+		default:
+			return undefined;
+	}
+}
+
 export function EventBullet({
 	color,
 	accentColor,
@@ -32,9 +51,14 @@ export function EventBullet({
 }) {
 	const style = accentColor ? { backgroundColor: accentColor } : undefined;
 	const baseClass = accentColor ? "size-2 rounded-full" : undefined;
+	const variantColor = mapEventColorToVariant(color);
 	return (
 		<motion.div
-			className={cn(baseClass, !accentColor && eventBulletVariants({ color }), className)}
+			className={cn(
+				baseClass,
+				!accentColor && eventBulletVariants({ color: variantColor }),
+				className,
+			)}
 			style={style}
 			initial={{ scale: 0, opacity: 0 }}
 			animate={{ scale: 1, opacity: 1 }}

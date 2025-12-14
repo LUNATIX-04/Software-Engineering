@@ -1,9 +1,10 @@
-import { PROJECT_ROLE, type ProjectMembershipSummary } from "@/types/projects"
+import { PROJECT_ROLE, type ProjectRole } from "@/types/projects"
+import { type ProjectMembershipSummary } from "@/utils/projects/api"
 import { getCachedProjectMembership, loadProjectMembership } from "@/utils/projects/prefetch"
 
 export type ProjectMetadata = {
   membership: ProjectMembershipSummary | null
-  role: PROJECT_ROLE | null
+  role: ProjectRole | null
   isOwner: boolean
   isHeader: boolean
 }

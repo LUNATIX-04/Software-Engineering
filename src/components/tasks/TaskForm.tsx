@@ -170,11 +170,15 @@ function TaskColorMenu({
                   style={{ backgroundColor: option.value }}
                   onMouseEnter={() => setQuickColorPreview(normalizedValue)}
                   onMouseLeave={() =>
-                    setQuickColorPreview((current) => (current === normalizedValue ? null : current))
+                    setQuickColorPreview(
+                      quickColorPreview === normalizedValue ? null : quickColorPreview
+                    )
                   }
                   onFocus={() => setQuickColorPreview(normalizedValue)}
                   onBlur={() =>
-                    setQuickColorPreview((current) => (current === normalizedValue ? null : current))
+                    setQuickColorPreview(
+                      quickColorPreview === normalizedValue ? null : quickColorPreview
+                    )
                   }
                   onClick={() => handleColorSelect(normalizedValue)}
                   aria-label={`Select ${option.label}`}
@@ -364,18 +368,6 @@ function TaskAssigneeSection({
                               </button>
                             )
                           })}
-                          <button
-                            type="button"
-                            onClick={togglePriorityRoleFilter}
-                            className={cn(
-                              "rounded-full border px-3 py-1 text-xs transition focus:outline-none",
-                              priorityRoleFilterActive
-                                ? "border-primary bg-primary text-white"
-                                : "border-primary/30 bg-white text-primary hover:border-primary"
-                            )}
-                          >
-                            Header (Project Owner)
-                          </button>
                         </div>
                       </div>
                     ) : null}
@@ -531,6 +523,7 @@ type TaskAssigneeOption = {
   departmentName: string | null
   departmentColor: string | null
   departmentTextColor: string | null
+  roleLabel?: string | null
 }
 
 type AssigneeMeta = TaskAssigneeOption & {
@@ -881,6 +874,11 @@ type TaskTimelinePanelProps = {
   calendarRange: DateRange | undefined
 }
 
+type FillDateTimeForm = {
+  startDate: Date
+  endDate: Date
+}
+
 function TaskTimelinePanel({
   formattedStartLabel,
   formattedDeadlineLabel,
@@ -1150,9 +1148,8 @@ export function TaskForm({
       const normalizedTextColor = normalizeHex(option.departmentTextColor)
       const chipTextColor = normalizedTextColor ?? getContrastingTextColor(normalizedBackground)
       const roleLabel =
-        option.role === "HEADER"
-          ? "Header - Project Owner"
-          : ROLE_LABELS[option.role] ?? option.role ?? null
+        option.roleLabel ??
+        (ROLE_LABELS[option.role] ?? option.role ?? null)
       const displayLabel =
         option.role && PROMINENT_ROLE_SET.has(option.role)
           ? roleLabel
@@ -1208,7 +1205,7 @@ export function TaskForm({
         (option.roleLabel ? assigneeRoleFilters.includes(option.roleLabel) : false)
       const matchesPriority = !priorityRoleFilterActive
         ? true
-        : option.roleLabel === "Header" || option.roleLabel === "Project Owner"
+        : option.role === "HEADER" || option.role === "OWNER"
       return matchesSearch && matchesDepartment && matchesRole && matchesPriority
     })
   }, [

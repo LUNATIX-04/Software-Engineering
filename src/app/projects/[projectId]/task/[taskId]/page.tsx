@@ -44,6 +44,7 @@ import {
   type ProjectMemberDetail,
   type ProjectMembershipSummary,
 } from "@/utils/projects/api"
+import { fetchProjectDepartments } from "@/utils/projects/departments"
 import { PROJECT_ROLE } from "@/types/projects"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
 import { useNotifications } from "@/components/notifications/Notification"
@@ -75,9 +76,6 @@ const ROLE_LABEL_MAP: Record<string, string> = {
   HEADER: "Header",
   MEMBER: "Member",
 }
-
-const getRoleLabel = (role: string) =>
-  role === "OWNER" ? "Header (Project Owner)" : ROLE_LABEL_MAP[role] ?? "Member"
 
 const FILE_TYPE_ICON_MAP: Record<string, LucideIcon> = {
   doc: FileText,
@@ -355,6 +353,7 @@ type AssigneeListDialogProps = {
   loading: boolean
   error: string | null
   onMemberSelect: (member: ProjectMemberDetail) => void
+  resolveRoleLabel: (rawRole: string | null | undefined, options?: { departmentId?: string | null; username?: string | null }) => string
 }
 
 function AssigneeListDialog({
@@ -364,6 +363,7 @@ function AssigneeListDialog({
   loading,
   error,
   onMemberSelect,
+  resolveRoleLabel,
 }: AssigneeListDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -416,7 +416,11 @@ function AssigneeListDialog({
                     {assignee.username || assignee.fullName || "Assignee"}
                   </p>
                   <p className="text-xs text-[var(--task-subtle-text)]">
-                    {assignee.department?.name ?? "No department"} • {getRoleLabel(assignee.role ?? "MEMBER")}
+                    {assignee.department?.name ?? "No department"} •{" "}
+                    {resolveRoleLabel(assignee.role, {
+                      departmentId: assignee.department?.id ?? null,
+                      username: assignee.username,
+                    })}
                   </p>
                 </div>
               </button>
@@ -1066,6 +1070,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const [assigneeDetailOpen, setAssigneeDetailOpen] = useState(false)
   const [dateInfoOpen, setDateInfoOpen] = useState(false)
   const [acknowledgingSubmission, setAcknowledgingSubmission] = useState(false)
+  const [departmentHeadMap, setDepartmentHeadMap] = useState<Record<string, string | null>>({})
   const loadTask = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -1101,6 +1106,57 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   React.useEffect(() => {
     loadTask()
   }, [loadTask])
+
+  React.useEffect(() => {
+    let active = true
+    const loadDepartments = async () => {
+      if (!projectId) {
+        return
+      }
+      try {
+        const departments = await fetchProjectDepartments(projectId)
+        if (!active) {
+          return
+        }
+        const map = departments.reduce<Record<string, string | null>>((acc, dept) => {
+          acc[dept.id] = dept.head ?? null
+          return acc
+        }, {})
+        setDepartmentHeadMap(map)
+      } catch (error) {
+        console.error("Failed to load departments for role labels", error)
+      }
+    }
+    void loadDepartments()
+    return () => {
+      active = false
+    }
+  }, [projectId])
+
+  const resolveRoleLabel = useCallback(
+    (
+      rawRole: string | null | undefined,
+      options?: { departmentId?: string | null; username?: string | null },
+    ) => {
+      const roleKey = rawRole ?? "MEMBER"
+      const baseLabel = ROLE_LABEL_MAP[roleKey] ?? "Member"
+      if (roleKey !== PROJECT_ROLE.OWNER) {
+        return baseLabel
+      }
+      const departmentId = options?.departmentId ?? null
+      const username = options?.username ?? null
+      const headUsername =
+        departmentId && departmentHeadMap[departmentId] !== undefined
+          ? departmentHeadMap[departmentId]
+          : null
+      if (!departmentId || !username || !headUsername) {
+        return "Member (Project Owner)"
+      }
+      const isDepartmentHead = headUsername === username
+      return isDepartmentHead ? "Header (Project Owner)" : "Member (Project Owner)"
+    },
+    [departmentHeadMap],
+  )
 
   const loadAssignerProfile = useCallback(async () => {
     if (!task) {
@@ -1428,9 +1484,8 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       : savedTaskStatus === "SUBMITTED"
         ? "The owner accepted this submission, so no more edits are allowed."
         : null
-  const viewerHasReviewPrivileges = Boolean(
-    membership && [PROJECT_ROLE.OWNER, PROJECT_ROLE.HEADER].includes(membership.role)
-  )
+  const viewerHasReviewPrivileges =
+    membership?.role === PROJECT_ROLE.OWNER || membership?.role === PROJECT_ROLE.HEADER
   const reviewerOrAssigner = viewerIsAssigner || viewerHasReviewPrivileges
   const canReviewSubmission = reviewerOrAssigner && Boolean(task?.submission)
   const ownerViewingSubmission = reviewerOrAssigner && Boolean(task?.submission)
@@ -1833,7 +1888,10 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
   const assignerDepartmentLabel =
     task?.department?.name ?? assignerProfile?.department?.name ?? null
   const roleValue = assignerProfile?.role ?? task?.createdBy?.role ?? "MEMBER"
-  const assignerRoleLabel = getRoleLabel(roleValue)
+  const assignerRoleLabel = resolveRoleLabel(roleValue, {
+    departmentId: assignerProfile?.department?.id ?? null,
+    username: assignerProfile?.username ?? task?.createdBy?.username ?? null,
+  })
   const todayDateLabel = formatDateTime(new Date())
   const todayStart = React.useMemo(() => {
     const date = new Date()
@@ -2034,14 +2092,17 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                         <p className="text-lg font-semibold text-[var(--task-hero-text)]">
                           {assigneeDetailTarget.username}
                         </p>
-                        <p className="text-sm font-semibold text-primary/70">
-                          <span className="text-foreground/40">Department : </span>
-                          {assigneeDetailTarget.department?.name ?? "Unassigned"}
-                        </p>
-                        <p className="text-sm font-semibold text-primary/70">
-                          <span className="text-foreground/40">Role : </span>
-                          {getRoleLabel(assigneeDetailTarget.role)}
-                        </p>
+                  <p className="text-sm font-semibold text-primary/70">
+                    <span className="text-foreground/40">Department : </span>
+                    {assigneeDetailTarget.department?.name ?? "Unassigned"}
+                  </p>
+                  <p className="text-sm font-semibold text-primary/70">
+                    <span className="text-foreground/40">Role : </span>
+                          {resolveRoleLabel(assigneeDetailTarget.role, {
+                            departmentId: assigneeDetailTarget.department?.id ?? null,
+                            username: assigneeDetailTarget.username,
+                          })}
+                  </p>
                       </div>
                     </div>
                     <div className="space-y-3">
@@ -2074,14 +2135,15 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
                 <div className="flex items-center gap-2">
                   <p className="font-semibold ml-0 text-[var(--task-hero-text)]">Assigned To</p>
                   {task.assignees.length > 0 && (
-                  <AssigneeListDialog
-                    assignees={resolvedAssigneeList}
-                    open={assigneeDialogOpen}
-                    onOpenChange={handleAssigneeDialogOpenChange}
-                    loading={assigneeDialogLoading}
-                    error={assigneeDialogError}
-                    onMemberSelect={handleAssigneeDetailView}
-                  />
+                    <AssigneeListDialog
+                      assignees={resolvedAssigneeList}
+                      open={assigneeDialogOpen}
+                      onOpenChange={handleAssigneeDialogOpenChange}
+                      loading={assigneeDialogLoading}
+                      error={assigneeDialogError}
+                      onMemberSelect={handleAssigneeDetailView}
+                      resolveRoleLabel={resolveRoleLabel}
+                    />
                   )}
                 </div>
                 <div className="asap-scroll max-h-6 overflow-x-auto text-sm font-normal text-[var(--task-hero-text)]">
@@ -2170,7 +2232,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               )}
 
 
-              {reviewerOrAssigner && ownerViewingSubmission && (
+              {viewerIsAssigner && ownerViewingSubmission && (
                 <TaskSubmissionDetailsPanel
                   submissionMarker={submissionMarker}
                   hasPendingSubmissionAcknowledgement={hasPendingSubmissionAcknowledgement}
@@ -2181,7 +2243,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
               )}
 
 
-              {reviewerOrAssigner && canReviewSubmission && (
+              {viewerIsAssigner && canReviewSubmission && (
                 <TaskReviewSection
                   status={status}
                   setStatus={setStatus}

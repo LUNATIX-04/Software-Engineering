@@ -22,6 +22,7 @@ export type MemberDetailDialogProps = {
   onOpenChange: (open: boolean) => void
   memberTarget: MemberRecord | null
   membership: ProjectMembershipSummary | null
+  roleLabel: string | null
   usernameValue: string
   bioValue: string
   detailError: string | null
@@ -37,6 +38,7 @@ export function MemberDetailDialog({
   onOpenChange,
   memberTarget,
   membership,
+  roleLabel,
   usernameValue,
   bioValue,
   detailError,
@@ -97,10 +99,10 @@ export function MemberDetailDialog({
                     <span className="text-foreground/40">Department : </span>
                     {memberTarget.department}
                   </p>
-                  {memberTarget.role !== PROJECT_ROLE.MEMBER ? (
+                  {memberTarget.rawRole !== PROJECT_ROLE.MEMBER ? (
                     <p className="text-sm font-semibold  text-primary/70">
                       <span className="text-foreground/40">Role : </span>
-                      {memberTarget.role}
+                      {roleLabel ?? memberTarget.role}
                     </p>
                   ) : null}
                 </div>

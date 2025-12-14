@@ -10,6 +10,7 @@ import { TaskForm, type TaskAssigneeOption, type TaskFormValues } from "@/compon
 import { DEFAULT_TASK_CARD_COLOR } from "@/constants/task-colors"
 import { useNotifications } from "@/components/notifications/Notification"
 import { PROJECT_REFRESH_EVENT } from "@/constants/events"
+import { fetchProjectDepartments, type ProjectDepartmentRecord } from "@/utils/projects/departments"
 
 const padTwoDigits = (value: number) => String(value).padStart(2, "0")
 
@@ -73,9 +74,10 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
     setFormLoading(true)
     setFormError(null)
     try {
-      const [taskResponse, membersResponse] = await Promise.all([
+      const [taskResponse, membersResponse, departments] = await Promise.all([
         fetch(`/api/projects/${projectId}/tasks/${taskId}`, { cache: "no-store" }),
         fetch(`/api/projects/${projectId}/members`, { cache: "no-store" }),
+        fetchProjectDepartments(projectId),
       ])
 
       if (taskResponse.status === 404) {
@@ -122,17 +124,44 @@ export default function EditTaskPage({ params }: EditTaskPageProps) {
           textColor: string
         } | null
       }>
+
+      const departmentHeadMap = (departments as ProjectDepartmentRecord[]).reduce<
+        Record<string, string | null>
+      >((acc, dept) => {
+        acc[dept.id] = dept.head ?? null
+        return acc
+      }, {})
+
       setMemberOptions(
-        members.map((member) => ({
-          id: member.id,
-          label: member.username || member.fullName || "Member",
-          username: member.username,
-          fullName: member.fullName,
-          role: member.role,
-          departmentName: member.department?.name ?? null,
-          departmentColor: member.department?.color ?? null,
-          departmentTextColor: member.department?.textColor ?? null,
-        }))
+        members.map((member) => {
+          const department = member.department
+          const departmentId = department?.id ?? null
+          const headUsername = departmentId ? departmentHeadMap[departmentId] ?? null : null
+          const isDepartmentHead = Boolean(headUsername) && headUsername === member.username
+
+          let roleLabel: string | null
+          if (member.role === "OWNER") {
+            roleLabel = isDepartmentHead ? "Header (Project Owner)" : "Member (Project Owner)"
+          } else if (member.role === "HEADER") {
+            roleLabel = "Header"
+          } else if (member.role === "MEMBER") {
+            roleLabel = "Member"
+          } else {
+            roleLabel = member.role
+          }
+
+          return {
+            id: member.id,
+            label: member.username || member.fullName || "Member",
+            username: member.username,
+            fullName: member.fullName,
+            role: member.role,
+            departmentName: department?.name ?? null,
+            departmentColor: department?.color ?? null,
+            departmentTextColor: department?.textColor ?? null,
+            roleLabel,
+          }
+        })
       )
     } catch (error) {
       console.error(error)

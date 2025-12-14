@@ -15,7 +15,7 @@ import type {
   InviteRoleOption,
   InviteRoleOptionKey,
 } from "../invite/constants"
-import type { UseNotificationsReturn } from "@/components/notifications/Notification"
+import type { NotificationOptions } from "@/components/notifications/Notification"
 
 const INVITE_DIALOG_OPEN_EVENT = "asap:open-invite-dialog"
 
@@ -36,7 +36,7 @@ export type ProjectInvitesState = {
   inviteMaxUses: string
   setInviteMaxUses: (value: string) => void
   inviteMaxUsesCustom: boolean
-  setInviteMaxUsesCustom: (value: boolean) => void
+  setInviteMaxUsesCustom: (value: boolean | ((prev: boolean) => boolean)) => void
   inviteSaving: boolean
   inviteExpiryMenuOpen: boolean
   setInviteExpiryMenuOpen: (open: boolean) => void
@@ -61,7 +61,7 @@ type UseProjectInvitesOptions = {
   activeProjectId: string | null
   viewerDepartmentId: string | null
   isHeaderViewer: boolean
-  notify: UseNotificationsReturn["notify"]
+  notify: (options: NotificationOptions) => string
 }
 
 export function useProjectInvites({
@@ -247,13 +247,19 @@ export function useProjectInvites({
       return
     }
     const effectiveDepartmentId = isHeaderViewer ? viewerDepartmentId : inviteDepartmentId
+    let expiresAt: string | undefined
+    if (inviteExpiry !== "never" && inviteExpiry !== "custom") {
+      const durationMs = INVITE_EXPIRY_PRESETS_MS[inviteExpiry]
+      if (durationMs && Number.isFinite(durationMs)) {
+        expiresAt = new Date(Date.now() + durationMs).toISOString()
+      }
+    }
     setInviteError(null)
     setInviteSaving(true)
     try {
       const newInvite = await createProjectInvite(activeProjectId, {
         maxUses: inviteMaxUsesCustom ? Number(inviteMaxUses) : undefined,
-        expiresInSeconds:
-          inviteExpiry === "never" ? undefined : INVITE_EXPIRY_PRESETS_MS[inviteExpiry],
+        expiresAt,
         departmentId: effectiveDepartmentId,
         role: inviteRoleOption.role,
       })

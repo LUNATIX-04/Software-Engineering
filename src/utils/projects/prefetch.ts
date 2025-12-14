@@ -82,9 +82,9 @@ function buildTaskCacheKey(projectId: string, options?: TaskListOptionsWithoutSi
   return [
     projectId,
     normalized.search ?? "",
-    normalized.departmentIds.join(","),
-    normalized.departmentNames.join(","),
-    normalized.statuses.join(","),
+    (normalized.departmentIds ?? []).join(","),
+    (normalized.departmentNames ?? []).join(","),
+    (normalized.statuses ?? []).join(","),
     normalized.scope ?? "",
     normalized.memberId ?? "",
     normalized.page ?? 0,
